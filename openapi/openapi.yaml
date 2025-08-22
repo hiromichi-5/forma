@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info:
+  title: Forma API
+  description: API documentation for the Forma API
+  version: 0.0.1
+servers:
+  - url: http://localhost:8080
+paths:
+  /healthz:
+    get:
+      summary: ヘルスチェック
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
