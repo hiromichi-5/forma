@@ -17,4 +17,4 @@ sqlc:
 	sqlc generate
 
 openapi:
-	oapi-codegen -generate types,gin,spec -o internal/api/gen.go -package api openapi/openapi.yaml
+	oapi-codegen -generate types,gin,spec -o backend/internal/api/gen.go -package api openapi/openapi.yaml
