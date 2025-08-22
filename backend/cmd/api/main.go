@@ -7,9 +7,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func NewRouter() *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.GET("/healthz", healthz)
+	return r
+}
+
+func healthz(c *gin.Context) {
+	c.String(http.StatusOK, "ok")
+}
+
 func main() {
-	r := gin.Default()
-	r.GET("/healthz", func(c *gin.Context) { c.String(http.StatusOK, "OK") })
+	r := NewRouter()
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}
