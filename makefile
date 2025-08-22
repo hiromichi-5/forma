@@ -2,10 +2,10 @@ BIN=bin/api
 
 .PHONY: dev build test migrate sqlc gen openapi
 dev:
-	go run ./cmd/api
+	go run ./backend/cmd/api
 
 build:
-	mkdir -p bin && go build -o $(BIN) ./cmd/api
+	mkdir -p bin && go build -o $(BIN) ./backend/cmd/api
 
 test:
 	go test ./...
