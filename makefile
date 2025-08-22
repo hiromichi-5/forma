@@ -11,7 +11,7 @@ test:
 	go test ./...
 
 migrate:
-	goose -dir ./migrations postgres "$$PG_DSN" up
+	goose -dir backend/migrations postgres "$$PG_DSN" up
 
 sqlc:
 	sqlc generate
