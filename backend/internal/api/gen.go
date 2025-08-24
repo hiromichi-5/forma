@@ -14,13 +14,26 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
+
+// PostV1AuthLoginJSONBody defines parameters for PostV1AuthLogin.
+type PostV1AuthLoginJSONBody struct {
+	Email    openapi_types.Email `json:"email"`
+	Password string              `json:"password"`
+}
+
+// PostV1AuthLoginJSONRequestBody defines body for PostV1AuthLogin for application/json ContentType.
+type PostV1AuthLoginJSONRequestBody PostV1AuthLoginJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// ヘルスチェック
 	// (GET /healthz)
 	GetHealthz(c *gin.Context)
+	// ログイン
+	// (POST /v1/auth/login)
+	PostV1AuthLogin(c *gin.Context)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -43,6 +56,19 @@ func (siw *ServerInterfaceWrapper) GetHealthz(c *gin.Context) {
 	}
 
 	siw.Handler.GetHealthz(c)
+}
+
+// PostV1AuthLogin operation middleware
+func (siw *ServerInterfaceWrapper) PostV1AuthLogin(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1AuthLogin(c)
 }
 
 // GinServerOptions provides options for the Gin server.
@@ -73,16 +99,20 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	}
 
 	router.GET(options.BaseURL+"/healthz", wrapper.GetHealthz)
+	router.POST(options.BaseURL+"/v1/auth/login", wrapper.PostV1AuthLogin)
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/1xPMW7rMBS7isHZsPV/lkBblrZBhmQvOgjOSyTAlgTppUgaaKh9id6gQ4fOPY8uUsjp",
-	"UHQiRYiP5BXGHhzkFXuKXTCejbOQWO3W1d51p4Esq6JVBxcq1lTduTCoarVbowYb7gkSv7VnCvF2QzSi",
-	"+YdUw3myyhtILBrRLFDDK9axpLaaVM/6pfAjcQHnKcyR6z0k7okffr7UCBS9s5Fm638hCnTOMtnZyXTm",
-	"1vfK2PKKnaZBFUZnNfi56HZTWl984ZGDsUeklOo/47cbFDGehkGFCyTy9Janjzx+5ek1j+95mvL4eXNG",
-	"CmUx5OMVp9BDQjN72ba961SvXWS5FEuB9JS+AwAA///MOzV1bAEAAA==",
+	"H4sIAAAAAAAC/5RSwY7TMBD9lWjOUZOyl5Vv5QBUi7Q9cVntwSTT2ovjMfZk2VLlQPITfAASB4RA4sT3",
+	"+EeQk1VBoVK1J09G89689yYH0HZLIA5QY6i8dqzJgoDVZp3VVLUNWpapl23JZ6wwe0G+kdlqs4YcWLNB",
+	"EPBv7x59mDjKRblYQpcDObTSaRBwsSgXF5CDk6xC2loolIbVx1TvkNNDDv24cl2DgJfIrx5HcvAYHNmA",
+	"I/RZWaanIstoRyTjAxfOSG3TV6gUNjJV+CAbNwq9vkqq9y7Vgb22O+i6Lp+Zv76C1Axt00i/BwFx+ByH",
+	"b7H/HYdPsf8ahyH2P8aZ4n5ZyJZVYWg3rXUUTtjYUOA3y1XL6vU4mLy8bzHwc6r3MxvSOaOrEVvcBZqZ",
+	"cT4xs55CwEZqk4ptOgGDeOz85zJlHsIH8vWY1CyCSY72WIO4OVIcEbdHOnp7hxVPof2FsG+xO3uep/hi",
+	"eof2vNJp7LS8szf9Hvufsf8Sh18TIKBPPy+ImwO03oAAxexEURiqpFEUWFyWlyV0t92fAAAA//+Izf6i",
+	"NwMAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
