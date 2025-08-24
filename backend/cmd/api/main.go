@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/viper"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/hiromichi-5/forma/backend/internal/api"
 	"github.com/hiromichi-5/forma/backend/internal/auth"
@@ -20,6 +22,15 @@ func NewRouter() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
+
+	r.StaticFile("/openapi.yaml", "openapi/openapi.yaml")
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(
+		swaggerFiles.Handler,
+		ginSwagger.URL("/openapi.yaml"),
+		ginSwagger.DocExpansion("none"),
+	))
+
 	r.GET("/healthz", healthz)
 	return r
 }
