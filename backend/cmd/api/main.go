@@ -19,17 +19,24 @@ import (
 )
 
 func NewRouter() *gin.Engine {
+	appEnv := viper.GetString("APP_ENV")
+	println("APP_ENV:", viper.GetString("APP_ENV"))
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
 
-	r.StaticFile("/openapi.yaml", "openapi/openapi.yaml")
-
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(
-		swaggerFiles.Handler,
-		ginSwagger.URL("/openapi.yaml"),
-		ginSwagger.DocExpansion("none"),
-	))
+	if appEnv == "" {
+		appEnv = "local"
+	}
+	if appEnv != "production" {
+		r.StaticFile("/openapi.yaml", "openapi/openapi.yaml")
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(
+			swaggerFiles.Handler,
+			ginSwagger.URL("/openapi.yaml"),
+			ginSwagger.DocExpansion("none"),
+		))
+	}
 
 	r.GET("/healthz", healthz)
 	return r
