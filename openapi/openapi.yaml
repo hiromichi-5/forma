@@ -5,6 +5,11 @@ info:
   version: 0.0.1
 servers:
   - url: http://localhost:8080
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+security:
+  - bearerAuth: []
 paths:
   /healthz:
     get:
@@ -40,3 +45,16 @@ paths:
                 required: [token]
                 properties:
                   token: { type: string }
+  /v1/whoami:
+    get:
+      summary: user_idの取得
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_id]
+                properties:
+                  user_id: { type: string }
