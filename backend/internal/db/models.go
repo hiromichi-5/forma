@@ -12,6 +12,8 @@ type Form struct {
 	FormID      string
 	Title       string
 	ConnectedAt pgtype.Timestamptz
+	Description pgtype.Text
+	PollingSec  pgtype.Int4
 }
 
 type User struct {
@@ -19,4 +21,10 @@ type User struct {
 	Email        string
 	PasswordHash string
 	CreatedAt    pgtype.Timestamptz
+}
+
+type UserFormRole struct {
+	UserID pgtype.UUID
+	FormID string
+	Role   string
 }
