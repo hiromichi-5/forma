@@ -45,14 +45,19 @@ func (s *Service) RegisterForm(ctx context.Context, formURL string, pollingSec i
 		return "", ErrValidation
 	}
 
-	if _, err := s.GF.GetForm(ctx, formID); err != nil {
+	f, err := s.GF.GetForm(ctx, formID)
+	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "403") {
 			return "", ErrFormsNotShared
 		}
 		return "", ErrFormsNotFound
 	}
 
-	title := "Google Form " + formID
+	title := ""
+	if f != nil && f.Info != nil && f.Info.Title != "" {
+		title = f.Info.Title
+	}
+
 	if err := s.Q.UpsertForm(ctx, db.UpsertFormParams{
 		FormID:      formID,
 		Title:       title,
@@ -105,5 +110,11 @@ func (s *Service) Health(ctx context.Context, formID string, actor UserID) (map[
 		}
 		return nil, ErrFormsNotFound
 	}
-	return map[string]any{"form_id": formID, "title": f.Info.Title}, nil
+
+	title := ""
+	if f != nil && f.Info != nil {
+		title = f.Info.Title
+	}
+
+	return map[string]any{"form_id": formID, "title": title}, nil
 }
