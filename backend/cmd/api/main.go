@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,17 +16,16 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/api"
 	"github.com/hiromichi-5/forma/backend/internal/auth"
 	"github.com/hiromichi-5/forma/backend/internal/db"
+	gforms "github.com/hiromichi-5/forma/backend/internal/google"
 	"github.com/hiromichi-5/forma/backend/internal/service"
 )
 
 func NewRouter() *gin.Engine {
-	appEnv := viper.GetString("APP_ENV")
-	println("APP_ENV:", viper.GetString("APP_ENV"))
-
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
 
+	appEnv := viper.GetString("APP_ENV")
 	if appEnv == "" {
 		appEnv = "local"
 	}
@@ -60,7 +60,14 @@ func main() {
 	if pgDSN == "" {
 		log.Fatal("PG_DSN required")
 	}
+	saPath := os.Getenv("GOOGLE_SERVICE_ACCOUNT_PATH")
+	if saPath == "" {
+		saPath = "/run/secrets/google_sa.json"
 
+		if _, err := os.Stat(saPath); os.IsNotExist(err) {
+			saPath = "./secrets/google_sa.json"
+		}
+	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, pgDSN)
 	if err != nil {
@@ -69,22 +76,36 @@ func main() {
 	defer pool.Close()
 	q := db.New(pool)
 
-	authSvc := service.NewAuthService(q)
 	signer := auth.Signer{Secret: []byte(secret), TTL: time.Hour}
+
+	gf, err := gforms.NewRealFormsClient(ctx, saPath)
+	if err != nil {
+		log.Fatalf("forms client: %v", err)
+	}
+
+	svc := service.NewService(q, gf)
 
 	r := NewRouter()
 
-	ah := &api.AuthHandler{Svc: authSvc, JWT: signer}
+	ah := &api.AuthHandler{Svc: service.NewAuthService(q), JWT: signer}
 	r.POST("/v1/auth/login", ah.PostV1AuthLogin)
 
 	authz := r.Group("/v1")
 	authz.Use(auth.BearerMiddleware(signer))
+
 	authz.GET("/whoami", func(c *gin.Context) {
 		if uid, ok := auth.UserID(c); ok {
 			c.JSON(http.StatusOK, gin.H{"user_id": uid})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
+	})
+
+	fh := &api.FormsHandler{S: svc}
+	authz.POST("/forms", fh.PostV1Forms)
+	authz.GET("/forms", fh.GetV1Forms)
+	authz.GET("/forms/:form_id/health", func(c *gin.Context) {
+		fh.GetV1FormsFormIdHealth(c, c.Param("form_id"))
 	})
 
 	if err := r.Run(addr); err != nil {
