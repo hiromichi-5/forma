@@ -2,18 +2,75 @@ openapi: 3.0.3
 info:
   title: Forma API
   description: API documentation for the Forma API
-  version: 0.0.1
+  version: 0.0.2
 servers:
   - url: http://localhost:8080
+
 components:
   securitySchemes:
-    bearerAuth: { type: http, scheme: bearer }
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    LoginResponse:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+    RegisterFormRequest:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, description: "Google Forms のURLまたはフォームID" }
+        polling_sec: { type: integer, default: 30 }
+    RegisterFormResponse:
+      type: object
+      required: [form_id]
+      properties:
+        form_id: { type: string }
+    FormSummary:
+      type: object
+      required: [form_id, title]
+      properties:
+        form_id: { type: string }
+        title: { type: string }
+        connected_at: { type: string, format: date-time, nullable: true }
+        sync_cursor: { type: string, format: date-time, nullable: true }
+    ListFormsResponse:
+      type: object
+      required: [forms]
+      properties:
+        forms:
+          type: array
+          items: { $ref: "#/components/schemas/FormSummary" }
+    HealthResponse:
+      type: object
+      required: [form_id, title]
+      properties:
+        form_id: { type: string }
+        title: { type: string }
+    Error:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+        message: { type: string, nullable: true }
+        details: { type: object, additionalProperties: true, nullable: true }
+
 security:
   - bearerAuth: []
+
 paths:
   /healthz:
     get:
       summary: ヘルスチェック
+      security: []
       responses:
         "200":
           description: OK
@@ -21,30 +78,24 @@ paths:
             text/plain:
               schema:
                 type: string
-                example: OK
+                example: ok
+
   /v1/auth/login:
     post:
       summary: ログイン
+      security: []
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [email, password]
-              properties:
-                email: { type: string, format: email }
-                password: { type: string }
+            schema: { $ref: "#/components/schemas/LoginRequest" }
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                required: [token]
-                properties:
-                  token: { type: string }
+              schema: { $ref: "#/components/schemas/LoginResponse" }
+
   /v1/whoami:
     get:
       summary: user_idの取得
@@ -58,3 +109,72 @@ paths:
                 required: [user_id]
                 properties:
                   user_id: { type: string }
+
+  /v1/forms:
+    get:
+      summary: フォーム一覧
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListFormsResponse" }
+        "401":
+          description: Unauthorized
+    post:
+      summary: フォーム登録（admin専用）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterFormRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RegisterFormResponse" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden (insufficient role)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Forms not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{form_id}/health:
+    get:
+      summary: 接続検証（admin/editor）
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden or Forms not shared
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Forms not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }

@@ -8,23 +8,77 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// PostV1AuthLoginJSONBody defines parameters for PostV1AuthLogin.
-type PostV1AuthLoginJSONBody struct {
+const (
+	BearerAuthScopes = "bearerAuth.Scopes"
+)
+
+// Error defines model for Error.
+type Error struct {
+	Code    string                  `json:"code"`
+	Details *map[string]interface{} `json:"details"`
+	Message *string                 `json:"message"`
+}
+
+// FormSummary defines model for FormSummary.
+type FormSummary struct {
+	ConnectedAt *time.Time `json:"connected_at"`
+	FormId      string     `json:"form_id"`
+	SyncCursor  *time.Time `json:"sync_cursor"`
+	Title       string     `json:"title"`
+}
+
+// HealthResponse defines model for HealthResponse.
+type HealthResponse struct {
+	FormId string `json:"form_id"`
+	Title  string `json:"title"`
+}
+
+// ListFormsResponse defines model for ListFormsResponse.
+type ListFormsResponse struct {
+	Forms []FormSummary `json:"forms"`
+}
+
+// LoginRequest defines model for LoginRequest.
+type LoginRequest struct {
 	Email    openapi_types.Email `json:"email"`
 	Password string              `json:"password"`
 }
 
+// LoginResponse defines model for LoginResponse.
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
+// RegisterFormRequest defines model for RegisterFormRequest.
+type RegisterFormRequest struct {
+	PollingSec *int `json:"polling_sec,omitempty"`
+
+	// Url Google Forms のURLまたはフォームID
+	Url string `json:"url"`
+}
+
+// RegisterFormResponse defines model for RegisterFormResponse.
+type RegisterFormResponse struct {
+	FormId string `json:"form_id"`
+}
+
 // PostV1AuthLoginJSONRequestBody defines body for PostV1AuthLogin for application/json ContentType.
-type PostV1AuthLoginJSONRequestBody PostV1AuthLoginJSONBody
+type PostV1AuthLoginJSONRequestBody = LoginRequest
+
+// PostV1FormsJSONRequestBody defines body for PostV1Forms for application/json ContentType.
+type PostV1FormsJSONRequestBody = RegisterFormRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -34,6 +88,18 @@ type ServerInterface interface {
 	// ログイン
 	// (POST /v1/auth/login)
 	PostV1AuthLogin(c *gin.Context)
+	// フォーム一覧
+	// (GET /v1/forms)
+	GetV1Forms(c *gin.Context)
+	// フォーム登録（admin専用）
+	// (POST /v1/forms)
+	PostV1Forms(c *gin.Context)
+	// 接続検証（admin/editor）
+	// (GET /v1/forms/{form_id}/health)
+	GetV1FormsFormIdHealth(c *gin.Context, formId string)
+	// user_idの取得
+	// (GET /v1/whoami)
+	GetV1Whoami(c *gin.Context)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -71,6 +137,77 @@ func (siw *ServerInterfaceWrapper) PostV1AuthLogin(c *gin.Context) {
 	siw.Handler.PostV1AuthLogin(c)
 }
 
+// GetV1Forms operation middleware
+func (siw *ServerInterfaceWrapper) GetV1Forms(c *gin.Context) {
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetV1Forms(c)
+}
+
+// PostV1Forms operation middleware
+func (siw *ServerInterfaceWrapper) PostV1Forms(c *gin.Context) {
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1Forms(c)
+}
+
+// GetV1FormsFormIdHealth operation middleware
+func (siw *ServerInterfaceWrapper) GetV1FormsFormIdHealth(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "form_id" -------------
+	var formId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetV1FormsFormIdHealth(c, formId)
+}
+
+// GetV1Whoami operation middleware
+func (siw *ServerInterfaceWrapper) GetV1Whoami(c *gin.Context) {
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetV1Whoami(c)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -100,19 +237,33 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 
 	router.GET(options.BaseURL+"/healthz", wrapper.GetHealthz)
 	router.POST(options.BaseURL+"/v1/auth/login", wrapper.PostV1AuthLogin)
+	router.GET(options.BaseURL+"/v1/forms", wrapper.GetV1Forms)
+	router.POST(options.BaseURL+"/v1/forms", wrapper.PostV1Forms)
+	router.GET(options.BaseURL+"/v1/forms/:form_id/health", wrapper.GetV1FormsFormIdHealth)
+	router.GET(options.BaseURL+"/v1/whoami", wrapper.GetV1Whoami)
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/5RSwY7TMBD9lWjOUZOyl5Vv5QBUi7Q9cVntwSTT2ovjMfZk2VLlQPITfAASB4RA4sT3",
-	"+EeQk1VBoVK1J09G89689yYH0HZLIA5QY6i8dqzJgoDVZp3VVLUNWpapl23JZ6wwe0G+kdlqs4YcWLNB",
-	"EPBv7x59mDjKRblYQpcDObTSaRBwsSgXF5CDk6xC2loolIbVx1TvkNNDDv24cl2DgJfIrx5HcvAYHNmA",
-	"I/RZWaanIstoRyTjAxfOSG3TV6gUNjJV+CAbNwq9vkqq9y7Vgb22O+i6Lp+Zv76C1Axt00i/BwFx+ByH",
-	"b7H/HYdPsf8ahyH2P8aZ4n5ZyJZVYWg3rXUUTtjYUOA3y1XL6vU4mLy8bzHwc6r3MxvSOaOrEVvcBZqZ",
-	"cT4xs55CwEZqk4ptOgGDeOz85zJlHsIH8vWY1CyCSY72WIO4OVIcEbdHOnp7hxVPof2FsG+xO3uep/hi",
-	"eof2vNJp7LS8szf9Hvufsf8Sh18TIKBPPy+ImwO03oAAxexEURiqpFEUWFyWlyV0t92fAAAA//+Izf6i",
-	"NwMAAA==",
+	"H4sIAAAAAAAC/8RWW28bxRf/Kqv5/x9AMlmn6UO1b+FSGlGJKFXDQ2RFk51j77SzM9uZs2ndyBK2X0BC",
+	"8MJdSPBQaBGirUBCIKJ+mSVNeepXQDPj9XVthyYpL/bsaM7td37nckBilWZKgkRDogNi4gRS6o5vaa20",
+	"PWRaZaCRg7uOFQP7j+0MSEQMai5bpFMjDJBy4d5QxjhyJanYHJNFnUONyFwIuieg/B7oUXs3IEarJwVj",
+	"aMvZmPO2tNmpEQ23cq6BkWjHe9ao0HhZ6fRanqZUt6vikRJiBLZL0X43lU7tiTCK8BryFEhtmSM1J7XL",
+	"WSUwpi3j3TjXxsP5YgaQo6jCfQqD0o9SoAqOK0AFJltgMiUNzCKyKJYzdOMqN2gzYxZ74g4cwR/+r6FJ",
+	"IvK/cETbcMDZcDzNnaFBqjVtVzpoqt1SLS634FYOBmc9gpRyMZFFf1ORsYwac1tpthytUsVQYoFf86BC",
+	"dRPkclP+WZX+LWhxg6AtinPDz5QQXLZ2DcT2k0GT5gJJtFYfauQSoQXaqsy18K9MrHlmGwKJyNtKtQQE",
+	"LvNB0X14fetq0X1SdL8tuo+K/mdF78eif1j0v9t4kywreKt/eSj/nuZzyDxryhY3xLnm2L5mSegV7wHV",
+	"oNdzTIYd1Qr561FQCWJGOlYHl001C9T65kbAVJynIJHau6CpdICJx44G65sbw/qKyPjdPmjjddRX6isX",
+	"LCQqA0kzTiKytlJfWXNkw8S5GyauH9y15xa4pFuYnMkNZjMGeGXwxALj8XSiF+r1QQtFkE4S4Q6GmaBc",
+	"jqaJq5s7NM2co+pmRV7d+BgP/t13JtAl0U6jRkzZw0nR/7Lo/1T0/ij63aJ3v+j3i94jJxHur4Y0xyQU",
+	"tl48Z01FUJvK4PaqTZIrLOJTDgZfV6w9FRTNMsFjJxveMGoqtEUtaaKZdCaJZRt9Zymgp7Y9oP+LYPxz",
+	"0Xtc9O4V/V+H0A478jymbK+6yibnGdjM4JgTXI1crK/OFtZ1aQmiNL8LzCMwFvOoAf31+/vPfrjvOvkC",
+	"Bo2iPXv2VLXkE5Fo9ZxcmA/3GxooWjgt5meXar+DVtjbpoIz3xXBvzlRsu2jtfP37rLSe5wxkMErXJq8",
+	"2eQxB4mBVgJe9V5cfClepCaQCoOmyuUiqh9/9effH/3y/PADylIujx73jj998Pzww8mqDw8Gg7AzmBgn",
+	"aAP2Z4P56eFmjqYpIGhDop0DYvuzm0N2AaZuSI4Wx0mO18bAmB4ejXPsNVO78mkazUvnntLBiAImobr0",
+	"4j/n3tOPvz/+7eun97559uCwZF0IjKPS47S7nSia8sU0e8+/OSUFJjfD3IA+0WZYPqzYDOdO2yEIA+Gi",
+	"+/Dok8+Pnnzhhcam8eQmudOwRDeg98vyceu1WyOjMBQqpiJRBqNL9Ut10ml0/gkAAP//qGSg49sPAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
