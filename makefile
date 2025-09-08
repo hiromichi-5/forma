@@ -20,4 +20,4 @@ openapi:
 	oapi-codegen -generate types,gin,spec -o backend/internal/api/gen.go -package api openapi/openapi.yaml
 
 seed:
-	SEED_EMAIL=a@example.com SEED_PASSWORD=pass123 go run ./backend/cmd/seeduser
+	go run ./backend/cmd/seeduser

@@ -13,10 +13,8 @@ import (
 )
 
 var (
-	ErrForbidden      = errors.New("forbidden")
 	ErrFormsNotShared = errors.New("forms not shared")
 	ErrFormsNotFound  = errors.New("forms not found")
-	ErrValidation     = errors.New("validation error")
 )
 
 var reFormID = regexp.MustCompile(`/forms/d/e/([a-zA-Z0-9_-]+)/`)

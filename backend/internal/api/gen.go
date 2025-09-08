@@ -24,6 +24,42 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for AddMemberRequestRole.
+const (
+	AddMemberRequestRoleAdmin  AddMemberRequestRole = "admin"
+	AddMemberRequestRoleEditor AddMemberRequestRole = "editor"
+)
+
+// Defines values for ChangeMemberRoleRequestRole.
+const (
+	ChangeMemberRoleRequestRoleAdmin  ChangeMemberRoleRequestRole = "admin"
+	ChangeMemberRoleRequestRoleEditor ChangeMemberRoleRequestRole = "editor"
+)
+
+// Defines values for MemberRole.
+const (
+	Admin  MemberRole = "admin"
+	Editor MemberRole = "editor"
+)
+
+// AddMemberRequest defines model for AddMemberRequest.
+type AddMemberRequest struct {
+	Email openapi_types.Email  `json:"email"`
+	Role  AddMemberRequestRole `json:"role"`
+}
+
+// AddMemberRequestRole defines model for AddMemberRequest.Role.
+type AddMemberRequestRole string
+
+// ChangeMemberRoleRequest defines model for ChangeMemberRoleRequest.
+type ChangeMemberRoleRequest struct {
+	Role   ChangeMemberRoleRequestRole `json:"role"`
+	UserId openapi_types.UUID          `json:"userId"`
+}
+
+// ChangeMemberRoleRequestRole defines model for ChangeMemberRoleRequest.Role.
+type ChangeMemberRoleRequestRole string
+
 // Error defines model for Error.
 type Error struct {
 	Code    string                  `json:"code"`
@@ -50,6 +86,11 @@ type ListFormsResponse struct {
 	Forms []FormSummary `json:"forms"`
 }
 
+// ListMembersResponse defines model for ListMembersResponse.
+type ListMembersResponse struct {
+	Members []Member `json:"members"`
+}
+
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
 	Email    openapi_types.Email `json:"email"`
@@ -60,6 +101,16 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Token string `json:"token"`
 }
+
+// Member defines model for Member.
+type Member struct {
+	Email openapi_types.Email `json:"email"`
+	Id    openapi_types.UUID  `json:"id"`
+	Role  MemberRole          `json:"role"`
+}
+
+// MemberRole defines model for Member.Role.
+type MemberRole string
 
 // RegisterFormRequest defines model for RegisterFormRequest.
 type RegisterFormRequest struct {
@@ -74,11 +125,22 @@ type RegisterFormResponse struct {
 	FormId string `json:"form_id"`
 }
 
+// DeleteV1FormsFormIdMembersParams defines parameters for DeleteV1FormsFormIdMembers.
+type DeleteV1FormsFormIdMembersParams struct {
+	UserId openapi_types.UUID `form:"user_id" json:"user_id"`
+}
+
 // PostV1AuthLoginJSONRequestBody defines body for PostV1AuthLogin for application/json ContentType.
 type PostV1AuthLoginJSONRequestBody = LoginRequest
 
 // PostV1FormsJSONRequestBody defines body for PostV1Forms for application/json ContentType.
 type PostV1FormsJSONRequestBody = RegisterFormRequest
+
+// PatchV1FormsFormIdMembersJSONRequestBody defines body for PatchV1FormsFormIdMembers for application/json ContentType.
+type PatchV1FormsFormIdMembersJSONRequestBody = ChangeMemberRoleRequest
+
+// PostV1FormsFormIdMembersJSONRequestBody defines body for PostV1FormsFormIdMembers for application/json ContentType.
+type PostV1FormsFormIdMembersJSONRequestBody = AddMemberRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -97,6 +159,18 @@ type ServerInterface interface {
 	// 接続検証（admin/editor）
 	// (GET /v1/forms/{form_id}/health)
 	GetV1FormsFormIdHealth(c *gin.Context, formId string)
+	// メンバー削除（admin専用）
+	// (DELETE /v1/forms/{form_id}/members)
+	DeleteV1FormsFormIdMembers(c *gin.Context, formId string, params DeleteV1FormsFormIdMembersParams)
+	// メンバー一覧取得（admin専用）
+	// (GET /v1/forms/{form_id}/members)
+	GetV1FormsFormIdMembers(c *gin.Context, formId string)
+	// メンバーロール変更（admin専用）
+	// (PATCH /v1/forms/{form_id}/members)
+	PatchV1FormsFormIdMembers(c *gin.Context, formId string)
+	// メンバー追加（admin専用）
+	// (POST /v1/forms/{form_id}/members)
+	PostV1FormsFormIdMembers(c *gin.Context, formId string)
 	// user_idの取得
 	// (GET /v1/whoami)
 	GetV1Whoami(c *gin.Context)
@@ -193,6 +267,128 @@ func (siw *ServerInterfaceWrapper) GetV1FormsFormIdHealth(c *gin.Context) {
 	siw.Handler.GetV1FormsFormIdHealth(c, formId)
 }
 
+// DeleteV1FormsFormIdMembers operation middleware
+func (siw *ServerInterfaceWrapper) DeleteV1FormsFormIdMembers(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "form_id" -------------
+	var formId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteV1FormsFormIdMembersParams
+
+	// ------------- Required query parameter "user_id" -------------
+
+	if paramValue := c.Query("user_id"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Query argument user_id is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "user_id", c.Request.URL.Query(), &params.UserId)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter user_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteV1FormsFormIdMembers(c, formId, params)
+}
+
+// GetV1FormsFormIdMembers operation middleware
+func (siw *ServerInterfaceWrapper) GetV1FormsFormIdMembers(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "form_id" -------------
+	var formId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetV1FormsFormIdMembers(c, formId)
+}
+
+// PatchV1FormsFormIdMembers operation middleware
+func (siw *ServerInterfaceWrapper) PatchV1FormsFormIdMembers(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "form_id" -------------
+	var formId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PatchV1FormsFormIdMembers(c, formId)
+}
+
+// PostV1FormsFormIdMembers operation middleware
+func (siw *ServerInterfaceWrapper) PostV1FormsFormIdMembers(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "form_id" -------------
+	var formId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1FormsFormIdMembers(c, formId)
+}
+
 // GetV1Whoami operation middleware
 func (siw *ServerInterfaceWrapper) GetV1Whoami(c *gin.Context) {
 
@@ -240,30 +436,40 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/v1/forms", wrapper.GetV1Forms)
 	router.POST(options.BaseURL+"/v1/forms", wrapper.PostV1Forms)
 	router.GET(options.BaseURL+"/v1/forms/:form_id/health", wrapper.GetV1FormsFormIdHealth)
+	router.DELETE(options.BaseURL+"/v1/forms/:form_id/members", wrapper.DeleteV1FormsFormIdMembers)
+	router.GET(options.BaseURL+"/v1/forms/:form_id/members", wrapper.GetV1FormsFormIdMembers)
+	router.PATCH(options.BaseURL+"/v1/forms/:form_id/members", wrapper.PatchV1FormsFormIdMembers)
+	router.POST(options.BaseURL+"/v1/forms/:form_id/members", wrapper.PostV1FormsFormIdMembers)
 	router.GET(options.BaseURL+"/v1/whoami", wrapper.GetV1Whoami)
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"H4sIAAAAAAAC/+xZXW8UNxf+KyO/7wVI28yGUAntXQoFotI2CoJeRFHkjM/uGGbswfYAS7RSs3tTUNX2",
+	"ol+0lUqltFChAipV1aop/THTQLjiL1S2Zz9nZmch2UAkbqJZy+f4OcePn3PsrCOPhxFnwJREtXUkPR9C",
+	"bD7nCXkXwjUQS3ApBqn0WCR4BEJRMDMgxDTQH3UuQqxQLR2pINWMANWQVIKyBmpVkOABGBMWh6i2jDAJ",
+	"KUMVBIQqLtBKxkTbwKWYCiB6ftex8dOfzdcugKf0Asd9zBqQAuYBFIJ+biQVFEsQC2Qo0DimBJWBTu3G",
+	"oH5bCC6yGD1ODMYMEgIK08DMwYRQRTnDweKArRIxVBCLgwCv6Tjt78y6IUiJG2aNgrkFIRlkeZGc5CI8",
+	"G4chFs28eBgDTwFZxWoojQQreEPREFClDEjFWK1SkpsY2WTeqhcLadP5YgsoqoK8vI/koIuja5CXjtOA",
+	"A+UvgYw4k5DNyLhY9hDGGSqV3hk5Hon5oArsx/8F1FEN/c/tS4Ob6oI7uM2t3oJYCNzMBSgLYdmjOgZY",
+	"aCdMDM06LEXVdZuLizco2wu5i7CUV7gg5bvYddGzGIOrKFOKXwRWvpSdluc/Td1uIqaT6OPu64DxWloM",
+	"lqBBpQKh2Vq4nREPAsoaqxI8/ZNAHceBQrW5as8jZQoallOxCOws6QkaaeFFNXSK80YAjjlhTrJx79zS",
+	"mWTjUbLxfbJxP+l8kbR/TjpbSefWwonyWiGCCUJ5fjkpEI3sUlpEwYsFVc2z+kRZx2uABYj5WPm97kAb",
+	"2eF+UL5SEWppH5TVeTZR84sLDuFeHAJTWI85dS4c5dvcYWd+caGnYzU0OHYZhLQ+qjPVmSM6JTwChiOK",
+	"amhupjozZw6P8g1c1ze6e01/N8Bsuk6TWVJXcHQK1Ol0ik6MzacxPVKtpqVKATOWCq4qNwowZf3OyHD3",
+	"Kg4jA5RfzNlXU6YHg3//naHsotrySgXJbq1ESefrpHM3af+ZdDaS9u2k00na942Fe3nWxbHy3UCff8tZ",
+	"mRPUIpfq/KzeJCMUyG45SPUWJ82RoHAUBdQztu4FyUdCG6evQ+LYGiaWLqit0oTueu2U/i+S41+S9oOk",
+	"vZl0HvZS26t8RUw5P2tONppmYJkCXRBcBR2tzmYP1jmmCcIFvQbEZmAg5r4A/fvHhzs/3TaVaQyD+tHu",
+	"PXvyJHkiEs1OCUJxuo8LwEqnU+d877ba9vo5653HASVWFcHOmWiz9aS56aM7ycUaJQSYc4gyGdfr1KPA",
+	"lKOL72GL4ui+oAilw7hy6jxm46j+5OZfTz/+9dnWR6a12H7QfvL5nWdb14dPvbueFsJWWjEmkAH9Z4HY",
+	"6mFqjsAhKNOhLq8jrc+mDumLBjZFst+gD3O8MpCM0eKxMkWtGbmT7EZo9p17XDh9Ckgfiy6Kl869x5/8",
+	"+OT3bx5vfrdzZ6vLOte2s+NoN3C7IRCAgiz1TpjxIfall6ap0a+SeroUg2j2XcUSRJmrsqeRLLOPZln2",
+	"HneOp3v5stTXORRSKSlrOGnUh19ZPTZcM0LsdPfFgH1zP/K2wBQIhgNHgrgMolu6RnT5h6TzMOl8lnS2",
+	"tq/feHpzM0eXK5MJ77SpvzLlLm/0veNAye/Boprtdrc//XL70Ve5hIuw8vycLlgP7z/p9r7ZLnoMn/zW",
+	"lk/M183wAT0R+v6r/97d3rz++Nvf8g9F2c3wQB+JzH+zJr98vr4d7upA7EuPfk6CGGzRX9FzuPPP39s3",
+	"bhVfTq/4HId0/GX0Aztnl+3K8Ptxt8EvfT/uTsx5Py58k+tlIjVONu7Z2myNBt7sht+bl1e0GNjMWokx",
+	"j/DmsbnmugH3cOBzqWrHqseqqLXS+i8AAP//vL2klM0eAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
