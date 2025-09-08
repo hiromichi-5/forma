@@ -84,9 +84,9 @@ components:
         role: { type: string, enum: [admin, editor] }
     ChangeMemberRoleRequest:
       type: object
-      required: [user_id, role]
+      required: [userId, role]
       properties:
-        user_id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
         role: { type: string, enum: [admin, editor] }
 
 security:
