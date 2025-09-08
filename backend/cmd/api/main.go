@@ -107,6 +107,10 @@ func main() {
 	authz.GET("/forms/:form_id/health", func(c *gin.Context) {
 		fh.GetV1FormsFormIdHealth(c, c.Param("form_id"))
 	})
+	authz.GET("/forms/:form_id/members", fh.GetV1FormsFormIdMembers)
+	authz.POST("/forms/:form_id/members", fh.PostV1FormsFormIdMembers)
+	authz.PATCH("/forms/:form_id/members", fh.PatchV1FormsFormIdMembers)
+	authz.DELETE("/forms/:form_id/members", fh.DeleteV1FormsFormIdMembers)
 
 	if err := r.Run(addr); err != nil {
 		log.Fatal(err)

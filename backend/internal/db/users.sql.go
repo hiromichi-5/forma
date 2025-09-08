@@ -67,22 +67,6 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	return i, err
 }
 
-const getUserFormRole = `-- name: GetUserFormRole :one
-SELECT role FROM user_form_roles WHERE user_id = $1 AND form_id = $2
-`
-
-type GetUserFormRoleParams struct {
-	UserID pgtype.UUID
-	FormID string
-}
-
-func (q *Queries) GetUserFormRole(ctx context.Context, arg GetUserFormRoleParams) (string, error) {
-	row := q.db.QueryRow(ctx, getUserFormRole, arg.UserID, arg.FormID)
-	var role string
-	err := row.Scan(&role)
-	return role, err
-}
-
 const listForms = `-- name: ListForms :many
 SELECT form_id, title FROM forms
 `
@@ -133,23 +117,5 @@ func (q *Queries) UpsertForm(ctx context.Context, arg UpsertFormParams) error {
 		arg.Description,
 		arg.PollingSec,
 	)
-	return err
-}
-
-const upsertUserFormRole = `-- name: UpsertUserFormRole :exec
-INSERT INTO user_form_roles (user_id, form_id, role)
-VALUES ($1, $2, $3)
-ON CONFLICT (user_id, form_id) DO UPDATE
-SET role = EXCLUDED.role
-`
-
-type UpsertUserFormRoleParams struct {
-	UserID pgtype.UUID
-	FormID string
-	Role   string
-}
-
-func (q *Queries) UpsertUserFormRole(ctx context.Context, arg UpsertUserFormRoleParams) error {
-	_, err := q.db.Exec(ctx, upsertUserFormRole, arg.UserID, arg.FormID, arg.Role)
 	return err
 }
