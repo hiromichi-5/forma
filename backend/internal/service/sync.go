@@ -39,7 +39,12 @@ func (s *Service) SyncFormOnce(ctx context.Context, formID string, actor uuid.UU
 		cursor = syncCursor.Time
 	}
 
-	filter := "timestamp >= " + cursor.UTC().Format(time.RFC3339)
+	formattedCursor := cursor.UTC().Format(time.RFC3339)
+	// Validate the formatted timestamp to ensure it matches RFC3339
+	if _, err := time.Parse(time.RFC3339, formattedCursor); err != nil {
+		return 0, 0, time.Time{}, ErrForbidden
+	}
+	filter := "timestamp >= " + formattedCursor
 	var all []*forms.FormResponse
 	token := ""
 	for {
