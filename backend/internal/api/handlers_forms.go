@@ -51,11 +51,17 @@ func (h *FormsHandler) PostV1Forms(c *gin.Context) {
 }
 
 func (h *FormsHandler) GetV1Forms(c *gin.Context) {
-	if _, ok := auth.UserID(c); !ok {
+	uidStr, ok := auth.UserID(c)
+	if !ok {
 		c.JSON(401, gin.H{"code": "UNAUTHORIZED"})
 		return
 	}
-	fs, err := h.S.ListForms(c)
+	uid, err := uuid.Parse(uidStr)
+	if err != nil {
+		c.JSON(401, gin.H{"code": "UNAUTHORIZED"})
+		return
+	}
+	fs, err := h.S.ListForms(c, uid)
 	if err != nil {
 		c.JSON(500, gin.H{"code": "INTERNAL"})
 		return

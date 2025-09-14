@@ -14,3 +14,9 @@ SELECT u.id, u.email, u.created_at, r.role
 FROM user_form_roles r JOIN users u ON u.id = r.user_id
 WHERE r.form_id = $1
 ORDER BY u.email;
+
+-- name: ListUserAccessibleForms :many
+SELECT f.form_id, f.title
+FROM user_form_roles r JOIN forms f ON f.form_id = r.form_id
+WHERE r.user_id = $1
+ORDER BY f.title;

@@ -9,14 +9,25 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/db"
 )
 
-func (s *Service) ListTickets(ctx context.Context, formID, status string) ([]db.Ticket, error) {
-	return s.Q.ListTickets(ctx, db.ListTicketsParams{
-		Column1: formID,
-		Column2: status,
-	})
+func (s *Service) ListTickets(ctx context.Context, formID, status string, actor uuid.UUID) ([]db.Ticket, error) {
+	if formID != "" {
+		if err := s.RequireEditor(ctx, formID, actor); err != nil {
+			return nil, err
+		}
+		return s.Q.ListTickets(ctx, db.ListTicketsParams{
+			Column1: formID,
+			Column2: status,
+		})
+	}
+
+	return []db.Ticket{}, nil
 }
 
-func (s *Service) GetTicket(ctx context.Context, id string) (db.Ticket, error) {
+func (s *Service) GetTicket(ctx context.Context, id string, actor uuid.UUID) (db.Ticket, error) {
+	if err := s.RequireFormAccessForTicket(ctx, id, actor); err != nil {
+		return db.Ticket{}, err
+	}
+
 	uid, err := uuid.Parse(id)
 	if err != nil {
 		return db.Ticket{}, ErrValidation
@@ -24,7 +35,11 @@ func (s *Service) GetTicket(ctx context.Context, id string) (db.Ticket, error) {
 	return s.Q.GetTicket(ctx, pgtype.UUID{Bytes: uid, Valid: true})
 }
 
-func (s *Service) UpdateTicket(ctx context.Context, id string, status *string, assignee *uuid.UUID) (db.Ticket, error) {
+func (s *Service) UpdateTicket(ctx context.Context, id string, status *string, assignee *uuid.UUID, actor uuid.UUID) (db.Ticket, error) {
+	if err := s.RequireFormAccessForTicket(ctx, id, actor); err != nil {
+		return db.Ticket{}, err
+	}
+
 	uid, err := uuid.Parse(id)
 	if err != nil {
 		return db.Ticket{}, ErrValidation
