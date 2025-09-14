@@ -82,12 +82,15 @@ func (s *Service) ListForms(ctx context.Context) ([]dbFormLite, error) {
 	}
 	out := make([]dbFormLite, 0, len(fs))
 	for _, f := range fs {
-		out = append(out, dbFormLite{FormID: f.FormID, Title: f.Title})
+		out = append(out, dbFormLite{FormId: f.FormID, Title: f.Title})
 	}
 	return out, nil
 }
 
-type dbFormLite struct{ FormID, Title string }
+type dbFormLite struct {
+	FormId string `json:"form_id"`
+	Title  string `json:"title"`
+}
 
 func (s *Service) Health(ctx context.Context, formID string, actor UserID) (map[string]any, error) {
 	role, err := s.Q.GetUserFormRole(ctx, db.GetUserFormRoleParams{
