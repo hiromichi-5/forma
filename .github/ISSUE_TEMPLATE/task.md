@@ -1,7 +1,7 @@
 ---
 name: Task
 about: タスク用テンプレート
-title: "[Task]: "
+title: "[Task] "
 labels: task
 assignees: ""
 ---

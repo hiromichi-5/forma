@@ -1,7 +1,7 @@
 ---
 name: Feature Request
 about: 新機能の提案用テンプレート
-title: "[Feature]: "
+title: "[Feature] "
 labels: enhancement
 assignees: ""
 ---
