@@ -14,6 +14,28 @@ type Form struct {
 	ConnectedAt pgtype.Timestamptz
 	Description pgtype.Text
 	PollingSec  pgtype.Int4
+	SyncCursor  pgtype.Timestamptz
+	Enabled     bool
+}
+
+type Response struct {
+	ResponseID    string
+	FormID        string
+	SubmittedAt   pgtype.Timestamptz
+	Payload       []byte
+	SchemaVersion int32
+	CreatedAt     pgtype.Timestamptz
+}
+
+type Ticket struct {
+	ID         pgtype.UUID
+	FormID     string
+	ResponseID string
+	Status     string
+	AssigneeID pgtype.UUID
+	Priority   int32
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
 }
 
 type User struct {

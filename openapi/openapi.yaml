@@ -88,6 +88,69 @@ components:
       properties:
         userId: { type: string, format: uuid }
         role: { type: string, enum: [admin, editor] }
+    SyncResponse:
+      type: object
+      required: [synced, newTickets]
+      properties:
+        synced: { type: integer, description: "同期された回答数" }
+        newTickets: { type: integer, description: "新規作成されたチケット数" }
+        last:
+          {
+            type: string,
+            format: date-time,
+            nullable: true,
+            description: "最後に同期された回答の送信時刻",
+          }
+    Response:
+      type: object
+      required:
+        [
+          response_id,
+          form_id,
+          submitted_at,
+          payload,
+          schema_version,
+          created_at,
+        ]
+      properties:
+        response_id: { type: string }
+        form_id: { type: string }
+        submitted_at: { type: string, format: date-time }
+        payload: { type: object, additionalProperties: true }
+        schema_version: { type: integer }
+        created_at: { type: string, format: date-time }
+    ListResponsesResponse:
+      type: object
+      required: [responses]
+      properties:
+        responses:
+          type: array
+          items: { $ref: "#/components/schemas/Response" }
+    Ticket:
+      type: object
+      required:
+        [id, form_id, response_id, status, priority, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        form_id: { type: string }
+        response_id: { type: string }
+        status: { type: string, enum: [new, in_progress, done] }
+        assignee_id: { type: string, format: uuid, nullable: true }
+        priority: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ListTicketsResponse:
+      type: object
+      required: [tickets]
+      properties:
+        tickets:
+          type: array
+          items: { $ref: "#/components/schemas/Ticket" }
+    UpdateTicketRequest:
+      type: object
+      properties:
+        status: { type: string, enum: [new, in_progress, done] }
+        assignee_id: { type: string, format: uuid, nullable: true }
 
 security:
   - bearerAuth: []
@@ -329,6 +392,148 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{form_id}/sync:
+    post:
+      summary: フォーム回答の手動同期（admin/editor）
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 同期完了
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncResponse" }
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden (admin/editor role required)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/responses:
+    get:
+      summary: 回答一覧取得（admin/editor）
+      parameters:
+        - in: query
+          name: form_id
+          schema: { type: string }
+          description: "フィルタリング用のフォームID"
+        - in: query
+          name: since
+          schema: { type: string, format: date-time }
+          description: "指定時刻以降の回答を取得（RFC3339形式）"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListResponsesResponse" }
+        "400":
+          description: Validation error (invalid since format)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/tickets:
+    get:
+      summary: チケット一覧取得（admin/editor）
+      parameters:
+        - in: query
+          name: form_id
+          schema: { type: string }
+          description: "フィルタリング用のフォームID"
+        - in: query
+          name: status
+          schema: { type: string, enum: [new, in_progress, done] }
+          description: "フィルタリング用のステータス"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListTicketsResponse" }
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/tickets/{ticket_id}:
+    get:
+      summary: チケット詳細取得（admin/editor）
+      parameters:
+        - in: path
+          name: ticket_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ticket" }
+        "400":
+          description: Validation error (invalid ticket_id format)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+    patch:
+      summary: チケット更新（admin/editor）
+      parameters:
+        - in: path
+          name: ticket_id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateTicketRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ticket" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
         "500":
           description: Internal server error
           content:

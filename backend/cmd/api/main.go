@@ -107,10 +107,23 @@ func main() {
 	authz.GET("/forms/:form_id/health", func(c *gin.Context) {
 		fh.GetV1FormsFormIdHealth(c, c.Param("form_id"))
 	})
+	authz.POST("/forms/:form_id/sync", func(c *gin.Context) {
+		fh.PostV1FormsFormIdSync(c, c.Param("form_id"))
+	})
 	authz.GET("/forms/:form_id/members", fh.GetV1FormsFormIdMembers)
 	authz.POST("/forms/:form_id/members", fh.PostV1FormsFormIdMembers)
 	authz.PATCH("/forms/:form_id/members", fh.PatchV1FormsFormIdMembers)
 	authz.DELETE("/forms/:form_id/members", fh.DeleteV1FormsFormIdMembers)
+
+	authz.GET("/responses", fh.GetV1Responses)
+
+	authz.GET("/tickets", fh.GetV1Tickets)
+	authz.GET("/tickets/:ticket_id", func(c *gin.Context) {
+		fh.GetV1TicketsTicketId(c, c.Param("ticket_id"))
+	})
+	authz.PATCH("/tickets/:ticket_id", func(c *gin.Context) {
+		fh.PatchV1TicketsTicketId(c, c.Param("ticket_id"))
+	})
 
 	if err := r.Run(addr); err != nil {
 		log.Fatal(err)
