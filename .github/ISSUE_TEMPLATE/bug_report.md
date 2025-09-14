@@ -1,3 +1,11 @@
+---
+name: Bug Report
+about: バグの報告用テンプレート
+title: "[Bug]: "
+labels: bug
+assignees: ""
+---
+
 ## Summary  
 <!-- バグの概要を記載してください -->
 

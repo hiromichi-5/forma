@@ -1,3 +1,11 @@
+---
+name: Feature Request
+about: 新機能の提案用テンプレート
+title: "[Feature]: "
+labels: enhancement
+assignees: ""
+---
+
 ## Goal  
 <!-- 機能の実装が完了したとみなせる状態を記載してください -->
 

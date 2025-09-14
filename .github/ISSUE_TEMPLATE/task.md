@@ -1,3 +1,11 @@
+---
+name: Task
+about: タスク用テンプレート
+title: "[Task]: "
+labels: task
+assignees: ""
+---
+
 ## Task / タスク  
 
 ### Document / 資料  
