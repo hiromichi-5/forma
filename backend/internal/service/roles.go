@@ -33,6 +33,31 @@ func (s *Service) RequireAdmin(ctx context.Context, formID string, actor uuid.UU
 	return nil
 }
 
+func (s *Service) RequireEditor(ctx context.Context, formID string, actor uuid.UUID) error {
+	r, err := s.Q.GetUserFormRole(ctx, db.GetUserFormRoleParams{
+		UserID: pgtype.UUID{Bytes: actor, Valid: true},
+		FormID: formID,
+	})
+	if err != nil || (r != "admin" && r != "editor") {
+		return ErrForbidden
+	}
+	return nil
+}
+
+func (s *Service) RequireFormAccessForTicket(ctx context.Context, ticketID string, actor uuid.UUID) error {
+	uid, err := uuid.Parse(ticketID)
+	if err != nil {
+		return ErrValidation
+	}
+
+	ticket, err := s.Q.GetTicket(ctx, pgtype.UUID{Bytes: uid, Valid: true})
+	if err != nil {
+		return ErrForbidden
+	}
+
+	return s.RequireEditor(ctx, ticket.FormID, actor)
+}
+
 func (s *Service) AddMember(ctx context.Context, formID, email, role string) error {
 	if role != "admin" && role != "editor" {
 		return ErrValidation

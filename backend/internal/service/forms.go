@@ -75,8 +75,8 @@ func (s *Service) RegisterForm(ctx context.Context, formURL string, pollingSec i
 	return formID, nil
 }
 
-func (s *Service) ListForms(ctx context.Context) ([]dbFormLite, error) {
-	fs, err := s.Q.ListForms(ctx)
+func (s *Service) ListForms(ctx context.Context, actor UserID) ([]dbFormLite, error) {
+	fs, err := s.Q.ListUserAccessibleForms(ctx, pgtype.UUID{Bytes: actor, Valid: true})
 	if err != nil {
 		return nil, err
 	}

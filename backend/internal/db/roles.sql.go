@@ -80,6 +80,38 @@ func (q *Queries) ListFormMembers(ctx context.Context, formID string) ([]ListFor
 	return items, nil
 }
 
+const listUserAccessibleForms = `-- name: ListUserAccessibleForms :many
+SELECT f.form_id, f.title
+FROM user_form_roles r JOIN forms f ON f.form_id = r.form_id
+WHERE r.user_id = $1
+ORDER BY f.title
+`
+
+type ListUserAccessibleFormsRow struct {
+	FormID string
+	Title  string
+}
+
+func (q *Queries) ListUserAccessibleForms(ctx context.Context, userID pgtype.UUID) ([]ListUserAccessibleFormsRow, error) {
+	rows, err := q.db.Query(ctx, listUserAccessibleForms, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserAccessibleFormsRow
+	for rows.Next() {
+		var i ListUserAccessibleFormsRow
+		if err := rows.Scan(&i.FormID, &i.Title); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertUserFormRole = `-- name: UpsertUserFormRole :exec
 INSERT INTO user_form_roles(user_id, form_id, role)
 VALUES ($1,$2,$3)
