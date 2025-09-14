@@ -48,7 +48,7 @@ make dev
 curl http://localhost:8080/healthz
 ```
 
-`OK`が返れば成功です。
+`ok`が返れば成功です。
 
 ---
 
