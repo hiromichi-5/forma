@@ -474,6 +474,45 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /v1/responses:
+    get:
+      summary: 回答一覧取得（admin/editor）
+      parameters:
+        - in: query
+          name: form_id
+          schema: { type: string }
+          description: "フィルタリング用のフォームID"
+        - in: query
+          name: since
+          schema: { type: string, format: date-time }
+          description: "指定時刻以降の回答を取得（RFC3339形式）"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListResponsesResponse" }
+        "400":
+          description: Validation error (invalid since format)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden (admin/editor role required)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /v1/tickets:
     get:
       summary: チケット一覧取得（admin/editor）
@@ -494,6 +533,11 @@ paths:
               schema: { $ref: "#/components/schemas/ListTicketsResponse" }
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden (admin/editor role required)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -524,6 +568,11 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden (admin/editor role required)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -558,6 +607,11 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden (admin/editor role required)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
