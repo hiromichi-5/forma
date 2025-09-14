@@ -42,6 +42,27 @@ const (
 	Editor MemberRole = "editor"
 )
 
+// Defines values for TicketStatus.
+const (
+	TicketStatusDone       TicketStatus = "done"
+	TicketStatusInProgress TicketStatus = "in_progress"
+	TicketStatusNew        TicketStatus = "new"
+)
+
+// Defines values for UpdateTicketRequestStatus.
+const (
+	UpdateTicketRequestStatusDone       UpdateTicketRequestStatus = "done"
+	UpdateTicketRequestStatusInProgress UpdateTicketRequestStatus = "in_progress"
+	UpdateTicketRequestStatusNew        UpdateTicketRequestStatus = "new"
+)
+
+// Defines values for GetV1TicketsParamsStatus.
+const (
+	Done       GetV1TicketsParamsStatus = "done"
+	InProgress GetV1TicketsParamsStatus = "in_progress"
+	New        GetV1TicketsParamsStatus = "new"
+)
+
 // AddMemberRequest defines model for AddMemberRequest.
 type AddMemberRequest struct {
 	Email openapi_types.Email  `json:"email"`
@@ -91,6 +112,16 @@ type ListMembersResponse struct {
 	Members []Member `json:"members"`
 }
 
+// ListResponsesResponse defines model for ListResponsesResponse.
+type ListResponsesResponse struct {
+	Responses []Response `json:"responses"`
+}
+
+// ListTicketsResponse defines model for ListTicketsResponse.
+type ListTicketsResponse struct {
+	Tickets []Ticket `json:"tickets"`
+}
+
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
 	Email    openapi_types.Email `json:"email"`
@@ -125,10 +156,77 @@ type RegisterFormResponse struct {
 	FormId string `json:"form_id"`
 }
 
+// Response defines model for Response.
+type Response struct {
+	CreatedAt     time.Time              `json:"created_at"`
+	FormId        string                 `json:"form_id"`
+	Payload       map[string]interface{} `json:"payload"`
+	ResponseId    string                 `json:"response_id"`
+	SchemaVersion int                    `json:"schema_version"`
+	SubmittedAt   time.Time              `json:"submitted_at"`
+}
+
+// SyncResponse defines model for SyncResponse.
+type SyncResponse struct {
+	// Last 最後に同期された回答の送信時刻
+	Last *time.Time `json:"last"`
+
+	// NewTickets 新規作成されたチケット数
+	NewTickets int `json:"newTickets"`
+
+	// Synced 同期された回答数
+	Synced int `json:"synced"`
+}
+
+// Ticket defines model for Ticket.
+type Ticket struct {
+	AssigneeId *openapi_types.UUID `json:"assignee_id"`
+	CreatedAt  time.Time           `json:"created_at"`
+	FormId     string              `json:"form_id"`
+	Id         openapi_types.UUID  `json:"id"`
+	Priority   int                 `json:"priority"`
+	ResponseId string              `json:"response_id"`
+	Status     TicketStatus        `json:"status"`
+	UpdatedAt  time.Time           `json:"updated_at"`
+}
+
+// TicketStatus defines model for Ticket.Status.
+type TicketStatus string
+
+// UpdateTicketRequest defines model for UpdateTicketRequest.
+type UpdateTicketRequest struct {
+	AssigneeId *openapi_types.UUID        `json:"assignee_id"`
+	Status     *UpdateTicketRequestStatus `json:"status,omitempty"`
+}
+
+// UpdateTicketRequestStatus defines model for UpdateTicketRequest.Status.
+type UpdateTicketRequestStatus string
+
 // DeleteV1FormsFormIdMembersParams defines parameters for DeleteV1FormsFormIdMembers.
 type DeleteV1FormsFormIdMembersParams struct {
 	UserId openapi_types.UUID `form:"user_id" json:"user_id"`
 }
+
+// GetV1ResponsesParams defines parameters for GetV1Responses.
+type GetV1ResponsesParams struct {
+	// FormId フィルタリング用のフォームID
+	FormId *string `form:"form_id,omitempty" json:"form_id,omitempty"`
+
+	// Since 指定時刻以降の回答を取得（RFC3339形式）
+	Since *time.Time `form:"since,omitempty" json:"since,omitempty"`
+}
+
+// GetV1TicketsParams defines parameters for GetV1Tickets.
+type GetV1TicketsParams struct {
+	// FormId フィルタリング用のフォームID
+	FormId *string `form:"form_id,omitempty" json:"form_id,omitempty"`
+
+	// Status フィルタリング用のステータス
+	Status *GetV1TicketsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// GetV1TicketsParamsStatus defines parameters for GetV1Tickets.
+type GetV1TicketsParamsStatus string
 
 // PostV1AuthLoginJSONRequestBody defines body for PostV1AuthLogin for application/json ContentType.
 type PostV1AuthLoginJSONRequestBody = LoginRequest
@@ -141,6 +239,9 @@ type PatchV1FormsFormIdMembersJSONRequestBody = ChangeMemberRoleRequest
 
 // PostV1FormsFormIdMembersJSONRequestBody defines body for PostV1FormsFormIdMembers for application/json ContentType.
 type PostV1FormsFormIdMembersJSONRequestBody = AddMemberRequest
+
+// PatchV1TicketsTicketIdJSONRequestBody defines body for PatchV1TicketsTicketId for application/json ContentType.
+type PatchV1TicketsTicketIdJSONRequestBody = UpdateTicketRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -171,6 +272,21 @@ type ServerInterface interface {
 	// メンバー追加（admin専用）
 	// (POST /v1/forms/{form_id}/members)
 	PostV1FormsFormIdMembers(c *gin.Context, formId string)
+	// フォーム回答の手動同期（admin/editor）
+	// (POST /v1/forms/{form_id}/sync)
+	PostV1FormsFormIdSync(c *gin.Context, formId string)
+	// 回答一覧取得（admin/editor）
+	// (GET /v1/responses)
+	GetV1Responses(c *gin.Context, params GetV1ResponsesParams)
+	// チケット一覧取得（admin/editor）
+	// (GET /v1/tickets)
+	GetV1Tickets(c *gin.Context, params GetV1TicketsParams)
+	// チケット詳細取得（admin/editor）
+	// (GET /v1/tickets/{ticket_id})
+	GetV1TicketsTicketId(c *gin.Context, ticketId openapi_types.UUID)
+	// チケット更新（admin/editor）
+	// (PATCH /v1/tickets/{ticket_id})
+	PatchV1TicketsTicketId(c *gin.Context, ticketId openapi_types.UUID)
 	// user_idの取得
 	// (GET /v1/whoami)
 	GetV1Whoami(c *gin.Context)
@@ -389,6 +505,156 @@ func (siw *ServerInterfaceWrapper) PostV1FormsFormIdMembers(c *gin.Context) {
 	siw.Handler.PostV1FormsFormIdMembers(c, formId)
 }
 
+// PostV1FormsFormIdSync operation middleware
+func (siw *ServerInterfaceWrapper) PostV1FormsFormIdSync(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "form_id" -------------
+	var formId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1FormsFormIdSync(c, formId)
+}
+
+// GetV1Responses operation middleware
+func (siw *ServerInterfaceWrapper) GetV1Responses(c *gin.Context) {
+
+	var err error
+
+	c.Set(BearerAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetV1ResponsesParams
+
+	// ------------- Optional query parameter "form_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "form_id", c.Request.URL.Query(), &params.FormId)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "since" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "since", c.Request.URL.Query(), &params.Since)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter since: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetV1Responses(c, params)
+}
+
+// GetV1Tickets operation middleware
+func (siw *ServerInterfaceWrapper) GetV1Tickets(c *gin.Context) {
+
+	var err error
+
+	c.Set(BearerAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetV1TicketsParams
+
+	// ------------- Optional query parameter "form_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "form_id", c.Request.URL.Query(), &params.FormId)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "status", c.Request.URL.Query(), &params.Status)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetV1Tickets(c, params)
+}
+
+// GetV1TicketsTicketId operation middleware
+func (siw *ServerInterfaceWrapper) GetV1TicketsTicketId(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "ticket_id" -------------
+	var ticketId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ticket_id", c.Param("ticket_id"), &ticketId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter ticket_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetV1TicketsTicketId(c, ticketId)
+}
+
+// PatchV1TicketsTicketId operation middleware
+func (siw *ServerInterfaceWrapper) PatchV1TicketsTicketId(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "ticket_id" -------------
+	var ticketId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ticket_id", c.Param("ticket_id"), &ticketId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter ticket_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PatchV1TicketsTicketId(c, ticketId)
+}
+
 // GetV1Whoami operation middleware
 func (siw *ServerInterfaceWrapper) GetV1Whoami(c *gin.Context) {
 
@@ -440,36 +706,52 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/v1/forms/:form_id/members", wrapper.GetV1FormsFormIdMembers)
 	router.PATCH(options.BaseURL+"/v1/forms/:form_id/members", wrapper.PatchV1FormsFormIdMembers)
 	router.POST(options.BaseURL+"/v1/forms/:form_id/members", wrapper.PostV1FormsFormIdMembers)
+	router.POST(options.BaseURL+"/v1/forms/:form_id/sync", wrapper.PostV1FormsFormIdSync)
+	router.GET(options.BaseURL+"/v1/responses", wrapper.GetV1Responses)
+	router.GET(options.BaseURL+"/v1/tickets", wrapper.GetV1Tickets)
+	router.GET(options.BaseURL+"/v1/tickets/:ticket_id", wrapper.GetV1TicketsTicketId)
+	router.PATCH(options.BaseURL+"/v1/tickets/:ticket_id", wrapper.PatchV1TicketsTicketId)
 	router.GET(options.BaseURL+"/v1/whoami", wrapper.GetV1Whoami)
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
