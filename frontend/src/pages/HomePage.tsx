@@ -47,37 +47,58 @@ export function HomePage() {
       setIsLoading(true);
       setError(null);
 
-      const [formsResponse, ticketsResponse, responsesResponse] =
-        await Promise.all([
-          apiClient.getForms(),
-          apiClient.getTickets(),
-          apiClient.getResponses(),
-        ]);
-
+      const formsResponse = await apiClient.getForms();
       const forms = formsResponse.forms;
-      const tickets = ticketsResponse.tickets;
-      const responses = responsesResponse.responses;
+
+      const ticketPromises = forms.map((form) =>
+        apiClient.getTickets(form.form_id).catch((err) => {
+          console.warn(`Failed to get tickets for form ${form.form_id}:`, err);
+          return { tickets: [] };
+        })
+      );
+
+      const responsePromises = forms.map((form) =>
+        apiClient.getResponses(form.form_id).catch((err) => {
+          console.warn(
+            `Failed to get responses for form ${form.form_id}:`,
+            err
+          );
+          return { responses: [] };
+        })
+      );
+
+      const [ticketResults, responseResults] = await Promise.all([
+        Promise.all(ticketPromises),
+        Promise.all(responsePromises),
+      ]);
+
+      const allTickets = ticketResults.flatMap(
+        (result) => result.tickets || []
+      );
+      const allResponses = responseResults.flatMap(
+        (result) => result.responses || []
+      );
 
       const now = new Date();
       const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-      const recentResponses = responses.filter(
-        (r) => new Date(r.submitted_at) > last24Hours
+      const recentResponses = allResponses.filter(
+        (r) => r && r.submitted_at && new Date(r.submitted_at) > last24Hours
       ).length;
 
-      const pendingTickets = tickets.filter(
-        (t) => t.status === "new" || t.status === "in_progress"
+      const pendingTickets = allTickets.filter(
+        (t) => t && (t.status === "new" || t.status === "in_progress")
       ).length;
 
       setStats({
         totalForms: forms.length,
-        totalTickets: tickets.length,
+        totalTickets: allTickets.length,
         pendingTickets,
         recentResponses,
       });
 
       setForms(forms);
-      setRecentTickets(tickets.slice(0, 5));
+      setRecentTickets(allTickets.filter((t) => t).slice(0, 5));
     } catch (err) {
       if (err instanceof ApiError) {
         setError("データの読み込みに失敗しました");
