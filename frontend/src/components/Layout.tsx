@@ -38,7 +38,6 @@ function Header() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* User menu */}
             <div className="relative">
               <Button
                 variant="ghost"
@@ -73,7 +72,6 @@ function Header() {
         </div>
       </div>
 
-      {/* Click outside to close user menu */}
       {userMenuOpen && (
         <div
           className="fixed inset-0 z-40"
@@ -156,9 +154,7 @@ function Sidebar() {
 
   return (
     <>
-      {/* Mobile sidebar */}
       <div className="lg:hidden">
-        {/* Mobile menu button */}
         <Button
           variant="ghost"
           onClick={() => setSidebarOpen(true)}
@@ -168,7 +164,6 @@ function Sidebar() {
           <Icon icon={Menu} size="lg" />
         </Button>
 
-        {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <>
             <div
@@ -194,7 +189,6 @@ function Sidebar() {
         )}
       </div>
 
-      {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64">
           <div className="flex flex-col h-full bg-white border-r border-gray-200 shadow-md">

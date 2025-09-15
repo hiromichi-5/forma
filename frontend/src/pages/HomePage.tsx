@@ -39,7 +39,6 @@ export function HomePage() {
   const [recentTickets, setRecentTickets] = useState<Ticket[]>([]);
   const [forms, setForms] = useState<FormSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [syncingForms, setSyncingForms] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   const loadDashboardData = async () => {
@@ -125,7 +124,6 @@ export function HomePage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-primary/10 p-2">

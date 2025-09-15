@@ -97,20 +97,14 @@ export default function MembersPage() {
     switch (role) {
       case "admin":
         return (
-          <Badge
-            variant="destructive"
-            className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-          >
+          <Badge variant="destructive" className="bg-red-100 text-red-800">
             <Shield className="w-3 h-3 mr-1" />
             管理者
           </Badge>
         );
       case "editor":
         return (
-          <Badge
-            variant="default"
-            className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-          >
+          <Badge variant="default" className="bg-blue-100 text-blue-800">
             <UserCheck className="w-3 h-3 mr-1" />
             編集者
           </Badge>
@@ -144,7 +138,6 @@ export default function MembersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {form_id && (
@@ -175,14 +168,11 @@ export default function MembersPage() {
         )}
       </div>
 
-      {/* Form Selection */}
       {forms.length > 0 && (
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              フォーム:
-            </span>
+            <span className="text-sm font-medium text-gray-700">フォーム:</span>
           </div>
           <div className="w-64">
             <Select
@@ -219,8 +209,8 @@ export default function MembersPage() {
       )}
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-red-800 dark:text-red-200">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-red-800">
             <RefreshCw className="h-5 w-5" />
             {error}
           </div>
@@ -267,7 +257,7 @@ export default function MembersPage() {
                       <CardTitle className="text-lg">
                         {member.email.split("@")[0]}
                       </CardTitle>
-                      <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
                         <Mail className="h-3 w-3" />
                         {member.email}
                       </div>
@@ -280,9 +270,7 @@ export default function MembersPage() {
                 <CardContent className="pt-0">
                   <div className="space-y-4">
                     <div className="text-sm">
-                      <span className="text-gray-500 dark:text-gray-400">
-                        メンバーID:{" "}
-                      </span>
+                      <span className="text-gray-500">メンバーID: </span>
                       <span className="font-mono text-xs">{member.id}</span>
                     </div>
                   </div>
@@ -293,14 +281,13 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Empty State for no form selected */}
       {!selectedFormId && forms.length > 0 && (
         <div className="text-center py-12">
           <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">
             フォームを選択してください
           </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-gray-500">
             上のドロップダウンからフォームを選択してメンバーを表示
           </p>
         </div>
@@ -309,10 +296,10 @@ export default function MembersPage() {
       {selectedFormId && !loading && filteredMembers.length === 0 && (
         <div className="text-center py-12">
           <Users className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">
             {searchQuery ? "検索結果が見つかりません" : "メンバーがいません"}
           </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-gray-500">
             {searchQuery
               ? "検索条件を変更してもう一度お試しください"
               : selectedForm
@@ -333,10 +320,10 @@ export default function MembersPage() {
       {forms.length === 0 && !loading && (
         <div className="text-center py-12">
           <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">
             フォームがありません
           </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-gray-500">
             メンバーを管理するには、まずフォームを作成してください
           </p>
         </div>

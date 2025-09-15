@@ -50,8 +50,6 @@ export default function FormsPage() {
     try {
       setSyncing((prev) => new Set(prev).add(formId));
       await apiClient.syncForm(formId);
-      // Note: Actual sync status would need to be checked via a separate endpoint
-      // For now, just show success message
     } catch (err) {
       console.error("Failed to sync form:", err);
       setError(
@@ -80,16 +78,13 @@ export default function FormsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
             <FileSpreadsheet className="h-8 w-8 text-blue-600" />
             フォーム管理
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Googleフォームの連携と同期管理
-          </p>
+          <p className="text-gray-600 mt-2">Googleフォームの連携と同期管理</p>
         </div>
         <Button className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
@@ -97,7 +92,6 @@ export default function FormsPage() {
         </Button>
       </div>
 
-      {/* Search Bar */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <Input
@@ -109,17 +103,15 @@ export default function FormsPage() {
         />
       </div>
 
-      {/* Error State */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-red-800 dark:text-red-200">
+        <div className="bg-red-50 dark:bg-red-900/50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-red-800">
             <RefreshCw className="h-5 w-5" />
             {error}
           </div>
         </div>
       )}
 
-      {/* Forms Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredForms.map((form, index) => (
           <motion.div
@@ -133,7 +125,7 @@ export default function FormsPage() {
                 <CardTitle className="text-lg line-clamp-2">
                   {form.title}
                 </CardTitle>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-600">
                   フォームID: {form.form_id}
                 </p>
               </CardHeader>
@@ -170,14 +162,13 @@ export default function FormsPage() {
         ))}
       </div>
 
-      {/* Empty State */}
       {!loading && filteredForms.length === 0 && (
         <div className="text-center py-12">
           <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">
             {searchQuery ? "検索結果が見つかりません" : "フォームがありません"}
           </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-gray-500">
             {searchQuery
               ? "検索条件を変更してもう一度お試しください"
               : "最初のGoogleフォームを連携して開始しましょう"}
@@ -193,25 +184,18 @@ export default function FormsPage() {
         </div>
       )}
 
-      {/* Stats Summary */}
       {forms.length > 0 && (
         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
             <div>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {forms.length}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                総フォーム数
-              </p>
+              <p className="text-2xl font-bold text-blue-600">{forms.length}</p>
+              <p className="text-sm text-gray-600">総フォーム数</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <p className="text-2xl font-bold text-green-600">
                 {filteredForms.length}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                表示中のフォーム
-              </p>
+              <p className="text-sm text-gray-600">表示中のフォーム</p>
             </div>
           </div>
         </div>

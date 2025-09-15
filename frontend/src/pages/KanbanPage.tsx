@@ -292,7 +292,6 @@ export function KanbanPage() {
           console.error("Failed to load members:", err);
         }
       } else {
-        // Reset role and members when viewing all forms
         setMembers([]);
         setUserRole(null);
       }
@@ -348,7 +347,6 @@ export function KanbanPage() {
 
     const newStatus = destination.droppableId as Ticket["status"];
 
-    // Optimistically update UI
     setTickets((prev) =>
       prev.map((t) =>
         t.id === draggableId
@@ -360,7 +358,6 @@ export function KanbanPage() {
     try {
       await apiClient.updateTicket(draggableId, { status: newStatus });
     } catch (err) {
-      // Revert on error
       setTickets((prev) =>
         prev.map((t) =>
           t.id === draggableId ? { ...t, status: ticket.status } : t
