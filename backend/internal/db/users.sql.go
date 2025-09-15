@@ -17,9 +17,9 @@ RETURNING id, email, password_hash, created_at
 `
 
 type CreateUserParams struct {
-	ID           pgtype.UUID
-	Email        string
-	PasswordHash string
+	ID           pgtype.UUID `json:"id"`
+	Email        string      `json:"email"`
+	PasswordHash string      `json:"password_hash"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -72,8 +72,8 @@ SELECT form_id, title FROM forms
 `
 
 type ListFormsRow struct {
-	FormID string
-	Title  string
+	FormID string `json:"form_id"`
+	Title  string `json:"title"`
 }
 
 func (q *Queries) ListForms(ctx context.Context) ([]ListFormsRow, error) {
@@ -104,10 +104,10 @@ SET title = EXCLUDED.title, description = EXCLUDED.description, polling_sec = EX
 `
 
 type UpsertFormParams struct {
-	FormID      string
-	Title       string
-	Description pgtype.Text
-	PollingSec  pgtype.Int4
+	FormID      string      `json:"form_id"`
+	Title       string      `json:"title"`
+	Description pgtype.Text `json:"description"`
+	PollingSec  pgtype.Int4 `json:"polling_sec"`
 }
 
 func (q *Queries) UpsertForm(ctx context.Context, arg UpsertFormParams) error {

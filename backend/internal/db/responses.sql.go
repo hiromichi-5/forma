@@ -29,11 +29,11 @@ ON CONFLICT (response_id) DO NOTHING
 `
 
 type InsertResponseParams struct {
-	ResponseID    string
-	FormID        string
-	SubmittedAt   pgtype.Timestamptz
-	Payload       []byte
-	SchemaVersion int32
+	ResponseID    string             `json:"response_id"`
+	FormID        string             `json:"form_id"`
+	SubmittedAt   pgtype.Timestamptz `json:"submitted_at"`
+	Payload       []byte             `json:"payload"`
+	SchemaVersion int32              `json:"schema_version"`
 }
 
 func (q *Queries) InsertResponse(ctx context.Context, arg InsertResponseParams) (int64, error) {
@@ -60,8 +60,8 @@ LIMIT 200
 `
 
 type ListResponsesParams struct {
-	Column1 string
-	Column2 pgtype.Timestamptz
+	Column1 string             `json:"column_1"`
+	Column2 pgtype.Timestamptz `json:"column_2"`
 }
 
 func (q *Queries) ListResponses(ctx context.Context, arg ListResponsesParams) ([]Response, error) {

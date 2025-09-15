@@ -18,9 +18,9 @@ RETURNING id, form_id, response_id, status, assignee_id, priority, created_at, u
 `
 
 type CreateTicketParams struct {
-	ID         pgtype.UUID
-	FormID     string
-	ResponseID string
+	ID         pgtype.UUID `json:"id"`
+	FormID     string      `json:"form_id"`
+	ResponseID string      `json:"response_id"`
 }
 
 func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) (Ticket, error) {
@@ -70,8 +70,8 @@ LIMIT 200
 `
 
 type ListTicketsParams struct {
-	Column1 string
-	Column2 string
+	Column1 string `json:"column_1"`
+	Column2 string `json:"column_2"`
 }
 
 func (q *Queries) ListTickets(ctx context.Context, arg ListTicketsParams) ([]Ticket, error) {
@@ -113,9 +113,9 @@ RETURNING id, form_id, response_id, status, assignee_id, priority, created_at, u
 `
 
 type UpdateTicketParams struct {
-	ID         pgtype.UUID
-	Status     string
-	AssigneeID pgtype.UUID
+	ID         pgtype.UUID `json:"id"`
+	Status     string      `json:"status"`
+	AssigneeID pgtype.UUID `json:"assignee_id"`
 }
 
 func (q *Queries) UpdateTicket(ctx context.Context, arg UpdateTicketParams) (Ticket, error) {

@@ -27,8 +27,8 @@ UPDATE forms SET sync_cursor = $2 WHERE form_id = $1
 `
 
 type UpdateSyncCursorParams struct {
-	FormID     string
-	SyncCursor pgtype.Timestamptz
+	FormID     string             `json:"form_id"`
+	SyncCursor pgtype.Timestamptz `json:"sync_cursor"`
 }
 
 func (q *Queries) UpdateSyncCursor(ctx context.Context, arg UpdateSyncCursorParams) error {
