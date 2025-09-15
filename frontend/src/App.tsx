@@ -48,6 +48,7 @@ function AppRoutes() {
         <Route path="kanban/:form_id" element={<KanbanPage />} />
         <Route path="forms" element={<FormsPage />} />
         <Route path="members" element={<MembersPage />} />
+        <Route path="members/:form_id" element={<MembersPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

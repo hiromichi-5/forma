@@ -470,7 +470,10 @@ export function KanbanPage() {
           )}
 
           {form_id && (
-            <Button variant="secondary">
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/members/${form_id}`)}
+            >
               <Users className="h-4 w-4 mr-2" />
               メンバー ({members.length})
             </Button>

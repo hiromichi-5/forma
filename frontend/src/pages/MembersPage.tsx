@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -10,6 +11,7 @@ import {
   RefreshCw,
   UserCheck,
   FileSpreadsheet,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import {
@@ -20,11 +22,19 @@ import {
 } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Input } from "../components/ui/Input";
-import { Select } from "../components/ui/Select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/Select";
 import { apiClient, ApiError } from "../lib/api";
 import type { Member, FormSummary } from "../types";
 
 export default function MembersPage() {
+  const { form_id } = useParams<{ form_id: string }>();
+  const navigate = useNavigate();
   const [forms, setForms] = useState<FormSummary[]>([]);
   const [selectedFormId, setSelectedFormId] = useState<string>("");
   const [members, setMembers] = useState<Member[]>([]);
@@ -35,6 +45,13 @@ export default function MembersPage() {
   useEffect(() => {
     fetchForms();
   }, []);
+
+  useEffect(() => {
+    if (form_id) {
+      console.log(`URL form_id detected: ${form_id}`);
+      setSelectedFormId(form_id);
+    }
+  }, [form_id]);
 
   useEffect(() => {
     if (selectedFormId) {
@@ -48,7 +65,7 @@ export default function MembersPage() {
       setError(null);
       const data = await apiClient.getForms();
       setForms(data.forms);
-      if (data.forms.length > 0 && !selectedFormId) {
+      if (data.forms.length > 0 && !selectedFormId && !form_id) {
         setSelectedFormId(data.forms[0].form_id);
       }
     } catch (err) {
@@ -110,6 +127,11 @@ export default function MembersPage() {
 
   const selectedForm = forms.find((f) => f.form_id === selectedFormId);
 
+  const handleFormSelection = (value: string) => {
+    console.log(`Navigating to: /members/${value}`);
+    navigate(`/members/${value}`);
+  };
+
   if (loading && forms.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -122,14 +144,26 @@ export default function MembersPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <Users className="h-8 w-8 text-blue-600" />
-            メンバー管理
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            フォームごとのメンバー管理とアクセス権限の設定
-          </p>
+        <div className="flex items-center gap-3">
+          {form_id && (
+            <Button
+              variant="ghost"
+              onClick={() => window.history.back()}
+              aria-label="戻る"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <div className="rounded-lg bg-primary/10 p-2">
+            <Users className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">メンバー管理</h1>
+            <p className="text-muted-foreground">
+              フォームごとのメンバー管理とアクセス権限の設定
+              {form_id && ` - ${selectedForm?.title || form_id}`}
+            </p>
+          </div>
         </div>
         {selectedFormId && (
           <Button className="flex items-center gap-2">
@@ -140,7 +174,7 @@ export default function MembersPage() {
       </div>
 
       {/* Form Selection */}
-      {forms.length > 0 && (
+      {forms.length > 0 && !form_id && (
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-gray-500" />
@@ -149,12 +183,17 @@ export default function MembersPage() {
             </span>
           </div>
           <div className="w-64">
-            <Select value={selectedFormId} onValueChange={setSelectedFormId}>
-              {forms.map((form) => (
-                <option key={form.form_id} value={form.form_id}>
-                  {form.title}
-                </option>
-              ))}
+            <Select value={selectedFormId} onValueChange={handleFormSelection}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="フォームを選択" />
+              </SelectTrigger>
+              <SelectContent>
+                {forms.map((form) => (
+                  <SelectItem key={form.form_id} value={form.form_id}>
+                    {form.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
         </div>
@@ -242,7 +281,7 @@ export default function MembersPage() {
       )}
 
       {/* Empty State for no form selected */}
-      {!selectedFormId && forms.length > 0 && (
+      {!selectedFormId && forms.length > 0 && !form_id && (
         <div className="text-center py-12">
           <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
