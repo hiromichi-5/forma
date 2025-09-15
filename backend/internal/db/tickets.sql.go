@@ -64,7 +64,7 @@ const listTickets = `-- name: ListTickets :many
 SELECT id, form_id, response_id, status, assignee_id, priority, created_at, updated_at
 FROM tickets
 WHERE ($1::text IS NULL OR form_id = $1)
-  AND ($2::ticket_status IS NULL OR status = $2)
+  AND ($2::text = '' OR $2::text IS NULL OR status = $2::ticket_status)
 ORDER BY created_at DESC
 LIMIT 200
 `
