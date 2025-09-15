@@ -48,7 +48,6 @@ export default function MembersPage() {
 
   useEffect(() => {
     if (form_id) {
-      console.log(`URL form_id detected: ${form_id}`);
       setSelectedFormId(form_id);
     }
   }, [form_id]);
@@ -128,8 +127,11 @@ export default function MembersPage() {
   const selectedForm = forms.find((f) => f.form_id === selectedFormId);
 
   const handleFormSelection = (value: string) => {
-    console.log(`Navigating to: /members/${value}`);
-    navigate(`/members/${value}`);
+    if (value === "all") {
+      navigate("/members");
+    } else {
+      navigate(`/members/${value}`);
+    }
   };
 
   if (loading && forms.length === 0) {
@@ -174,7 +176,7 @@ export default function MembersPage() {
       </div>
 
       {/* Form Selection */}
-      {forms.length > 0 && !form_id && (
+      {forms.length > 0 && (
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-gray-500" />
@@ -183,11 +185,15 @@ export default function MembersPage() {
             </span>
           </div>
           <div className="w-64">
-            <Select value={selectedFormId} onValueChange={handleFormSelection}>
+            <Select
+              value={selectedFormId || "all"}
+              onValueChange={handleFormSelection}
+            >
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="フォームを選択" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">すべてのフォーム</SelectItem>
                 {forms.map((form) => (
                   <SelectItem key={form.form_id} value={form.form_id}>
                     {form.title}
@@ -281,7 +287,7 @@ export default function MembersPage() {
       )}
 
       {/* Empty State for no form selected */}
-      {!selectedFormId && forms.length > 0 && !form_id && (
+      {!selectedFormId && forms.length > 0 && (
         <div className="text-center py-12">
           <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
