@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   DragDropContext,
   Droppable,
@@ -254,6 +254,7 @@ function KanbanColumn({
 
 export function KanbanPage() {
   const { form_id } = useParams<{ form_id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -278,10 +279,10 @@ export function KanbanPage() {
       setForms(formsResponse.forms);
       setTickets(ticketsResponse.tickets);
 
-      // Get user role for specific form if form_id is provided
-      if (form_id) {
+      // Get user role for specific form if formId is provided and not "all"
+      if (formId && formId !== "all") {
         try {
-          const membersResponse = await apiClient.getMembers(form_id);
+          const membersResponse = await apiClient.getMembers(formId);
           setMembers(membersResponse.members);
           const currentMember = membersResponse.members.find(
             (m) => m.id === user?.id
@@ -290,6 +291,10 @@ export function KanbanPage() {
         } catch (err) {
           console.error("Failed to load members:", err);
         }
+      } else {
+        // Reset role and members when viewing all forms
+        setMembers([]);
+        setUserRole(null);
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -307,8 +312,21 @@ export function KanbanPage() {
     }
   };
 
+  const handleFormSelection = (value: string) => {
+    if (value === "all") {
+      navigate("/kanban");
+    } else {
+      navigate(`/kanban/${value}`);
+    }
+  };
+
   useEffect(() => {
-    loadData(form_id || selectedForm);
+    if (form_id) {
+      loadData(form_id);
+      setSelectedForm(form_id);
+    } else {
+      loadData(selectedForm);
+    }
   }, [form_id, selectedForm, user?.id]);
 
   const handleDragEnd = async (result: DropResult) => {
@@ -389,10 +407,6 @@ export function KanbanPage() {
     };
   }, [tickets]);
 
-  if (form_id && !form_id) {
-    return <Navigate to="/" replace />;
-  }
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -440,7 +454,7 @@ export function KanbanPage() {
           )}
 
           {!form_id && (
-            <Select value={selectedForm} onValueChange={setSelectedForm}>
+            <Select value={selectedForm} onValueChange={handleFormSelection}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="フォームを選択" />
               </SelectTrigger>
