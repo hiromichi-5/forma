@@ -263,6 +263,7 @@ export default function MembersPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
+                      {getRoleBadge(member.role)}
                       <CardTitle className="text-lg">
                         {member.email.split("@")[0]}
                       </CardTitle>
@@ -271,32 +272,18 @@ export default function MembersPage() {
                         {member.email}
                       </div>
                     </div>
-                    {getRoleBadge(member.role)}
+                    <Button variant="ghost" size="sm">
+                      <Settings className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-4">
-                    {/* Member ID */}
                     <div className="text-sm">
                       <span className="text-gray-500 dark:text-gray-400">
                         メンバーID:{" "}
                       </span>
                       <span className="font-mono text-xs">{member.id}</span>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 pt-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="flex items-center gap-1 flex-1"
-                      >
-                        <Mail className="h-3 w-3" />
-                        メッセージ
-                      </Button>
-                      <Button variant="ghost" size="sm" className="px-2">
-                        <Settings className="h-3 w-3" />
-                      </Button>
                     </div>
                   </div>
                 </CardContent>
