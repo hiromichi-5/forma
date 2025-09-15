@@ -9,13 +9,13 @@ import (
 )
 
 type Form struct {
-	FormID      string
-	Title       string
-	ConnectedAt pgtype.Timestamptz
-	Description pgtype.Text
-	PollingSec  pgtype.Int4
-	SyncCursor  pgtype.Timestamptz
-	Enabled     bool
+	FormID      string             `json:"form_id"`
+	Title       string             `json:"title"`
+	ConnectedAt pgtype.Timestamptz `json:"connected_at"`
+	Description pgtype.Text        `json:"description"`
+	PollingSec  pgtype.Int4        `json:"polling_sec"`
+	SyncCursor  pgtype.Timestamptz `json:"sync_cursor"`
+	Enabled     bool               `json:"enabled"`
 }
 
 type Response struct {
@@ -39,14 +39,14 @@ type Ticket struct {
 }
 
 type User struct {
-	ID           pgtype.UUID
-	Email        string
-	PasswordHash string
-	CreatedAt    pgtype.Timestamptz
+	ID           pgtype.UUID        `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"password_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
 type UserFormRole struct {
-	UserID pgtype.UUID
-	FormID string
-	Role   string
+	UserID pgtype.UUID `json:"user_id"`
+	FormID string      `json:"form_id"`
+	Role   string      `json:"role"`
 }

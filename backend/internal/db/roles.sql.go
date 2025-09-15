@@ -16,8 +16,8 @@ DELETE FROM user_form_roles WHERE user_id=$1 AND form_id=$2
 `
 
 type DeleteUserFormRoleParams struct {
-	UserID pgtype.UUID
-	FormID string
+	UserID pgtype.UUID `json:"user_id"`
+	FormID string      `json:"form_id"`
 }
 
 func (q *Queries) DeleteUserFormRole(ctx context.Context, arg DeleteUserFormRoleParams) error {
@@ -30,8 +30,8 @@ SELECT role FROM user_form_roles WHERE user_id = $1 AND form_id = $2
 `
 
 type GetUserFormRoleParams struct {
-	UserID pgtype.UUID
-	FormID string
+	UserID pgtype.UUID `json:"user_id"`
+	FormID string      `json:"form_id"`
 }
 
 func (q *Queries) GetUserFormRole(ctx context.Context, arg GetUserFormRoleParams) (string, error) {
@@ -49,10 +49,10 @@ ORDER BY u.email
 `
 
 type ListFormMembersRow struct {
-	ID        pgtype.UUID
-	Email     string
-	CreatedAt pgtype.Timestamptz
-	Role      string
+	ID        pgtype.UUID        `json:"id"`
+	Email     string             `json:"email"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Role      string             `json:"role"`
 }
 
 func (q *Queries) ListFormMembers(ctx context.Context, formID string) ([]ListFormMembersRow, error) {
@@ -88,8 +88,8 @@ ORDER BY f.title
 `
 
 type ListUserAccessibleFormsRow struct {
-	FormID string
-	Title  string
+	FormID string `json:"form_id"`
+	Title  string `json:"title"`
 }
 
 func (q *Queries) ListUserAccessibleForms(ctx context.Context, userID pgtype.UUID) ([]ListUserAccessibleFormsRow, error) {
@@ -119,9 +119,9 @@ ON CONFLICT (user_id, form_id) DO UPDATE SET role = EXCLUDED.role
 `
 
 type UpsertUserFormRoleParams struct {
-	UserID pgtype.UUID
-	FormID string
-	Role   string
+	UserID pgtype.UUID `json:"user_id"`
+	FormID string      `json:"form_id"`
+	Role   string      `json:"role"`
 }
 
 func (q *Queries) UpsertUserFormRole(ctx context.Context, arg UpsertUserFormRoleParams) error {
