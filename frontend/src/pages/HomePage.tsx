@@ -90,23 +90,6 @@ export function HomePage() {
     }
   };
 
-  const handleSync = async (formId: string) => {
-    try {
-      setSyncingForms((prev) => new Set(prev).add(formId));
-      await apiClient.syncForm(formId);
-
-      await loadDashboardData();
-    } catch (error) {
-      console.error("Failed to sync form:", error);
-    } finally {
-      setSyncingForms((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(formId);
-        return newSet;
-      });
-    }
-  };
-
   useEffect(() => {
     loadDashboardData();
   }, []);
