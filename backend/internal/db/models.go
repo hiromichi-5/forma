@@ -19,23 +19,23 @@ type Form struct {
 }
 
 type Response struct {
-	ResponseID    string
-	FormID        string
-	SubmittedAt   pgtype.Timestamptz
-	Payload       []byte
-	SchemaVersion int32
-	CreatedAt     pgtype.Timestamptz
+	ResponseID    string             `json:"response_id"`
+	FormID        string             `json:"form_id"`
+	SubmittedAt   pgtype.Timestamptz `json:"submitted_at"`
+	Payload       []byte             `json:"payload"`
+	SchemaVersion int32              `json:"schema_version"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type Ticket struct {
-	ID         pgtype.UUID         `json:"id"`
-	FormID     string              `json:"formId"`
-	ResponseID string              `json:"responseId"`
-	Status     string              `json:"status"`
-	AssigneeID pgtype.UUID         `json:"assigneeId"`
-	Priority   int32               `json:"priority"`
-	CreatedAt  pgtype.Timestamptz  `json:"createdAt"`
-	UpdatedAt  pgtype.Timestamptz  `json:"updatedAt"`
+	ID         pgtype.UUID        `json:"id"`
+	FormID     string             `json:"form_id"`
+	ResponseID string             `json:"response_id"`
+	Status     string             `json:"status"`
+	AssigneeID pgtype.UUID        `json:"assignee_id"`
+	Priority   int32              `json:"priority"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
 
 type User struct {
