@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
+import type { LucideIcon } from "lucide-react";
 import {
   Home,
   LayoutDashboard,
@@ -22,7 +24,7 @@ interface LayoutProps {
 interface NavItem {
   label: string;
   href: string;
-  icon: ReactNode;
+  icon: LucideIcon;
   current?: boolean;
 }
 
@@ -31,12 +33,12 @@ function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
+    <header className="bg-primary-600 text-white shadow-md">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <h1 className="text-xl font-bold text-gray-900">Forma</h1>
+              <h1 className="text-xl font-bold">Forma</h1>
             </div>
           </div>
 
@@ -46,26 +48,24 @@ function Header() {
               <Button
                 variant="ghost"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 text-white hover:bg-primary-500"
                 aria-label="ユーザーメニューを開く"
               >
-                <User className="h-5 w-5" />
-                <span className="text-sm text-gray-700">
-                  {user?.id || "ユーザー"}
-                </span>
+                <Icon icon={User} />
+                <span className="text-sm">{user?.id || "ユーザー"}</span>
               </Button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-white text-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
                   <div className="py-1">
                     <button
                       onClick={() => {
                         logout();
                         setUserMenuOpen(false);
                       }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100"
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
+                      <Icon icon={LogOut} size="sm" className="mr-2" />
                       ログアウト
                     </button>
                   </div>
@@ -95,31 +95,31 @@ function Sidebar() {
     {
       label: "ホーム",
       href: "/",
-      icon: <Home className="h-5 w-5" />,
+      icon: Home,
       current: location.pathname === "/",
     },
     {
       label: "ダッシュボード",
       href: "/dashboard",
-      icon: <LayoutDashboard className="h-5 w-5" />,
+      icon: LayoutDashboard,
       current: location.pathname === "/dashboard",
     },
     {
       label: "フォーム",
       href: "/forms",
-      icon: <FileText className="h-5 w-5" />,
+      icon: FileText,
       current: location.pathname.startsWith("/forms"),
     },
     {
       label: "チケット",
       href: "/tickets",
-      icon: <Ticket className="h-5 w-5" />,
+      icon: Ticket,
       current: location.pathname.startsWith("/tickets"),
     },
     {
       label: "設定",
       href: "/settings",
-      icon: <Settings className="h-5 w-5" />,
+      icon: Settings,
       current: location.pathname === "/settings",
     },
   ];
@@ -136,21 +136,18 @@ function Sidebar() {
             to={item.href}
             className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
               item.current
-                ? "bg-primary-100 text-primary-900"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                ? "bg-primary-50 text-primary-700"
+                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
             }`}
             aria-current={item.current ? "page" : undefined}
             onClick={() => setSidebarOpen(false)}
           >
-            <span
+            <Icon
+              icon={item.icon}
               className={`mr-3 flex-shrink-0 ${
-                item.current
-                  ? "text-primary-500"
-                  : "text-gray-400 group-hover:text-gray-500"
+                item.current ? "text-primary-600" : "text-gray-400 group-hover:text-gray-500"
               }`}
-            >
-              {item.icon}
-            </span>
+            />
             {item.label}
           </Link>
         ))}
@@ -169,7 +166,7 @@ function Sidebar() {
           className="fixed top-4 left-4 z-40"
           aria-label="サイドバーを開く"
         >
-          <Menu className="h-6 w-6" />
+          <Icon icon={Menu} size="lg" />
         </Button>
 
         {/* Mobile sidebar overlay */}
@@ -189,7 +186,7 @@ function Sidebar() {
                   onClick={() => setSidebarOpen(false)}
                   aria-label="サイドバーを閉じる"
                 >
-                  <X className="h-6 w-6" />
+                  <Icon icon={X} size="lg" />
                 </Button>
               </div>
               <SidebarContent />
@@ -201,7 +198,7 @@ function Sidebar() {
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64">
-          <div className="flex flex-col h-full bg-white border-r border-gray-200">
+          <div className="flex flex-col h-full bg-white border-r border-gray-200 shadow-md">
             <SidebarContent />
           </div>
         </div>

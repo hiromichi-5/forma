@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/Button";
 import { Loader, EmptyState, Toast } from "@/components/ui/Common";
+import { Card, CardContent, CardTitle } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
 import { apiClient, ApiError } from "@/lib/api";
 import type { FormSummary, ToastMessage } from "@/types";
 import { Users, RefreshCw, BarChart3 } from "lucide-react";
@@ -104,7 +106,7 @@ export function HomePage() {
             variant="secondary"
             aria-label="フォーム一覧を更新"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <Icon icon={RefreshCw} size="sm" className="mr-2" />
             更新
           </Button>
         </div>
@@ -151,13 +153,11 @@ interface FormCardProps {
 
 function FormCard({ form, onSync, isSyncing }: FormCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-      <div className="p-6">
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <CardContent>
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-medium text-gray-900 truncate">
-              {form.title}
-            </h3>
+            <CardTitle className="truncate">{form.title}</CardTitle>
             <p className="mt-1 text-sm text-gray-500 font-mono">
               ID: {form.form_id}
             </p>
@@ -172,7 +172,7 @@ function FormCard({ form, onSync, isSyncing }: FormCardProps) {
                 className="w-full"
                 aria-label={`${form.title}の看板を表示`}
               >
-                <BarChart3 className="h-4 w-4 mr-2" />
+                <Icon icon={BarChart3} size="sm" className="mr-2" />
                 看板へ
               </Button>
             </Link>
@@ -185,7 +185,7 @@ function FormCard({ form, onSync, isSyncing }: FormCardProps) {
               className="flex-1"
               aria-label={`${form.title}のメンバー管理`}
             >
-              <Users className="h-4 w-4 mr-2" />
+              <Icon icon={Users} size="sm" className="mr-2" />
               メンバー
             </Button>
 
@@ -197,12 +197,12 @@ function FormCard({ form, onSync, isSyncing }: FormCardProps) {
               loading={isSyncing}
               aria-label={`${form.title}を同期`}
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <Icon icon={RefreshCw} size="sm" className="mr-2" />
               同期
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

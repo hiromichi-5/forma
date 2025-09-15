@@ -15,6 +15,8 @@ import {
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/Button";
 import { Loader, EmptyState, Toast } from "@/components/ui/Common";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
 import { apiClient, ApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { Ticket, Member, Role, ToastMessage, TicketStatus } from "@/types";
@@ -208,7 +210,7 @@ export function KanbanPage() {
               onClick={() => window.history.back()}
               aria-label="戻る"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <Icon icon={ArrowLeft} />
             </Button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">フォーム看板</h1>
@@ -229,7 +231,7 @@ export function KanbanPage() {
               </span>
             )}
             <Button variant="secondary" aria-label="メンバー管理">
-              <Users className="h-4 w-4 mr-2" />
+              <Icon icon={Users} size="sm" className="mr-2" />
               メンバー ({members.length})
             </Button>
           </div>
@@ -238,7 +240,7 @@ export function KanbanPage() {
         {userRole !== "admin" && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
             <div className="flex">
-              <AlertCircle className="h-5 w-5 text-yellow-400" />
+              <Icon icon={AlertCircle} size="md" className="text-yellow-400" />
               <div className="ml-3">
                 <p className="text-sm text-yellow-700">
                   閲覧モードです。チケットの編集にはadmin権限が必要です。
@@ -390,12 +392,12 @@ function TicketCard({
   };
 
   return (
-    <div
-      className={`bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+    <Card
+      className={`cursor-pointer hover:shadow-md transition-shadow ${
         isDragging ? "opacity-50" : ""
       }`}
     >
-      <div className="space-y-3">
+      <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span
             className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -414,7 +416,7 @@ function TicketCard({
                   onClick={() => moveTicket("left")}
                   aria-label="左に移動"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <Icon icon={ChevronLeft} size="sm" />
                 </Button>
               )}
               {ticket.status !== "done" && (
@@ -424,7 +426,7 @@ function TicketCard({
                   onClick={() => moveTicket("right")}
                   aria-label="右に移動"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <Icon icon={ChevronRight} size="sm" />
                 </Button>
               )}
             </div>
@@ -433,7 +435,7 @@ function TicketCard({
 
         <div className="space-y-2">
           <div className="flex items-center text-sm text-gray-600">
-            <Hash className="h-4 w-4 mr-1" />
+            <Icon icon={Hash} size="sm" className="mr-1" />
             <span className="font-mono">{ticket.id.slice(0, 8)}</span>
           </div>
 
@@ -443,7 +445,7 @@ function TicketCard({
           </div>
 
           <div className="flex items-center text-xs text-gray-500">
-            <Calendar className="h-3 w-3 mr-1" />
+            <Icon icon={Calendar} size="sm" className="mr-1" />
             {new Date(ticket.updated_at).toLocaleDateString("ja-JP")}
           </div>
         </div>
@@ -458,7 +460,7 @@ function TicketCard({
             </span>
           </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
