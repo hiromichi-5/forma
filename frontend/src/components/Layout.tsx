@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import type { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/Button';
+import { useState } from "react";
+import type { ReactNode } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/Button";
 import {
   Home,
   LayoutDashboard,
@@ -13,7 +13,7 @@ import {
   X,
   User,
   LogOut,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface LayoutProps {
   children: ReactNode;
@@ -51,7 +51,7 @@ function Header() {
               >
                 <User className="h-5 w-5" />
                 <span className="text-sm text-gray-700">
-                  {user?.id || 'ユーザー'}
+                  {user?.id || "ユーザー"}
                 </span>
               </Button>
 
@@ -93,55 +93,60 @@ function Sidebar() {
 
   const navigation: NavItem[] = [
     {
-      label: 'ホーム',
-      href: '/',
+      label: "ホーム",
+      href: "/",
       icon: <Home className="h-5 w-5" />,
-      current: location.pathname === '/',
+      current: location.pathname === "/",
     },
     {
-      label: 'ダッシュボード',
-      href: '/dashboard',
+      label: "ダッシュボード",
+      href: "/dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
-      current: location.pathname === '/dashboard',
+      current: location.pathname === "/dashboard",
     },
     {
-      label: 'フォーム',
-      href: '/forms',
+      label: "フォーム",
+      href: "/forms",
       icon: <FileText className="h-5 w-5" />,
-      current: location.pathname.startsWith('/forms'),
+      current: location.pathname.startsWith("/forms"),
     },
     {
-      label: 'チケット',
-      href: '/tickets',
+      label: "チケット",
+      href: "/tickets",
       icon: <Ticket className="h-5 w-5" />,
-      current: location.pathname.startsWith('/tickets'),
+      current: location.pathname.startsWith("/tickets"),
     },
     {
-      label: '設定',
-      href: '/settings',
+      label: "設定",
+      href: "/settings",
       icon: <Settings className="h-5 w-5" />,
-      current: location.pathname === '/settings',
+      current: location.pathname === "/settings",
     },
   ];
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <nav className="flex-1 px-2 py-4 space-y-1" aria-label="メインナビゲーション">
+      <nav
+        className="flex-1 px-2 py-4 space-y-1"
+        aria-label="メインナビゲーション"
+      >
         {navigation.map((item) => (
           <Link
             key={item.label}
             to={item.href}
             className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
               item.current
-                ? 'bg-primary-100 text-primary-900'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                ? "bg-primary-100 text-primary-900"
+                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             }`}
-            aria-current={item.current ? 'page' : undefined}
+            aria-current={item.current ? "page" : undefined}
             onClick={() => setSidebarOpen(false)}
           >
             <span
               className={`mr-3 flex-shrink-0 ${
-                item.current ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
+                item.current
+                  ? "text-primary-500"
+                  : "text-gray-400 group-hover:text-gray-500"
               }`}
             >
               {item.icon}

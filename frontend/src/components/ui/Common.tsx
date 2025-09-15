@@ -1,16 +1,16 @@
-import { useEffect } from 'react';
-import type { ReactNode } from 'react';
+import { useEffect } from "react";
+import type { ReactNode } from "react";
 
 interface LoaderProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   className?: string;
 }
 
-export function Loader({ size = 'md', className = '' }: LoaderProps) {
+export function Loader({ size = "md", className = "" }: LoaderProps) {
   const sizeClasses = {
-    sm: 'h-4 w-4',
-    md: 'h-8 w-8',
-    lg: 'h-12 w-12',
+    sm: "h-4 w-4",
+    md: "h-8 w-8",
+    lg: "h-12 w-12",
   };
 
   return (
@@ -40,7 +40,7 @@ export function Loader({ size = 'md', className = '' }: LoaderProps) {
 }
 
 interface ToastProps {
-  type: 'success' | 'error' | 'info' | 'warning';
+  type: "success" | "error" | "info" | "warning";
   title: string;
   message?: string;
   onClose: () => void;
@@ -62,17 +62,17 @@ export function Toast({
   }, [duration, onClose]);
 
   const typeClasses = {
-    success: 'bg-green-50 border-green-200 text-green-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-    info: 'bg-blue-50 border-blue-200 text-blue-800',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+    success: "bg-green-50 border-green-200 text-green-800",
+    error: "bg-red-50 border-red-200 text-red-800",
+    info: "bg-blue-50 border-blue-200 text-blue-800",
+    warning: "bg-yellow-50 border-yellow-200 text-yellow-800",
   };
 
   const iconClasses = {
-    success: 'text-green-400',
-    error: 'text-red-400',
-    info: 'text-blue-400',
-    warning: 'text-yellow-400',
+    success: "text-green-400",
+    error: "text-red-400",
+    info: "text-blue-400",
+    warning: "text-yellow-400",
   };
 
   const icons = {
@@ -158,7 +158,7 @@ export function EmptyState({
   title,
   description,
   action,
-  className = '',
+  className = "",
 }: EmptyStateProps) {
   return (
     <div className={`text-center py-12 ${className}`}>

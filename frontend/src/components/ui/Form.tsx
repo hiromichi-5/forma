@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 interface InputProps {
   id: string;
-  type?: 'text' | 'email' | 'password' | 'number';
+  type?: "text" | "email" | "password" | "number";
   placeholder?: string;
   value: string;
   onChange: (value: string) => void;
@@ -11,7 +11,7 @@ interface InputProps {
   disabled?: boolean;
   error?: string;
   className?: string;
-  'aria-describedby'?: string;
+  "aria-describedby"?: string;
 }
 
 interface LabelProps {
@@ -25,7 +25,7 @@ export function Label({
   htmlFor,
   children,
   required = false,
-  className = '',
+  className = "",
 }: LabelProps) {
   return (
     <label
@@ -44,7 +44,7 @@ export function Label({
 
 export function Input({
   id,
-  type = 'text',
+  type = "text",
   placeholder,
   value,
   onChange,
@@ -52,20 +52,20 @@ export function Input({
   required = false,
   disabled = false,
   error,
-  className = '',
-  'aria-describedby': ariaDescribedBy,
+  className = "",
+  "aria-describedby": ariaDescribedBy,
 }: InputProps) {
   const baseClasses = [
-    'block w-full px-3 py-2 border rounded-md shadow-sm',
-    'focus-ring placeholder-gray-400',
-    'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
+    "block w-full px-3 py-2 border rounded-md shadow-sm",
+    "focus-ring placeholder-gray-400",
+    "disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed",
   ];
 
   const errorClasses = error
-    ? 'border-red-300 text-red-900 focus:border-red-500'
-    : 'border-gray-300 focus:border-primary-500';
+    ? "border-red-300 text-red-900 focus:border-red-500"
+    : "border-gray-300 focus:border-primary-500";
 
-  const allClasses = [...baseClasses, errorClasses, className].join(' ');
+  const allClasses = [...baseClasses, errorClasses, className].join(" ");
 
   return (
     <div>
@@ -80,7 +80,7 @@ export function Input({
         disabled={disabled}
         className={allClasses}
         aria-describedby={ariaDescribedBy}
-        aria-invalid={error ? 'true' : 'false'}
+        aria-invalid={error ? "true" : "false"}
       />
       {error && (
         <p
@@ -110,7 +110,7 @@ export function Field({
   required = false,
   error,
   children,
-  className = '',
+  className = "",
 }: FieldProps) {
   return (
     <div className={`space-y-1 ${className}`}>
@@ -119,11 +119,7 @@ export function Field({
       </Label>
       {children}
       {error && (
-        <p
-          id={`${id}-error`}
-          className="text-sm text-red-600"
-          role="alert"
-        >
+        <p id={`${id}-error`} className="text-sm text-red-600" role="alert">
           {error}
         </p>
       )}

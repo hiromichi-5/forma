@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Layout } from '@/components/Layout';
-import { Button } from '@/components/ui/Button';
-import { Loader, EmptyState, Toast } from '@/components/ui/Common';
-import { apiClient, ApiError } from '@/lib/api';
-import type { FormSummary, ToastMessage } from '@/types';
-import { Users, RefreshCw, BarChart3 } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Layout } from "@/components/Layout";
+import { Button } from "@/components/ui/Button";
+import { Loader, EmptyState, Toast } from "@/components/ui/Common";
+import { apiClient, ApiError } from "@/lib/api";
+import type { FormSummary, ToastMessage } from "@/types";
+import { Users, RefreshCw, BarChart3 } from "lucide-react";
 
 export function HomePage() {
   const [forms, setForms] = useState<FormSummary[]>([]);
@@ -13,13 +13,13 @@ export function HomePage() {
   const [syncingForms, setSyncingForms] = useState<Set<string>>(new Set());
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const addToast = (toast: Omit<ToastMessage, 'id'>) => {
+  const addToast = (toast: Omit<ToastMessage, "id">) => {
     const id = Math.random().toString(36).substr(2, 9);
-    setToasts(prev => [...prev, { ...toast, id }]);
+    setToasts((prev) => [...prev, { ...toast, id }]);
   };
 
   const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
   const loadForms = async () => {
@@ -30,9 +30,9 @@ export function HomePage() {
     } catch (error) {
       if (error instanceof ApiError) {
         addToast({
-          type: 'error',
-          title: 'エラー',
-          message: 'フォーム一覧の取得に失敗しました',
+          type: "error",
+          title: "エラー",
+          message: "フォーム一覧の取得に失敗しました",
         });
       }
     } finally {
@@ -42,32 +42,32 @@ export function HomePage() {
 
   const handleSync = async (formId: string) => {
     try {
-      setSyncingForms(prev => new Set(prev).add(formId));
+      setSyncingForms((prev) => new Set(prev).add(formId));
       const response = await apiClient.syncForm(formId);
-      
+
       addToast({
-        type: 'success',
-        title: '同期完了',
+        type: "success",
+        title: "同期完了",
         message: `${response.synced}件の回答を同期し、${response.newTickets}件の新しいチケットを作成しました`,
       });
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.isForbidden) {
           addToast({
-            type: 'error',
-            title: 'アクセス権限がありません',
-            message: 'このフォームの同期権限がありません',
+            type: "error",
+            title: "アクセス権限がありません",
+            message: "このフォームの同期権限がありません",
           });
         } else {
           addToast({
-            type: 'error',
-            title: '同期エラー',
-            message: 'フォームの同期に失敗しました',
+            type: "error",
+            title: "同期エラー",
+            message: "フォームの同期に失敗しました",
           });
         }
       }
     } finally {
-      setSyncingForms(prev => {
+      setSyncingForms((prev) => {
         const newSet = new Set(prev);
         newSet.delete(formId);
         return newSet;
@@ -166,10 +166,7 @@ function FormCard({ form, onSync, isSyncing }: FormCardProps) {
 
         <div className="mt-6 flex flex-col gap-3">
           <div className="flex gap-2">
-            <Link
-              to={`/forms/${form.form_id}/kanban`}
-              className="flex-1"
-            >
+            <Link to={`/forms/${form.form_id}/kanban`} className="flex-1">
               <Button
                 variant="primary"
                 className="w-full"
