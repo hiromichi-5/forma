@@ -45,6 +45,7 @@ function AppRoutes() {
       >
         <Route index element={<HomePage />} />
         <Route path="kanban" element={<KanbanPage />} />
+        <Route path="kanban/:form_id" element={<KanbanPage />} />
         <Route path="forms" element={<FormsPage />} />
         <Route path="members" element={<MembersPage />} />
         <Route path="settings" element={<SettingsPage />} />
