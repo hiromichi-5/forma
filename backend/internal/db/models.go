@@ -28,14 +28,14 @@ type Response struct {
 }
 
 type Ticket struct {
-	ID         pgtype.UUID
-	FormID     string
-	ResponseID string
-	Status     string
-	AssigneeID pgtype.UUID
-	Priority   int32
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	ID         pgtype.UUID         `json:"id"`
+	FormID     string              `json:"formId"`
+	ResponseID string              `json:"responseId"`
+	Status     string              `json:"status"`
+	AssigneeID pgtype.UUID         `json:"assigneeId"`
+	Priority   int32               `json:"priority"`
+	CreatedAt  pgtype.Timestamptz  `json:"createdAt"`
+	UpdatedAt  pgtype.Timestamptz  `json:"updatedAt"`
 }
 
 type User struct {
