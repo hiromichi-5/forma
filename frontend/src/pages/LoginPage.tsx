@@ -1,15 +1,17 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/Button";
-import { Input, Field } from "@/components/ui/Form";
-import { Card, CardContent, CardTitle } from "@/components/ui/Card";
-import { ApiError } from "@/lib/api";
+import { useAuth } from "../hooks/useAuth";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import { Label } from "../components/ui/Label";
+import { Card, CardContent, CardTitle } from "../components/ui/Card";
+import { ApiError } from "../lib/api";
+import { ShieldCheck, Loader2 } from "lucide-react";
 
 export function LoginPage() {
   const { user, login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("admin@example.com");
+  const [password, setPassword] = useState("password");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,78 +46,73 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardContent>
-          <div className="space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardContent className="p-6">
+          <div className="space-y-6">
             <div className="text-center">
-              <CardTitle className="text-3xl font-bold">Forma</CardTitle>
-              <p className="mt-2 text-sm text-gray-600">ログイン</p>
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-primary p-3">
+                  <ShieldCheck className="h-8 w-8 text-primary-foreground" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl font-bold">Forma Admin</CardTitle>
+              <p className="mt-2 text-sm text-muted-foreground">
+                チームでGoogleフォームを取り込み、回答をチケット化して管理
+              </p>
             </div>
 
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <Field
-                  label="メールアドレス"
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <Label htmlFor="email">メールアドレス</Label>
+                <Input
                   id="email"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
-                  error={error && email === "" ? "必須項目です" : undefined}
-                >
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="user@example.com"
-                    value={email}
-                    onChange={setEmail}
-                    required
-                    disabled={isLoading}
-                    aria-describedby={error ? "email-error" : undefined}
-                  />
-                </Field>
+                  disabled={isLoading}
+                />
+              </div>
 
-                <Field
-                  label="パスワード"
+              <div className="space-y-2">
+                <Label htmlFor="password">パスワード</Label>
+                <Input
                   id="password"
+                  type="password"
+                  placeholder="パスワードを入力"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
-                  error={error && password === "" ? "必須項目です" : undefined}
-                >
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="パスワードを入力"
-                    value={password}
-                    onChange={setPassword}
-                    onBlur={() => {}}
-                    required
-                    disabled={isLoading}
-                    aria-describedby={error ? "password-error" : undefined}
-                  />
-                </Field>
+                  disabled={isLoading}
+                />
               </div>
 
               {error && (
                 <div
-                  className="rounded-md bg-red-50 p-4"
+                  className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
                   role="alert"
                   aria-live="polite"
                 >
-                  <div className="text-sm text-red-700">{error}</div>
+                  {error}
                 </div>
               )}
 
-              <div>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  disabled={isLoading || !email || !password}
-                  loading={isLoading}
-                  className="w-full"
-                  aria-label={isLoading ? "ログイン中..." : "ログイン"}
-                >
-                  {isLoading ? "ログイン中..." : "ログイン"}
-                </Button>
-              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || !email || !password}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ログイン中...
+                  </>
+                ) : (
+                  "ログイン"
+                )}
+              </Button>
             </form>
           </div>
         </CardContent>

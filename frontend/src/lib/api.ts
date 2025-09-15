@@ -1,23 +1,25 @@
 import type {
   LoginRequest,
   LoginResponse,
-  WhoAmIResponse,
+  RegisterFormRequest,
+  RegisterFormResponse,
   ListFormsResponse,
   ListMembersResponse,
   AddMemberRequest,
   ChangeMemberRoleRequest,
   SyncResponse,
-  ListTicketsResponse,
+  ListResponsesResponse,
   Ticket,
+  ListTicketsResponse,
   UpdateTicketRequest,
-  ApiError as ApiErrorType,
-} from "@/types";
+  ErrorResponse,
+} from "../types";
 
 export class ApiError extends Error {
   status: number;
-  error: ApiErrorType;
+  error: ErrorResponse;
 
-  constructor(status: number, error: ApiErrorType) {
+  constructor(status: number, error: ErrorResponse) {
     super(error.message || `HTTP ${status}`);
     this.name = "ApiError";
     this.status = status;
@@ -82,7 +84,7 @@ class ApiClient {
       const response = await fetch(url, config);
 
       if (!response.ok) {
-        const errorData: ApiErrorType = await response.json();
+        const errorData: ErrorResponse = await response.json();
         throw new ApiError(response.status, errorData);
       }
 
@@ -90,7 +92,12 @@ class ApiClient {
         return {} as T;
       }
 
-      return await response.json();
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return await response.json();
+      }
+
+      return response.text() as unknown as T;
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -110,12 +117,29 @@ class ApiClient {
     });
   }
 
-  async whoami(): Promise<WhoAmIResponse> {
-    return this.request<WhoAmIResponse>("/v1/whoami");
+  async whoami(): Promise<{ user_id: string }> {
+    return this.request<{ user_id: string }>("/v1/whoami");
   }
 
   async getForms(): Promise<ListFormsResponse> {
     return this.request<ListFormsResponse>("/v1/forms");
+  }
+
+  async registerForm(
+    request: RegisterFormRequest
+  ): Promise<RegisterFormResponse> {
+    return this.request<RegisterFormResponse>("/v1/forms", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async checkFormHealth(
+    formId: string
+  ): Promise<{ form_id: string; title: string }> {
+    return this.request<{ form_id: string; title: string }>(
+      `/v1/forms/${formId}/health`
+    );
   }
 
   async getMembers(formId: string): Promise<ListMembersResponse> {
@@ -151,6 +175,20 @@ class ApiClient {
     });
   }
 
+  async getResponses(
+    formId?: string,
+    since?: string
+  ): Promise<ListResponsesResponse> {
+    const params = new URLSearchParams();
+    if (formId) params.append("form_id", formId);
+    if (since) params.append("since", since);
+
+    const query = params.toString();
+    const endpoint = `/v1/responses${query ? `?${query}` : ""}`;
+
+    return this.request<ListResponsesResponse>(endpoint);
+  }
+
   async getTickets(
     formId?: string,
     status?: string
@@ -177,6 +215,14 @@ class ApiClient {
       method: "PATCH",
       body: JSON.stringify(request),
     });
+  }
+
+  async healthz(): Promise<string> {
+    return this.request<string>("/healthz");
+  }
+
+  logout() {
+    this.clearToken();
   }
 }
 

@@ -6,6 +6,7 @@ import type { User, LoginRequest } from "@/types";
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
   logout: () => void;
 }
@@ -16,6 +17,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const isAuthenticated = !!user;
+
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem("forma_token");
@@ -24,7 +27,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const response = await apiClient.whoami();
           setUser({
             id: response.user_id,
-            token,
           });
         } catch (error) {
           localStorage.removeItem("forma_token");
@@ -45,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const whoamiResponse = await apiClient.whoami();
       const newUser: User = {
         id: whoamiResponse.user_id,
-        token: response.token,
       };
 
       setUser(newUser);
@@ -60,7 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, isAuthenticated, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -4,10 +4,14 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import { AuthProvider, useRequireAuth } from "@/hooks/useAuth";
-import { LoginPage } from "@/pages/LoginPage";
-import { HomePage } from "@/pages/HomePage";
-import { KanbanPage } from "@/pages/KanbanPage";
+import { AuthProvider, useRequireAuth } from "./hooks/useAuth";
+import { Layout } from "./components/Layout";
+import { LoginPage } from "./pages/LoginPage";
+import { HomePage } from "./pages/HomePage";
+import { KanbanPage } from "./pages/KanbanPage";
+import FormsPage from "./pages/FormsPage";
+import MembersPage from "./pages/MembersPage";
+import SettingsPage from "./pages/SettingsPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoading, shouldRedirect } = useRequireAuth();
@@ -15,7 +19,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -35,18 +39,16 @@ function AppRoutes() {
         path="/"
         element={
           <ProtectedRoute>
-            <HomePage />
+            <Layout />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/forms/:form_id/kanban"
-        element={
-          <ProtectedRoute>
-            <KanbanPage />
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route index element={<HomePage />} />
+        <Route path="kanban" element={<KanbanPage />} />
+        <Route path="forms" element={<FormsPage />} />
+        <Route path="members" element={<MembersPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

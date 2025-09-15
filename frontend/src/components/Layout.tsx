@@ -1,25 +1,20 @@
 import { useState } from "react";
-import type { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
+import { Link, useLocation, Outlet } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import { Button } from "../components/ui/Button";
+import { Icon } from "../components/ui/Icon";
 import type { LucideIcon } from "lucide-react";
 import {
   Home,
   LayoutDashboard,
   FileText,
-  Ticket,
+  Users,
   Settings,
   Menu,
   X,
   User,
   LogOut,
 } from "lucide-react";
-
-interface LayoutProps {
-  children: ReactNode;
-}
 
 interface NavItem {
   label: string;
@@ -33,7 +28,7 @@ function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   return (
-    <header className="bg-primary-600 text-white shadow-md">
+    <header className="bg-blue-600 text-white shadow-md">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
@@ -48,11 +43,13 @@ function Header() {
               <Button
                 variant="ghost"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center space-x-2 text-white hover:bg-primary-500"
+                className="flex items-center space-x-2 text-white hover:bg-blue-500"
                 aria-label="ユーザーメニューを開く"
               >
                 <Icon icon={User} />
-                <span className="text-sm">{user?.id || "ユーザー"}</span>
+                <span className="text-sm">
+                  {user?.email?.split("@")[0] || "ユーザー"}
+                </span>
               </Button>
 
               {userMenuOpen && (
@@ -99,10 +96,10 @@ function Sidebar() {
       current: location.pathname === "/",
     },
     {
-      label: "ダッシュボード",
-      href: "/dashboard",
+      label: "カンバン",
+      href: "/kanban",
       icon: LayoutDashboard,
-      current: location.pathname === "/dashboard",
+      current: location.pathname === "/kanban",
     },
     {
       label: "フォーム",
@@ -111,10 +108,10 @@ function Sidebar() {
       current: location.pathname.startsWith("/forms"),
     },
     {
-      label: "チケット",
-      href: "/tickets",
-      icon: Ticket,
-      current: location.pathname.startsWith("/tickets"),
+      label: "メンバー",
+      href: "/members",
+      icon: Users,
+      current: location.pathname.startsWith("/members"),
     },
     {
       label: "設定",
@@ -136,7 +133,7 @@ function Sidebar() {
             to={item.href}
             className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
               item.current
-                ? "bg-primary-50 text-primary-700"
+                ? "bg-blue-50 text-blue-700"
                 : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
             }`}
             aria-current={item.current ? "page" : undefined}
@@ -145,7 +142,9 @@ function Sidebar() {
             <Icon
               icon={item.icon}
               className={`mr-3 flex-shrink-0 ${
-                item.current ? "text-primary-600" : "text-gray-400 group-hover:text-gray-500"
+                item.current
+                  ? "text-blue-600"
+                  : "text-gray-400 group-hover:text-gray-500"
               }`}
             />
             {item.label}
@@ -207,14 +206,16 @@ function Sidebar() {
   );
 }
 
-export function Layout({ children }: LayoutProps) {
+export function Layout() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="flex">
         <Sidebar />
         <main className="flex-1 lg:pl-0 pl-16" role="main">
-          <div className="py-6 px-4 sm:px-6 lg:px-8">{children}</div>
+          <div className="py-6 px-4 sm:px-6 lg:px-8">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
