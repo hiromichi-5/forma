@@ -32,7 +32,7 @@ export function Button({
 
   const variantClasses = {
     primary: [
-      "bg-primary-600 text-black border-primary-600",
+      "bg-primary-600 text-white border-primary-600",
       "hover:bg-primary-700 hover:border-primary-700",
       "active:bg-primary-800",
     ],
