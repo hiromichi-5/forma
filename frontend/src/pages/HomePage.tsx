@@ -58,7 +58,6 @@ export function HomePage() {
       const tickets = ticketsResponse.tickets;
       const responses = responsesResponse.responses;
 
-      // Calculate stats
       const now = new Date();
       const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -78,7 +77,7 @@ export function HomePage() {
       });
 
       setForms(forms);
-      setRecentTickets(tickets.slice(0, 5)); // Show latest 5 tickets
+      setRecentTickets(tickets.slice(0, 5));
     } catch (err) {
       if (err instanceof ApiError) {
         setError("データの読み込みに失敗しました");
@@ -96,7 +95,6 @@ export function HomePage() {
       setSyncingForms((prev) => new Set(prev).add(formId));
       await apiClient.syncForm(formId);
 
-      // Refresh data after sync
       await loadDashboardData();
     } catch (error) {
       console.error("Failed to sync form:", error);
@@ -131,7 +129,6 @@ export function HomePage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">ダッシュボード</h1>
-            <p className="text-muted-foreground">フォーム管理システムの概要</p>
           </div>
         </div>
 
@@ -147,8 +144,7 @@ export function HomePage() {
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -164,25 +160,6 @@ export function HomePage() {
               <p className="text-xs text-muted-foreground">
                 連携中のGoogleフォーム
               </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          <Card className="shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                総チケット数
-              </CardTitle>
-              <ListChecks className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalTickets}</div>
-              <p className="text-xs text-muted-foreground">すべてのチケット</p>
             </CardContent>
           </Card>
         </motion.div>
