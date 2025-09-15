@@ -208,7 +208,6 @@ export function HomePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Forms Overview */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -244,20 +243,6 @@ export function HomePage() {
                             看板
                           </Button>
                         </Link>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSync(form.form_id)}
-                          disabled={syncingForms.has(form.form_id)}
-                        >
-                          <RefreshCw
-                            className={`h-4 w-4 ${
-                              syncingForms.has(form.form_id)
-                                ? "animate-spin"
-                                : ""
-                            }`}
-                          />
-                        </Button>
                       </div>
                     </div>
                   ))
@@ -272,7 +257,6 @@ export function HomePage() {
           </Card>
         </motion.div>
 
-        {/* Recent Tickets */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
