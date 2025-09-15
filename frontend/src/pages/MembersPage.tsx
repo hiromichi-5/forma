@@ -205,7 +205,6 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Search Bar */}
       {selectedFormId && (
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -219,7 +218,6 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Error State */}
       {error && (
         <div className="bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-lg p-4">
           <div className="flex items-center gap-2 text-red-800 dark:text-red-200">
@@ -228,8 +226,30 @@ export default function MembersPage() {
           </div>
         </div>
       )}
-
-      {/* Members Grid */}
+      {selectedFormId && members.length > 0 && (
+        <div className="rounded-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-blue-600">
+                {members.length}
+              </p>
+              <p className="text-sm text-gray-600">総メンバー数</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-red-600">
+                {members.filter((m) => m.role === "admin").length}
+              </p>
+              <p className="text-sm text-gray-600">管理者</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-blue-600">
+                {members.filter((m) => m.role === "editor").length}
+              </p>
+              <p className="text-sm text-gray-600">編集者</p>
+            </div>
+          </div>
+        </div>
+      )}
       {selectedFormId && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredMembers.map((member, index) => (
@@ -299,7 +319,6 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Empty State for no members */}
       {selectedFormId && !loading && filteredMembers.length === 0 && (
         <div className="text-center py-12">
           <Users className="mx-auto h-12 w-12 text-gray-400" />
@@ -324,35 +343,6 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Stats Summary */}
-      {selectedFormId && members.length > 0 && (
-        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {members.length}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                総メンバー数
-              </p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {members.filter((m) => m.role === "admin").length}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">管理者</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {members.filter((m) => m.role === "editor").length}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">編集者</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* No Forms State */}
       {forms.length === 0 && !loading && (
         <div className="text-center py-12">
           <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400" />
