@@ -6,14 +6,14 @@ labels: bug
 assignees: ""
 ---
 
-## Summary  
+## Summary / 概要
 <!-- バグの概要を記載してください -->
 
-## Steps  
+## Steps / 手順
 <!-- バグの再現手順を記載してください -->
 
-## Expected  
+## Expected / 期待される結果
 <!-- バグ解消とみなすに必要な状態を記述してください -->
 
-## Images  
+## Images / 画像
 <!-- バグ発生時の画像を記載してください -->
