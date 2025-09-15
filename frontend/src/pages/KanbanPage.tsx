@@ -1,463 +1,539 @@
-import { useState, useEffect, useMemo } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+  DragDropContext,
+  Droppable,
+  Draggable,
+  type DropResult,
+} from "@hello-pangea/dnd";
+import { motion } from "framer-motion";
 import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { Layout } from "@/components/Layout";
-import { Button } from "@/components/ui/Button";
-import { Loader, EmptyState, Toast } from "@/components/ui/Common";
-import { apiClient, ApiError } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
-import type { Ticket, Member, Role, ToastMessage, TicketStatus } from "@/types";
-import {
+  ListChecks,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
   ArrowLeft,
   Users,
-  AlertCircle,
-  ChevronRight,
-  ChevronLeft,
   Calendar,
   Hash,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+import { Button } from "../components/ui/Button";
+import { CardContent } from "../components/ui/Card";
+import { Badge } from "../components/ui/Badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/Select";
+import { apiClient, ApiError } from "../lib/api";
+import { useAuth } from "../hooks/useAuth";
+import type { Ticket, Member, FormSummary } from "../types";
+
+interface KanbanColumn {
+  id: Ticket["status"];
+  title: string;
+  icon: React.ElementType;
+  color: string;
+}
+
+const columns: KanbanColumn[] = [
+  {
+    id: "new",
+    title: "新規",
+    icon: AlertCircle,
+    color: "bg-blue-50 border-blue-200 border-2 border-dashed",
+  },
+  {
+    id: "in_progress",
+    title: "対応中",
+    icon: Clock,
+    color: "bg-amber-50 border-amber-200 border-2 border-dashed",
+  },
+  {
+    id: "done",
+    title: "完了",
+    icon: CheckCircle2,
+    color: "bg-emerald-50 border-emerald-200 border-2 border-dashed",
+  },
+];
+
+const priorityColors = {
+  1: "bg-red-100 text-red-800",
+  2: "bg-orange-100 text-orange-800",
+  3: "bg-yellow-100 text-yellow-800",
+  4: "bg-green-100 text-green-800",
+  5: "bg-gray-100 text-gray-800",
+};
+
+interface TicketCardProps {
+  ticket: Ticket;
+  index: number;
+  members: Member[];
+  canEdit: boolean;
+  onUpdateTicket: (ticketId: string, status: Ticket["status"]) => void;
+}
+
+function TicketCard({
+  ticket,
+  index,
+  members,
+  canEdit,
+  onUpdateTicket,
+}: TicketCardProps) {
+  const assignedMember = members.find((m) => m.id === ticket.assignee_id);
+  const priorityColor =
+    priorityColors[ticket.priority as keyof typeof priorityColors] ||
+    priorityColors[5];
+
+  const moveTicket = (direction: "left" | "right") => {
+    return () => {
+      const statusOrder: Ticket["status"][] = ["new", "in_progress", "done"];
+      const currentIndex = statusOrder.indexOf(ticket.status);
+
+      let newIndex: number;
+      if (direction === "left") {
+        newIndex = Math.max(0, currentIndex - 1);
+      } else {
+        newIndex = Math.min(statusOrder.length - 1, currentIndex + 1);
+      }
+
+      if (newIndex !== currentIndex) {
+        onUpdateTicket(ticket.id, statusOrder[newIndex]);
+      }
+    };
+  };
+
+  return (
+    <Draggable draggableId={ticket.id} index={index} isDragDisabled={!canEdit}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+        >
+          <motion.div
+            layout
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            whileHover={{ scale: canEdit ? 1.02 : 1 }}
+            className={`bg-white rounded-lg border shadow-sm mb-3 ${
+              canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+            } ${snapshot.isDragging ? "shadow-lg rotate-2" : ""}`}
+          >
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Badge className={`text-xs ${priorityColor}`}>
+                  優先度 {ticket.priority}
+                </Badge>
+                {canEdit && (
+                  <div className="flex space-x-1">
+                    {ticket.status !== "new" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={moveTicket("left")}
+                        className="h-6 w-6 p-0"
+                      >
+                        <ChevronLeft className="h-3 w-3" />
+                      </Button>
+                    )}
+                    {ticket.status !== "done" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={moveTicket("right")}
+                        className="h-6 w-6 p-0"
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center text-sm text-gray-600">
+                  <Hash className="h-3 w-3 mr-1" />
+                  <span className="font-mono">{ticket.id.slice(0, 8)}</span>
+                </div>
+
+                <div className="text-xs text-gray-500 space-y-1">
+                  <div>Form: {ticket.form_id}</div>
+                  <div>Response: {ticket.response_id}</div>
+                </div>
+
+                <div className="flex items-center text-xs text-gray-500">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {new Date(ticket.updated_at).toLocaleDateString("ja-JP")}
+                </div>
+              </div>
+
+              {assignedMember && (
+                <div className="flex items-center text-sm">
+                  <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs font-medium text-gray-600 mr-2">
+                    {assignedMember.email.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-gray-700 truncate">
+                    {assignedMember.email}
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </motion.div>
+        </div>
+      )}
+    </Draggable>
+  );
+}
+
+interface KanbanColumnProps {
+  column: KanbanColumn;
+  tickets: Ticket[];
+  members: Member[];
+  canEdit: boolean;
+  onUpdateTicket: (ticketId: string, status: Ticket["status"]) => void;
+}
+
+function KanbanColumn({
+  column,
+  tickets,
+  members,
+  canEdit,
+  onUpdateTicket,
+}: KanbanColumnProps) {
+  const Icon = column.icon;
+
+  return (
+    <div className={`rounded-lg p-4 ${column.color}`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Icon className="h-5 w-5" />
+          <h3 className="font-semibold">{column.title}</h3>
+        </div>
+        <Badge variant="secondary" className="text-xs">
+          {tickets.length}
+        </Badge>
+      </div>
+
+      <Droppable droppableId={column.id}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={`min-h-[300px] space-y-2 ${
+              snapshot.isDraggingOver ? "bg-white/50 rounded-lg p-2" : ""
+            }`}
+          >
+            {tickets.map((ticket, index) => (
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                index={index}
+                members={members}
+                canEdit={canEdit}
+                onUpdateTicket={onUpdateTicket}
+              />
+            ))}
+            {provided.placeholder}
+            {tickets.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                チケットなし
+              </div>
+            )}
+          </div>
+        )}
+      </Droppable>
+    </div>
+  );
+}
 
 export function KanbanPage() {
   const { form_id } = useParams<{ form_id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [userRole, setUserRole] = useState<Role | null>(null);
+  const [forms, setForms] = useState<FormSummary[]>([]);
+  const [selectedForm, setSelectedForm] = useState<string>("all");
+  const [userRole, setUserRole] = useState<"admin" | "editor" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
+  const canEdit = userRole === "admin";
 
-  if (!form_id) {
-    return <Navigate to="/" replace />;
-  }
-
-  const addToast = (toast: Omit<ToastMessage, "id">) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    setToasts((prev) => [...prev, { ...toast, id }]);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
-
-  const loadData = async () => {
+  const loadData = async (formId?: string) => {
     try {
       setIsLoading(true);
+      setError(null);
 
-      const [ticketsResponse, membersResponse] = await Promise.all([
-        apiClient.getTickets(form_id),
-        apiClient.getMembers(form_id),
+      const [formsResponse, ticketsResponse] = await Promise.all([
+        apiClient.getForms(),
+        apiClient.getTickets(formId === "all" ? undefined : formId),
       ]);
 
+      setForms(formsResponse.forms);
       setTickets(ticketsResponse.tickets);
-      setMembers(membersResponse.members);
 
-      const currentMember = membersResponse.members.find(
-        (member) => member.id === user?.id
-      );
-      setUserRole(currentMember?.role || null);
-    } catch (error) {
-      if (error instanceof ApiError) {
-        if (error.isForbidden) {
-          addToast({
-            type: "error",
-            title: "アクセス権限がありません",
-            message: "このフォームにアクセスする権限がありません",
-          });
-        } else {
-          addToast({
-            type: "error",
-            title: "データの読み込みに失敗しました",
-            message: "ページを更新してもう一度お試しください",
-          });
+      // Get user role for specific form if formId is provided and not "all"
+      if (formId && formId !== "all") {
+        try {
+          const membersResponse = await apiClient.getMembers(formId);
+          setMembers(membersResponse.members);
+          const currentMember = membersResponse.members.find(
+            (m) => m.id === user?.id
+          );
+          setUserRole(currentMember?.role || null);
+        } catch (err) {
+          console.error("Failed to load members:", err);
         }
+      } else {
+        setMembers([]);
+        setUserRole(null);
       }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.isForbidden) {
+          setError("このフォームにアクセスする権限がありません");
+        } else {
+          setError("データの読み込みに失敗しました");
+        }
+      } else {
+        setError("ネットワークエラーが発生しました");
+      }
+      console.error("Failed to load kanban data:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleFormSelection = (value: string) => {
+    if (value === "all") {
+      navigate("/kanban");
+    } else {
+      navigate(`/kanban/${value}`);
+    }
+  };
+
+  useEffect(() => {
+    if (form_id) {
+      loadData(form_id);
+      setSelectedForm(form_id);
+    } else {
+      loadData(selectedForm);
+    }
+  }, [form_id, selectedForm, user?.id]);
+
+  const handleDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination || !canEdit) {
+      return;
+    }
+
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
+
+    const ticket = tickets.find((t) => t.id === draggableId);
+    if (!ticket) return;
+
+    const newStatus = destination.droppableId as Ticket["status"];
+
+    setTickets((prev) =>
+      prev.map((t) =>
+        t.id === draggableId
+          ? { ...t, status: newStatus, updated_at: new Date().toISOString() }
+          : t
+      )
+    );
+
+    try {
+      await apiClient.updateTicket(draggableId, { status: newStatus });
+    } catch (err) {
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === draggableId ? { ...t, status: ticket.status } : t
+        )
+      );
+      setError("チケットの更新に失敗しました");
+      console.error("Failed to update ticket:", err);
+    }
+  };
+
   const updateTicketStatus = async (
     ticketId: string,
-    newStatus: TicketStatus
+    newStatus: Ticket["status"]
   ) => {
+    const ticket = tickets.find((t) => t.id === ticketId);
+    if (!ticket) return;
+
+    setTickets((prev) =>
+      prev.map((t) =>
+        t.id === ticketId
+          ? { ...t, status: newStatus, updated_at: new Date().toISOString() }
+          : t
+      )
+    );
+
     try {
-      const updatedTicket = await apiClient.updateTicket(ticketId, {
-        status: newStatus,
-      });
-
+      await apiClient.updateTicket(ticketId, { status: newStatus });
+    } catch (err) {
       setTickets((prev) =>
-        prev.map((ticket) => (ticket.id === ticketId ? updatedTicket : ticket))
+        prev.map((t) =>
+          t.id === ticketId ? { ...t, status: ticket.status } : t
+        )
       );
-
-      addToast({
-        type: "success",
-        title: "ステータスを更新しました",
-      });
-    } catch (error) {
-      if (error instanceof ApiError) {
-        addToast({
-          type: "error",
-          title: "更新に失敗しました",
-          message: error.isForbidden
-            ? "権限がありません"
-            : "ステータスの更新に失敗しました",
-        });
-      }
+      setError("チケットの更新に失敗しました");
+      console.error("Failed to update ticket:", err);
     }
-  };
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over || !userRole || userRole !== "admin") {
-      return;
-    }
-
-    const ticketId = active.id as string;
-    const newStatus = over.id as TicketStatus;
-
-    const currentTicket = tickets.find((t) => t.id === ticketId);
-    if (!currentTicket || currentTicket.status === newStatus) {
-      return;
-    }
-
-    updateTicketStatus(ticketId, newStatus);
   };
 
   const ticketsByStatus = useMemo(() => {
-    const groups = {
+    return {
       new: tickets.filter((t) => t.status === "new"),
       in_progress: tickets.filter((t) => t.status === "in_progress"),
       done: tickets.filter((t) => t.status === "done"),
     };
-    return groups;
   }, [tickets]);
-
-  useEffect(() => {
-    loadData();
-  }, [form_id]);
 
   if (isLoading) {
     return (
-      <Layout>
-        <div className="flex justify-center items-center min-h-96">
-          <Loader size="lg" />
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">読み込み中...</div>
+      </div>
     );
   }
 
-  const columns: Array<{
-    id: TicketStatus;
-    title: string;
-    count: number;
-    tickets: Ticket[];
-  }> = [
-    {
-      id: "new",
-      title: "新規",
-      count: ticketsByStatus.new.length,
-      tickets: ticketsByStatus.new,
-    },
-    {
-      id: "in_progress",
-      title: "対応中",
-      count: ticketsByStatus.in_progress.length,
-      tickets: ticketsByStatus.in_progress,
-    },
-    {
-      id: "done",
-      title: "完了",
-      count: ticketsByStatus.done.length,
-      tickets: ticketsByStatus.done,
-    },
-  ];
-
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {form_id && (
             <Button
               variant="ghost"
               onClick={() => window.history.back()}
               aria-label="戻る"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">フォーム看板</h1>
-              <p className="text-sm text-gray-600">Form ID: {form_id}</p>
-            </div>
+          )}
+          <div className="rounded-lg bg-primary/10 p-2">
+            <ListChecks className="h-6 w-6 text-primary" />
           </div>
+          <div>
+            <h1 className="text-2xl font-bold">看板</h1>
+            <p className="text-muted-foreground">
+              チケットをドラッグ&ドロップで管理
+              {form_id && ` - ${form_id}`}
+            </p>
+          </div>
+        </div>
 
-          <div className="flex items-center space-x-3">
-            {userRole && (
-              <span
-                className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  userRole === "admin"
-                    ? "bg-purple-100 text-purple-800"
-                    : "bg-blue-100 text-blue-800"
-                }`}
-              >
-                {userRole === "admin" ? "管理者" : "編集者"}
-              </span>
-            )}
-            <Button variant="secondary" aria-label="メンバー管理">
+        <div className="flex items-center gap-4">
+          {userRole && (
+            <Badge
+              className={
+                userRole === "admin"
+                  ? "bg-purple-100 text-purple-800"
+                  : "bg-blue-100 text-blue-800"
+              }
+            >
+              {userRole === "admin" ? "管理者" : "編集者"}
+            </Badge>
+          )}
+
+          {!form_id && (
+            <Select value={selectedForm} onValueChange={handleFormSelection}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="フォームを選択" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべてのフォーム</SelectItem>
+                {forms.map((form) => (
+                  <SelectItem key={form.form_id} value={form.form_id}>
+                    {form.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {form_id && (
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/members/${form_id}`)}
+            >
               <Users className="h-4 w-4 mr-2" />
               メンバー ({members.length})
             </Button>
-          </div>
-        </div>
+          )}
 
-        {userRole !== "admin" && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-            <div className="flex">
-              <AlertCircle className="h-5 w-5 text-yellow-400" />
-              <div className="ml-3">
-                <p className="text-sm text-yellow-700">
-                  閲覧モードです。チケットの編集にはadmin権限が必要です。
-                </p>
-              </div>
+          <Button
+            onClick={() => loadData(form_id || selectedForm)}
+            variant="secondary"
+          >
+            更新
+          </Button>
+        </div>
+      </div>
+
+      {!canEdit && userRole && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+          <div className="flex">
+            <AlertCircle className="h-5 w-5 text-yellow-400" />
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                閲覧モードです。チケットの編集にはadmin権限が必要です。
+              </p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        <DndContext
-          sensors={sensors}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {columns.map((column) => (
-              <KanbanColumn
-                key={column.id}
-                column={column}
-                canEdit={userRole === "admin"}
-                members={members}
-                onUpdateTicket={updateTicketStatus}
-              />
-            ))}
-          </div>
+      {error && (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
-          <DragOverlay>
-            {activeId ? (
-              <TicketCard
-                ticket={tickets.find((t) => t.id === activeId)!}
-                canEdit={false}
-                members={members}
-                onUpdateTicket={() => {}}
-                isDragging
-              />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-
-        {tickets.length === 0 && (
-          <EmptyState
-            title="チケットがありません"
-            description="まだチケットが作成されていません。フォームからの回答があると自動的にチケットが作成されます。"
-          />
-        )}
-      </div>
-
-      {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          type={toast.type}
-          title={toast.title}
-          message={toast.message}
-          onClose={() => removeToast(toast.id)}
-          duration={toast.duration}
-        />
-      ))}
-    </Layout>
-  );
-}
-
-interface KanbanColumnProps {
-  column: {
-    id: TicketStatus;
-    title: string;
-    count: number;
-    tickets: Ticket[];
-  };
-  canEdit: boolean;
-  members: Member[];
-  onUpdateTicket: (ticketId: string, status: TicketStatus) => void;
-}
-
-function KanbanColumn({
-  column,
-  canEdit,
-  members,
-  onUpdateTicket,
-}: KanbanColumnProps) {
-  return (
-    <div className="bg-gray-50 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-medium text-gray-900">{column.title}</h3>
-        <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded-full text-sm">
-          {column.count}
-        </span>
-      </div>
-
-      <SortableContext
-        items={column.tickets.map((t) => t.id)}
-        strategy={verticalListSortingStrategy}
-        id={column.id}
-      >
-        <div className="space-y-3 min-h-32">
-          {column.tickets.map((ticket) => (
-            <TicketCard
-              key={ticket.id}
-              ticket={ticket}
-              canEdit={canEdit}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {columns.map((column) => (
+            <KanbanColumn
+              key={column.id}
+              column={column}
+              tickets={ticketsByStatus[column.id]}
               members={members}
-              onUpdateTicket={onUpdateTicket}
+              canEdit={canEdit}
+              onUpdateTicket={updateTicketStatus}
             />
           ))}
         </div>
-      </SortableContext>
-    </div>
-  );
-}
+      </DragDropContext>
 
-interface TicketCardProps {
-  ticket: Ticket;
-  canEdit: boolean;
-  members: Member[];
-  onUpdateTicket: (ticketId: string, status: TicketStatus) => void;
-  isDragging?: boolean;
-}
-
-function TicketCard({
-  ticket,
-  canEdit,
-  members,
-  onUpdateTicket,
-  isDragging = false,
-}: TicketCardProps) {
-  const assignedMember = members.find((m) => m.id === ticket.assignee_id);
-
-  const priorityColors = {
-    1: "bg-red-100 text-red-800",
-    2: "bg-orange-100 text-orange-800",
-    3: "bg-yellow-100 text-yellow-800",
-    4: "bg-green-100 text-green-800",
-    5: "bg-gray-100 text-gray-800",
-  };
-
-  const moveTicket = (direction: "left" | "right") => {
-    const statusOrder: TicketStatus[] = ["new", "in_progress", "done"];
-    const currentIndex = statusOrder.indexOf(ticket.status);
-
-    let newIndex: number;
-    if (direction === "left") {
-      newIndex = Math.max(0, currentIndex - 1);
-    } else {
-      newIndex = Math.min(statusOrder.length - 1, currentIndex + 1);
-    }
-
-    if (newIndex !== currentIndex) {
-      onUpdateTicket(ticket.id, statusOrder[newIndex]);
-    }
-  };
-
-  return (
-    <div
-      className={`bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
-        isDragging ? "opacity-50" : ""
-      }`}
-    >
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-              priorityColors[ticket.priority as keyof typeof priorityColors] ||
-              priorityColors[5]
-            }`}
-          >
-            優先度 {ticket.priority}
-          </span>
-          {canEdit && (
-            <div className="flex space-x-1">
-              {ticket.status !== "new" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => moveTicket("left")}
-                  aria-label="左に移動"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              )}
-              {ticket.status !== "done" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => moveTicket("right")}
-                  aria-label="右に移動"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          )}
+      {tickets.length === 0 && !error && (
+        <div className="text-center py-12">
+          <ListChecks className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            チケットがありません
+          </h3>
+          <p className="text-muted-foreground">
+            フォームからの回答があると自動的にチケットが作成されます。
+          </p>
         </div>
+      )}
 
-        <div className="space-y-2">
-          <div className="flex items-center text-sm text-gray-600">
-            <Hash className="h-4 w-4 mr-1" />
-            <span className="font-mono">{ticket.id.slice(0, 8)}</span>
-          </div>
-
-          <div className="text-xs text-gray-500 space-y-1">
-            <div>Form: {ticket.form_id}</div>
-            <div>Response: {ticket.response_id}</div>
-          </div>
-
-          <div className="flex items-center text-xs text-gray-500">
-            <Calendar className="h-3 w-3 mr-1" />
-            {new Date(ticket.updated_at).toLocaleDateString("ja-JP")}
-          </div>
-        </div>
-
-        {assignedMember && (
-          <div className="flex items-center text-sm">
-            <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs font-medium text-gray-600 mr-2">
-              {assignedMember.email.charAt(0).toUpperCase()}
-            </div>
-            <span className="text-gray-700 truncate">
-              {assignedMember.email}
-            </span>
-          </div>
-        )}
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <span>合計 {tickets.length} 件のチケット</span>
+        <span>最終更新: {new Date().toLocaleString("ja-JP")}</span>
       </div>
     </div>
   );

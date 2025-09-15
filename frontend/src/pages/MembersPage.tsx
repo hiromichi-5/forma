@@ -1,0 +1,333 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Users,
+  Search,
+  Plus,
+  Mail,
+  Shield,
+  Settings,
+  RefreshCw,
+  UserCheck,
+  FileSpreadsheet,
+  ArrowLeft,
+} from "lucide-react";
+import { Button } from "../components/ui/Button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/Card";
+import { Badge } from "../components/ui/Badge";
+import { Input } from "../components/ui/Input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/Select";
+import { apiClient, ApiError } from "../lib/api";
+import type { Member, FormSummary } from "../types";
+
+export default function MembersPage() {
+  const { form_id } = useParams<{ form_id: string }>();
+  const navigate = useNavigate();
+  const [forms, setForms] = useState<FormSummary[]>([]);
+  const [selectedFormId, setSelectedFormId] = useState<string>("");
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    fetchForms();
+  }, []);
+
+  useEffect(() => {
+    if (form_id) {
+      setSelectedFormId(form_id);
+    }
+  }, [form_id]);
+
+  useEffect(() => {
+    if (selectedFormId) {
+      fetchMembers(selectedFormId);
+    }
+  }, [selectedFormId]);
+
+  const fetchForms = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiClient.getForms();
+      setForms(data.forms);
+      if (data.forms.length > 0 && !selectedFormId && !form_id) {
+        setSelectedFormId(data.forms[0].form_id);
+      }
+    } catch (err) {
+      console.error("Failed to fetch forms:", err);
+      setError(
+        err instanceof ApiError ? err.message : "フォームの取得に失敗しました"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMembers = async (formId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiClient.getMembers(formId);
+      setMembers(data.members);
+    } catch (err) {
+      console.error("Failed to fetch members:", err);
+      setError(
+        err instanceof ApiError ? err.message : "メンバーの取得に失敗しました"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRoleBadge = (role: "admin" | "editor") => {
+    switch (role) {
+      case "admin":
+        return (
+          <Badge variant="destructive" className="bg-red-100 text-red-800">
+            <Shield className="w-3 h-3 mr-1" />
+            管理者
+          </Badge>
+        );
+      case "editor":
+        return (
+          <Badge variant="default" className="bg-blue-100 text-blue-800">
+            <UserCheck className="w-3 h-3 mr-1" />
+            編集者
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary">{role}</Badge>;
+    }
+  };
+
+  const filteredMembers = members.filter((member) =>
+    member.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const selectedForm = forms.find((f) => f.form_id === selectedFormId);
+
+  const handleFormSelection = (value: string) => {
+    if (value === "all") {
+      navigate("/members");
+    } else {
+      navigate(`/members/${value}`);
+    }
+  };
+
+  if (loading && forms.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {form_id && (
+            <Button
+              variant="ghost"
+              onClick={() => window.history.back()}
+              aria-label="戻る"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <div className="rounded-lg bg-primary/10 p-2">
+            <Users className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">メンバー管理</h1>
+            <p className="text-muted-foreground">
+              フォームごとのメンバー管理とアクセス権限の設定
+              {form_id && ` - ${selectedForm?.title || form_id}`}
+            </p>
+          </div>
+        </div>
+        {selectedFormId && (
+          <Button className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            メンバーを招待
+          </Button>
+        )}
+      </div>
+
+      {forms.length > 0 && (
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700">フォーム:</span>
+          </div>
+          <div className="w-64">
+            <Select
+              value={selectedFormId || "all"}
+              onValueChange={handleFormSelection}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="フォームを選択" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべてのフォーム</SelectItem>
+                {forms.map((form) => (
+                  <SelectItem key={form.form_id} value={form.form_id}>
+                    {form.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      {selectedFormId && (
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            type="text"
+            placeholder="メンバーを検索..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-red-800">
+            <RefreshCw className="h-5 w-5" />
+            {error}
+          </div>
+        </div>
+      )}
+      {selectedFormId && members.length > 0 && (
+        <div className="rounded-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-blue-600">
+                {members.length}
+              </p>
+              <p className="text-sm text-gray-600">総メンバー数</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-red-600">
+                {members.filter((m) => m.role === "admin").length}
+              </p>
+              <p className="text-sm text-gray-600">管理者</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-blue-600">
+                {members.filter((m) => m.role === "editor").length}
+              </p>
+              <p className="text-sm text-gray-600">編集者</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {selectedFormId && (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredMembers.map((member, index) => (
+            <motion.div
+              key={member.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
+            >
+              <Card className="h-full hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      {getRoleBadge(member.role)}
+                      <CardTitle className="text-lg">
+                        {member.email.split("@")[0]}
+                      </CardTitle>
+                      <div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
+                        <Mail className="h-3 w-3" />
+                        {member.email}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-4">
+                    <div className="text-sm">
+                      <span className="text-gray-500">メンバーID: </span>
+                      <span className="font-mono text-xs">{member.id}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {!selectedFormId && forms.length > 0 && (
+        <div className="text-center py-12">
+          <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">
+            フォームを選択してください
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            上のドロップダウンからフォームを選択してメンバーを表示
+          </p>
+        </div>
+      )}
+
+      {selectedFormId && !loading && filteredMembers.length === 0 && (
+        <div className="text-center py-12">
+          <Users className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">
+            {searchQuery ? "検索結果が見つかりません" : "メンバーがいません"}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchQuery
+              ? "検索条件を変更してもう一度お試しください"
+              : selectedForm
+              ? `「${selectedForm.title}」にメンバーを招待してください`
+              : "このフォームにはまだメンバーがいません"}
+          </p>
+          {!searchQuery && (
+            <div className="mt-6">
+              <Button className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                メンバーを招待
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {forms.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">
+            フォームがありません
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            メンバーを管理するには、まずフォームを作成してください
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

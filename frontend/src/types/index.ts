@@ -9,8 +9,13 @@ export interface LoginResponse {
   token: string;
 }
 
-export interface WhoAmIResponse {
-  user_id: string;
+export interface RegisterFormRequest {
+  url: string;
+  polling_sec?: number;
+}
+
+export interface RegisterFormResponse {
+  form_id: string;
 }
 
 export interface FormSummary {
@@ -25,7 +30,7 @@ export interface ListFormsResponse {
 export interface Member {
   id: string;
   email: string;
-  role: Role;
+  role: "admin" | "editor";
 }
 
 export interface ListMembersResponse {
@@ -34,12 +39,12 @@ export interface ListMembersResponse {
 
 export interface AddMemberRequest {
   email: string;
-  role: Role;
+  role: "admin" | "editor";
 }
 
 export interface ChangeMemberRoleRequest {
   user_id: string;
-  role: Role;
+  role: "admin" | "editor";
 }
 
 export interface SyncResponse {
@@ -61,13 +66,11 @@ export interface ListResponsesResponse {
   responses: Response[];
 }
 
-export type TicketStatus = "new" | "in_progress" | "done";
-
 export interface Ticket {
   id: string;
   form_id: string;
   response_id: string;
-  status: TicketStatus;
+  status: "new" | "in_progress" | "done";
   assignee_id?: string | null;
   priority: number;
   created_at: string;
@@ -79,20 +82,19 @@ export interface ListTicketsResponse {
 }
 
 export interface UpdateTicketRequest {
-  status?: TicketStatus;
+  status?: "new" | "in_progress" | "done";
   assignee_id?: string | null;
 }
 
-export interface ApiError {
+export interface ErrorResponse {
   code: string;
   message?: string;
   details?: Record<string, any>;
 }
 
-// UI State Types
 export interface User {
   id: string;
-  token: string;
+  email?: string;
 }
 
 export interface ToastMessage {
