@@ -6,12 +6,12 @@ import { Input } from "../components/ui/Input";
 import { Label } from "../components/ui/Label";
 import { Card, CardContent, CardTitle } from "../components/ui/Card";
 import { ApiError } from "../lib/api";
-import { ShieldCheck, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export function LoginPage() {
   const { user, login } = useAuth();
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -33,9 +33,7 @@ export function LoginPage() {
         } else if (err.isValidationError) {
           setError("入力内容を確認してください");
         } else {
-          setError(
-            "ログインに失敗しました。しばらく時間をおいて再度お試しください"
-          );
+          setError("ログインに失敗しました。");
         }
       } else {
         setError("予期しないエラーが発生しました");
@@ -53,12 +51,14 @@ export function LoginPage() {
             <div className="text-center">
               <div className="flex justify-center mb-4">
                 <div className="rounded-full bg-primary p-3">
-                  <ShieldCheck className="h-8 w-8 text-primary-foreground" />
+                  <img src="/favicon.svg" alt="Logo" className="h-20 w-20" />
                 </div>
               </div>
-              <CardTitle className="text-2xl font-bold">Forma Admin</CardTitle>
-              <p className="mt-2 text-sm text-muted-foreground">
-                チームでGoogleフォームを取り込み、回答をチケット化して管理
+              <CardTitle className="text-2xl font-bold">Forma</CardTitle>
+              <p className="mt-2 text-sm text-gray-600">
+                チームでGoogleフォームを取り込んで、
+                <br />
+                回答をチケット化して管理
               </p>
             </div>
 

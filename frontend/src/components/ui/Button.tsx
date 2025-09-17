@@ -32,7 +32,7 @@ export function Button({
 
   const variantClasses = {
     primary: [
-      "bg-primary-600 text-white border-primary-600",
+      "bg-primary-600 text-gray-700 border-primary-600",
       "hover:bg-primary-700 hover:border-primary-700",
       "active:bg-primary-800",
     ],
@@ -42,7 +42,7 @@ export function Button({
       "active:bg-gray-100",
     ],
     danger: [
-      "bg-red-600 text-white border-red-600",
+      "bg-red-600 text-gray-700 border-red-600",
       "hover:bg-red-700 hover:border-red-700",
       "active:bg-red-800",
     ],
