@@ -55,7 +55,7 @@ export function LoginPage() {
                 </div>
               </div>
               <CardTitle className="text-2xl font-bold">Forma</CardTitle>
-              <p className="mt-2 text-sm  text-gray-600">
+              <p className="mt-2 text-sm text-gray-600">
                 チームでGoogleフォームを取り込んで、
                 <br />
                 回答をチケット化して管理
