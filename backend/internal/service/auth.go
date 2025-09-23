@@ -34,7 +34,7 @@ func (s *AuthService) Authenticate(ctx context.Context, email, password string) 
 }
 
 func (s *AuthService) Signup(ctx context.Context, email, password, displayName string) (string, error) {
-	if email == "" || password == "" {
+	if email == "" || password == "" || displayName == "" {
 		return "", ErrValidation
 	}
 	if _, err := s.q.GetUserByEmail(ctx, email); err == nil {
