@@ -33,7 +33,7 @@ func (s *AuthService) Authenticate(ctx context.Context, email, password string) 
 	return uuid.UUID(u.ID.Bytes).String(), nil
 }
 
-func (s *AuthService) Signup(ctx context.Context, email, password string) (string, error) {
+func (s *AuthService) Signup(ctx context.Context, email, password, displayName string) (string, error) {
 	if email == "" || password == "" {
 		return "", ErrValidation
 	}
@@ -52,6 +52,7 @@ func (s *AuthService) Signup(ctx context.Context, email, password string) (strin
 		ID:           dbUUID(uid),
 		Email:        email,
 		PasswordHash: string(hashed),
+		DisplayName:  displayName,
 	})
 	if err != nil {
 		return "", ErrConflict

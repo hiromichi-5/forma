@@ -37,6 +37,7 @@ func (f *fakeStore) CreateUser(_ context.Context, arg db.CreateUserParams) (db.U
 		Email:        arg.Email,
 		PasswordHash: arg.PasswordHash,
 		CreatedAt:    pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		DisplayName:  arg.DisplayName,
 	}
 	f.users[arg.Email] = u
 	return u, nil
@@ -58,6 +59,7 @@ func fakeStoreWith(email, plain string) *fakeStore {
 					Time:  time.Now(),
 					Valid: true,
 				},
+				DisplayName: "Test User",
 			},
 		},
 	}
@@ -101,7 +103,7 @@ func TestAuthenticate_UnknownEmail(t *testing.T) {
 func TestSignup_Success(t *testing.T) {
 	f := &fakeStore{users: map[string]db.User{}}
 	s := NewAuthService(f)
-	uid, err := s.Signup(context.Background(), "new@example.com", "pass12345")
+	uid, err := s.Signup(context.Background(), "new@example.com", "pass12345", "Test User")
 	if err != nil {
 		t.Fatalf("want nil err, got %v", err)
 	}
@@ -113,7 +115,7 @@ func TestSignup_Success(t *testing.T) {
 func TestSignup_Conflict(t *testing.T) {
 	f := fakeStoreWith("dup@example.com", "x")
 	s := NewAuthService(f)
-	_, err := s.Signup(context.Background(), "dup@example.com", "pass12345")
+	_, err := s.Signup(context.Background(), "dup@example.com", "pass12345", "Test User")
 	if !errors.Is(err, ErrConflict) {
 		t.Fatalf("want ErrConflict, got %v", err)
 	}
