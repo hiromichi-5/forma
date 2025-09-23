@@ -3,11 +3,11 @@ SELECT * FROM users
 WHERE id = $1;
 
 -- name: GetUserByEmail :one
-SELECT id, email, password_hash, created_at FROM users WHERE email=$1;
+SELECT id, email, password_hash, created_at, display_name FROM users WHERE email=$1;
 
 -- name: CreateUser :one
-INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)
-RETURNING id, email, password_hash, created_at;
+INSERT INTO users (id, email, password_hash, display_name) VALUES ($1, $2, $3, $4)
+RETURNING id, email, password_hash, created_at, display_name;
 
 -- name: ListForms :many
 SELECT form_id, title FROM forms;
