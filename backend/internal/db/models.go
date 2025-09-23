@@ -43,6 +43,7 @@ type User struct {
 	Email        string             `json:"email"`
 	PasswordHash string             `json:"password_hash"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	DisplayName  pgtype.Text        `json:"display_name"`
 }
 
 type UserFormRole struct {

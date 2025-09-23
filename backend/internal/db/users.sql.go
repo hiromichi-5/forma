@@ -12,30 +12,37 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)
-RETURNING id, email, password_hash, created_at
+INSERT INTO users (id, email, password_hash, display_name) VALUES ($1, $2, $3, $4)
+RETURNING id, email, password_hash, created_at, display_name
 `
 
 type CreateUserParams struct {
 	ID           pgtype.UUID `json:"id"`
 	Email        string      `json:"email"`
 	PasswordHash string      `json:"password_hash"`
+	DisplayName  pgtype.Text `json:"display_name"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.ID, arg.Email, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, createUser,
+		arg.ID,
+		arg.Email,
+		arg.PasswordHash,
+		arg.DisplayName,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
 		&i.PasswordHash,
 		&i.CreatedAt,
+		&i.DisplayName,
 	)
 	return i, err
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, email, password_hash, created_at FROM users
+SELECT id, email, password_hash, created_at, display_name FROM users
 WHERE id = $1
 `
 
@@ -47,12 +54,13 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.Email,
 		&i.PasswordHash,
 		&i.CreatedAt,
+		&i.DisplayName,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, created_at FROM users WHERE email=$1
+SELECT id, email, password_hash, created_at, display_name FROM users WHERE email=$1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -63,6 +71,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Email,
 		&i.PasswordHash,
 		&i.CreatedAt,
+		&i.DisplayName,
 	)
 	return i, err
 }
