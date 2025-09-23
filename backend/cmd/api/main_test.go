@@ -44,6 +44,13 @@ func (f *fakeAuth) Authenticate(_ context.Context, e, p string) (string, error) 
 	return "", nil
 }
 
+func (f *fakeAuth) Signup(_ context.Context, e, p string) (string, error) {
+	if e != "" && p != "" {
+		return "dummy", nil
+	}
+	return "", nil
+}
+
 func TestLogin_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
