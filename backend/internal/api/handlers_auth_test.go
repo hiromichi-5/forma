@@ -31,11 +31,11 @@ func (f *fakeAuth) Authenticate(_ context.Context, e, p string) (string, error) 
 	return "", service.ErrInvalidCredentials
 }
 
-func (f *fakeAuth) Signup(_ context.Context, e, p string) (string, error) {
+func (f *fakeAuth) Signup(_ context.Context, e, p, displayName string) (string, error) {
 	if f.err != nil {
 		return "", f.err
 	}
-	if e == "" || p == "" {
+	if e == "" || p == "" || displayName == "" {
 		return "", service.ErrValidation
 	}
 	if e == f.email {
@@ -97,7 +97,7 @@ func TestSignup_Success(t *testing.T) {
 	h := &AuthHandler{Svc: &fakeAuth{email: "exists@example.com"}, JWT: s}
 	r := router(h)
 
-	body, _ := json.Marshal(map[string]string{"email": "new@example.com", "password": "password123"})
+	body, _ := json.Marshal(map[string]string{"email": "new@example.com", "password": "password123", "display_name": "TestUser"})
 	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -116,7 +116,7 @@ func TestSignup_Success(t *testing.T) {
 func TestSignup_Conflict(t *testing.T) {
 	h := &AuthHandler{Svc: &fakeAuth{email: "dup@example.com"}, JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour}}
 	r := router(h)
-	body, _ := json.Marshal(map[string]string{"email": "dup@example.com", "password": "password123"})
+	body, _ := json.Marshal(map[string]string{"email": "dup@example.com", "password": "password123", "display_name": "TestUser"})
 	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

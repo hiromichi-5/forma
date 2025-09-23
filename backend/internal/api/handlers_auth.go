@@ -12,7 +12,7 @@ import (
 type AuthHandler struct {
 	Svc interface {
 		Authenticate(ctx context.Context, email, password string) (string, error)
-		Signup(ctx context.Context, email, password string) (string, error)
+		Signup(ctx context.Context, email, password, displayName string) (string, error)
 	}
 	JWT auth.Signer
 }
@@ -48,7 +48,7 @@ func (h *AuthHandler) PostV1AuthLogin(c *gin.Context) {
 type signupReq struct {
 	Email       string `json:"email" binding:"required,email"`
 	Password    string `json:"password" binding:"required,min=8"`
-	DisplayName string `json:"display_name"` // wip
+	DisplayName string `json:"display_name" binding:"required"`
 }
 
 func (h *AuthHandler) PostV1AuthSignup(c *gin.Context) {
@@ -57,7 +57,7 @@ func (h *AuthHandler) PostV1AuthSignup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR", "message": "bad request"})
 		return
 	}
-	uid, err := h.Svc.Signup(c, req.Email, req.Password)
+	uid, err := h.Svc.Signup(c, req.Email, req.Password, req.DisplayName)
 	if err != nil {
 		switch err {
 		case service.ErrValidation:
