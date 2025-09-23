@@ -31,10 +31,24 @@ func (f *fakeAuth) Authenticate(_ context.Context, e, p string) (string, error) 
 	return "", service.ErrInvalidCredentials
 }
 
+func (f *fakeAuth) Signup(_ context.Context, e, p string) (string, error) {
+	if f.err != nil {
+		return "", f.err
+	}
+	if e == "" || p == "" {
+		return "", service.ErrValidation
+	}
+	if e == f.email {
+		return "", service.ErrConflict
+	}
+	return "new-user-id", nil
+}
+
 func router(h *AuthHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.POST("/v1/auth/login", h.PostV1AuthLogin)
+	r.POST("/v1/auth/signup", h.PostV1AuthSignup)
 	return r
 }
 
@@ -75,6 +89,54 @@ func TestLogin_Success(t *testing.T) {
 	}
 	if claims.IssuedAt.Time != base || claims.ExpiresAt.Time != base.Add(time.Hour) {
 		t.Fatalf("claims time mismatch")
+	}
+}
+
+func TestSignup_Success(t *testing.T) {
+	s := auth.Signer{Secret: []byte("k"), TTL: time.Hour}
+	h := &AuthHandler{Svc: &fakeAuth{email: "exists@example.com"}, JWT: s}
+	r := router(h)
+
+	body, _ := json.Marshal(map[string]string{"email": "new@example.com", "password": "password123"})
+	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d body=%s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil || resp.Token == "" {
+		t.Fatalf("bad json: %v %q", err, w.Body.String())
+	}
+}
+
+func TestSignup_Conflict(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuth{email: "dup@example.com"}, JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour}}
+	r := router(h)
+	body, _ := json.Marshal(map[string]string{"email": "dup@example.com", "password": "password123"})
+	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("want 409, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestSignup_Validation(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuth{}, JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour}}
+	r := router(h)
+	// メール不正
+	body, _ := json.Marshal(map[string]string{"email": "bad", "password": "password123"})
+	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("want 400, got %d", w.Code)
 	}
 }
 
