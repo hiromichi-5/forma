@@ -44,8 +44,8 @@ func (f *fakeAuth) Authenticate(_ context.Context, e, p string) (string, error) 
 	return "", nil
 }
 
-func (f *fakeAuth) Signup(_ context.Context, e, p string) (string, error) {
-	if e != "" && p != "" {
+func (f *fakeAuth) Signup(_ context.Context, e, p, displayName string) (string, error) {
+	if e != "" && p != "" && displayName != "" {
 		return "dummy", nil
 	}
 	return "", nil
