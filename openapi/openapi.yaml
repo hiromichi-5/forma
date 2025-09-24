@@ -25,7 +25,7 @@ components:
         token: { type: string }
     SignupRequest:
       type: object
-      required: [email, password]
+      required: [email, password, display_name]
       properties:
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
