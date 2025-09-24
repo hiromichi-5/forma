@@ -96,6 +96,7 @@ func main() {
 
 	ah := &api.AuthHandler{Svc: service.NewAuthService(q), JWT: signer}
 	r.POST("/v1/auth/login", ah.PostV1AuthLogin)
+	r.POST("/v1/auth/signup", ah.PostV1AuthSignup)
 
 	authz := r.Group("/v1")
 	authz.Use(auth.BearerMiddleware(signer))
