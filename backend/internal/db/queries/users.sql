@@ -9,6 +9,14 @@ SELECT id, email, password_hash, created_at, display_name FROM users WHERE email
 INSERT INTO users (id, email, password_hash, display_name) VALUES ($1, $2, $3, $4)
 RETURNING id, email, password_hash, created_at, display_name;
 
+-- name: UpdateUserDisplayName :one
+UPDATE users SET display_name = $2
+WHERE id = $1
+RETURNING id, email, password_hash, created_at, display_name;
+
+-- name: DeleteUser :exec
+DELETE FROM users WHERE id = $1;
+
 -- name: ListForms :many
 SELECT form_id, title FROM forms;
 
