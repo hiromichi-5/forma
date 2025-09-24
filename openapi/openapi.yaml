@@ -23,6 +23,18 @@ components:
       required: [token]
       properties:
         token: { type: string }
+    SignupRequest:
+      type: object
+      required: [email, password, display_name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        display_name: { type: string }
+    SignupResponse:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
     RegisterFormRequest:
       type: object
       required: [url]
@@ -181,6 +193,37 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/auth/signup:
+    post:
+      summary: サインアップ
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignupRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignupResponse" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Email already exists
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
