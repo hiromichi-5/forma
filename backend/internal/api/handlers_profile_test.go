@@ -60,7 +60,6 @@ func profileRouter(h *ProfileHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 
-	// Mock middleware that sets user ID (auth.CtxUserID = "userID" を使用)
 	r.Use(func(c *gin.Context) {
 		c.Set("userID", "test-user-id")
 		c.Next()
