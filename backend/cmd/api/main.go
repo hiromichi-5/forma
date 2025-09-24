@@ -101,6 +101,11 @@ func main() {
 	authz := r.Group("/v1")
 	authz.Use(auth.BearerMiddleware(signer))
 
+	ph := &api.ProfileHandler{Svc: service.NewProfileService(q)}
+	authz.GET("/me", ph.GetV1Me)
+	authz.PUT("/me", ph.PutV1Me)
+	authz.DELETE("/me", ph.DeleteV1Me)
+
 	authz.GET("/whoami", func(c *gin.Context) {
 		if uid, ok := auth.UserID(c); ok {
 			c.JSON(http.StatusOK, gin.H{"user_id": uid})

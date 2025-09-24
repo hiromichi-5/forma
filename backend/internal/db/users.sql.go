@@ -41,6 +41,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
+	return err
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, email, password_hash, created_at, display_name FROM users
 WHERE id = $1
@@ -103,6 +112,30 @@ func (q *Queries) ListForms(ctx context.Context) ([]ListFormsRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserDisplayName = `-- name: UpdateUserDisplayName :one
+UPDATE users SET display_name = $2
+WHERE id = $1
+RETURNING id, email, password_hash, created_at, display_name
+`
+
+type UpdateUserDisplayNameParams struct {
+	ID          pgtype.UUID `json:"id"`
+	DisplayName string      `json:"display_name"`
+}
+
+func (q *Queries) UpdateUserDisplayName(ctx context.Context, arg UpdateUserDisplayNameParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserDisplayName, arg.ID, arg.DisplayName)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.DisplayName,
+	)
+	return i, err
 }
 
 const upsertForm = `-- name: UpsertForm :exec
