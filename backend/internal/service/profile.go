@@ -73,6 +73,9 @@ func (s *ProfileService) DeleteProfile(ctx context.Context, userID string) error
 
 	err = s.q.DeleteUser(ctx, dbUUID(uid))
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrUserNotFound
+		}
 		return err
 	}
 

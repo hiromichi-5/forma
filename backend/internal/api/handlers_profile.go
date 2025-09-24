@@ -103,8 +103,17 @@ func (h *ProfileHandler) DeleteV1Me(c *gin.Context) {
 
 	err := h.Svc.DeleteProfile(c, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
-		return
+		switch err {
+		case service.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"code": "USER_NOT_FOUND"})
+			return
+		case service.ErrValidation:
+			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
+			return
+		}
 	}
 
 	c.Status(http.StatusNoContent)
