@@ -8,10 +8,12 @@ import { Card, CardContent, CardTitle } from "../components/ui/Card";
 import { ApiError } from "../lib/api";
 import { Loader2 } from "lucide-react";
 
-export function LoginPage() {
-  const { user, login } = useAuth();
+export function SignupPage() {
+  const { user, signup } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -22,18 +24,33 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("パスワードが一致していません");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("パスワードは8文字以上で入力してください");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      await login({ email, password });
+      await signup({
+        email,
+        password,
+        display_name: displayName,
+      });
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.isUnauthorized) {
-          setError("メールアドレスまたはパスワードが間違っています");
+        if (err.status === 409) {
+          setError("このメールアドレスは既に使用されています");
         } else if (err.isValidationError) {
           setError("入力内容を確認してください");
         } else {
-          setError("ログインに失敗しました。");
+          setError("サインアップに失敗しました");
         }
       } else {
         setError("予期しないエラーが発生しました");
@@ -42,6 +59,8 @@ export function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  const isFormValid = email && password && displayName && confirmPassword;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
@@ -55,11 +74,7 @@ export function LoginPage() {
                 </div>
               </div>
               <CardTitle className="text-2xl font-bold">Forma</CardTitle>
-              <p className="mt-2 text-sm text-gray-600">
-                チームでGoogleフォームを取り込んで、
-                <br />
-                回答をチケット化して管理
-              </p>
+              <p className="mt-2 text-sm text-gray-600">アカウントを作成</p>
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
@@ -76,12 +91,40 @@ export function LoginPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="displayName">表示名</Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="password">パスワード</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  minLength={8}
+                />
+                <p className="text-xs text-gray-500">
+                  8文字以上で入力してください
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">パスワード（確認）</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   disabled={isLoading}
                 />
@@ -100,27 +143,27 @@ export function LoginPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isLoading || !email || !password}
+                disabled={isLoading || !isFormValid}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ログイン中...
+                    アカウント作成中...
                   </>
                 ) : (
-                  "ログイン"
+                  "アカウント作成"
                 )}
               </Button>
             </form>
 
             <div className="text-center">
               <p className="text-sm text-gray-600">
-                アカウントをお持ちでない方は{" "}
+                既にアカウントをお持ちですか？
                 <Link
-                  to="/signup"
+                  to="/login"
                   className="font-medium text-primary hover:underline"
                 >
-                  サインアップ
+                  ログイン
                 </Link>
               </p>
             </div>

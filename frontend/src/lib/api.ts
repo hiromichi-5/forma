@@ -1,6 +1,8 @@
 import type {
   LoginRequest,
   LoginResponse,
+  SignupRequest,
+  SignupResponse,
   RegisterFormRequest,
   RegisterFormResponse,
   ListFormsResponse,
@@ -112,6 +114,13 @@ class ApiClient {
 
   async login(request: LoginRequest): Promise<LoginResponse> {
     return this.request<LoginResponse>("/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async signup(request: SignupRequest): Promise<SignupResponse> {
+    return this.request<SignupResponse>("/v1/auth/signup", {
       method: "POST",
       body: JSON.stringify(request),
     });
