@@ -1,13 +1,14 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { apiClient } from "@/lib/api";
-import type { User, LoginRequest } from "@/types";
+import type { User, LoginRequest, SignupRequest } from "@/types";
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
+  signup: (credentials: SignupRequest) => Promise<void>;
   logout: () => void;
 }
 
@@ -55,6 +56,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signup = async (credentials: SignupRequest) => {
+    try {
+      const response = await apiClient.signup(credentials);
+      apiClient.setToken(response.token);
+
+      const whoamiResponse = await apiClient.whoami();
+      const newUser: User = {
+        id: whoamiResponse.user_id,
+      };
+
+      setUser(newUser);
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const logout = () => {
     apiClient.clearToken();
     setUser(null);
@@ -62,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isAuthenticated, login, logout }}
+      value={{ user, isLoading, isAuthenticated, login, signup, logout }}
     >
       {children}
     </AuthContext.Provider>

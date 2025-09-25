@@ -9,6 +9,16 @@ export interface LoginResponse {
   token: string;
 }
 
+export interface SignupRequest {
+  email: string;
+  password: string;
+  display_name: string;
+}
+
+export interface SignupResponse {
+  token: string;
+}
+
 export interface RegisterFormRequest {
   url: string;
   polling_sec?: number;
