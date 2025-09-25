@@ -14,6 +14,8 @@ import type {
   Ticket,
   ListTicketsResponse,
   UpdateTicketRequest,
+  UserProfile,
+  UpdateUserProfileRequest,
   ErrorResponse,
 } from "../types";
 
@@ -128,6 +130,23 @@ class ApiClient {
 
   async whoami(): Promise<{ user_id: string }> {
     return this.request<{ user_id: string }>("/v1/whoami");
+  }
+
+  async getProfile(): Promise<UserProfile> {
+    return this.request<UserProfile>("/v1/me");
+  }
+
+  async updateProfile(request: UpdateUserProfileRequest): Promise<UserProfile> {
+    return this.request<UserProfile>("/v1/me", {
+      method: "PUT",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async deleteProfile(): Promise<void> {
+    return this.request<void>("/v1/me", {
+      method: "DELETE",
+    });
   }
 
   async getForms(): Promise<ListFormsResponse> {

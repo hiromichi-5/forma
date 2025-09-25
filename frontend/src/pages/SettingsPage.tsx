@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Settings, User, Shield, Save, RefreshCw } from "lucide-react";
 import { Button } from "../components/ui/Button";
@@ -11,18 +11,43 @@ import {
 import { Input } from "../components/ui/Input";
 import { Label } from "../components/ui/Label";
 import { useAuth } from "../hooks/useAuth";
+import { ApiError } from "../lib/api";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { profile, updateProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState("");
+
+  useEffect(() => {
+    if (profile?.display_name) {
+      setDisplayName(profile.display_name);
+    }
+  }, [profile]);
 
   const handleSave = async () => {
+    if (!displayName.trim()) {
+      setError("表示名を入力してください");
+      return;
+    }
+
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setLoading(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    setError(null);
+
+    try {
+      await updateProfile({ display_name: displayName.trim() });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message || "プロフィールの更新に失敗しました");
+      } else {
+        setError("プロフィールの更新に失敗しました");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,12 +64,23 @@ export default function SettingsPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="bg-green-50 border border-green-200  rounded-lg p-4"
+          className="bg-green-50 border border-green-200 rounded-lg p-4"
         >
           <div className="flex items-center gap-2 text-green-800">
             <Save className="h-5 w-5" />
             設定が保存されました
           </div>
+        </motion.div>
+      )}
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="bg-red-50 border border-red-200 rounded-lg p-4"
+        >
+          <div className="text-red-800">{error}</div>
         </motion.div>
       )}
 
@@ -62,7 +98,8 @@ export default function SettingsPage() {
                 <Label htmlFor="display-name">表示名</Label>
                 <Input
                   id="display-name"
-                  defaultValue={user?.email?.split("@")[0] || ""}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="表示名を入力"
                 />
               </div>
@@ -71,7 +108,7 @@ export default function SettingsPage() {
                 <Input
                   id="email"
                   type="email"
-                  defaultValue={user?.email || ""}
+                  value={profile?.email || ""}
                   disabled
                 />
               </div>
@@ -122,7 +159,11 @@ export default function SettingsPage() {
         <div className="flex justify-end">
           <Button
             onClick={handleSave}
-            disabled={loading}
+            disabled={
+              loading ||
+              !displayName.trim() ||
+              displayName === profile?.display_name
+            }
             className="flex items-center gap-2"
           >
             {loading ? (
