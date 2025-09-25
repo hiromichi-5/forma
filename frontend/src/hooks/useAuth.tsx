@@ -58,7 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           setUser(newUser);
 
-          setIsProfileLoading(true);
           try {
             const profileData = await apiClient.getProfile();
             setProfile(profileData);
@@ -66,8 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(newUser);
           } catch (profileError) {
             console.error("Failed to fetch profile:", profileError);
-          } finally {
-            setIsProfileLoading(false);
           }
         } catch (error) {
           localStorage.removeItem("forma_token");

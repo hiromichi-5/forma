@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/Button";
@@ -24,8 +24,10 @@ interface NavItem {
 }
 
 function Header() {
-  const { user, logout } = useAuth();
+  const { profile, logout } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const displayName = profile?.display_name || "ユーザー";
 
   return (
     <header className="bg-blue-600 text-white shadow-md">
@@ -46,9 +48,7 @@ function Header() {
                 aria-label="ユーザーメニューを開く"
               >
                 <Icon icon={User} />
-                <span className="text-sm">
-                  {user?.email?.split("@")[0] || "ユーザー"}
-                </span>
+                <span className="text-sm">{displayName}</span>
               </Button>
 
               {userMenuOpen && (
@@ -201,6 +201,14 @@ function Sidebar() {
 }
 
 export function Layout() {
+  const { user, profile, refreshProfile, isProfileLoading } = useAuth();
+
+  useEffect(() => {
+    if (user && !profile && !isProfileLoading) {
+      refreshProfile();
+    }
+  }, [user, profile, isProfileLoading, refreshProfile]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
