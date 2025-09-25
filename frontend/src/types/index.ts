@@ -107,6 +107,16 @@ export interface User {
   email?: string;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  display_name: string;
+}
+
+export interface UpdateUserProfileRequest {
+  display_name: string;
+}
+
 export interface ToastMessage {
   id: string;
   type: "success" | "error" | "info" | "warning";
