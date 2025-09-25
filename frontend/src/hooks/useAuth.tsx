@@ -13,6 +13,7 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   isLoading: boolean;
+  isProfileLoading: boolean;
   isAuthenticated: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
   signup: (credentials: SignupRequest) => Promise<void>;
@@ -27,11 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
 
   const isAuthenticated = !!user;
 
   const refreshProfile = async () => {
     if (!user) return;
+    setIsProfileLoading(true);
     try {
       const profileData = await apiClient.getProfile();
       setProfile(profileData);
@@ -39,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser((prev) => (prev ? { ...prev, email: profileData.email } : null));
     } catch (error) {
       console.error("Failed to fetch profile:", error);
+    } finally {
+      setIsProfileLoading(false);
     }
   };
 
@@ -53,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           setUser(newUser);
 
-          // プロフィール情報も取得
+          setIsProfileLoading(true);
           try {
             const profileData = await apiClient.getProfile();
             setProfile(profileData);
@@ -61,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(newUser);
           } catch (profileError) {
             console.error("Failed to fetch profile:", profileError);
+          } finally {
+            setIsProfileLoading(false);
           }
         } catch (error) {
           localStorage.removeItem("forma_token");
@@ -135,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         isLoading,
+        isProfileLoading,
         isAuthenticated,
         login,
         signup,

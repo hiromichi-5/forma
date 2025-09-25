@@ -14,7 +14,8 @@ import { useAuth } from "../hooks/useAuth";
 import { ApiError } from "../lib/api";
 
 export default function SettingsPage() {
-  const { profile, updateProfile } = useAuth();
+  const { profile, isProfileLoading, refreshProfile, updateProfile } =
+    useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +26,12 @@ export default function SettingsPage() {
       setDisplayName(profile.display_name);
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!profile && !isProfileLoading) {
+      refreshProfile();
+    }
+  }, [profile, isProfileLoading, refreshProfile]);
 
   const handleSave = async () => {
     if (!displayName.trim()) {
@@ -93,26 +100,35 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="display-name">表示名</Label>
-                <Input
-                  id="display-name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="表示名を入力"
-                />
+            {isProfileLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                <span className="ml-2 text-gray-600">
+                  プロフィールを読み込み中...
+                </span>
               </div>
-              <div>
-                <Label htmlFor="email">メールアドレス</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profile?.email || ""}
-                  disabled
-                />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="display-name">表示名</Label>
+                  <Input
+                    id="display-name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="表示名を入力"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">メールアドレス</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profile?.email || ""}
+                    disabled
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -161,6 +177,7 @@ export default function SettingsPage() {
             onClick={handleSave}
             disabled={
               loading ||
+              isProfileLoading ||
               !displayName.trim() ||
               displayName === profile?.display_name
             }
