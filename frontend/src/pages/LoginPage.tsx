@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -112,6 +112,18 @@ export function LoginPage() {
                 )}
               </Button>
             </form>
+
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                アカウントをお持ちでない方は{" "}
+                <Link
+                  to="/signup"
+                  className="font-medium text-primary hover:underline"
+                >
+                  サインアップ
+                </Link>
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
