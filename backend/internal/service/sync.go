@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,6 +29,10 @@ func (s *Service) SyncFormOnce(ctx context.Context, formID string, actor uuid.UU
 	role, err := s.roleFor(ctx, formID, actor)
 	if err != nil || (role != "admin" && role != "editor") {
 		return 0, 0, time.Time{}, ErrForbidden
+	}
+
+	if err := s.refreshFormQuestions(ctx, formID); err != nil {
+		return 0, 0, time.Time{}, err
 	}
 
 	// カーソル決定 - 既存のsync_cursorを取得、なければ7日前を使用
@@ -140,4 +145,204 @@ func (s *Service) SyncFormOnce(ctx context.Context, formID string, actor uuid.UU
 	}
 
 	return synced, newTickets, maxSubmitted, nil
+}
+
+func (s *Service) refreshFormQuestions(ctx context.Context, formID string) error {
+	form, err := s.GF.GetForm(ctx, formID)
+	if err != nil {
+		lower := strings.ToLower(err.Error())
+		if strings.Contains(lower, "403") {
+			return ErrFormsNotShared
+		}
+		if strings.Contains(lower, "404") {
+			return ErrFormsNotFound
+		}
+		return err
+	}
+	if form == nil {
+		return ErrFormsNotFound
+	}
+
+	var defaultCandidate string
+	var firstQuestion string
+
+	for _, item := range form.Items {
+		if item == nil {
+			continue
+		}
+		questions := extractQuestions(item)
+		for _, q := range questions {
+			if q.Question == nil {
+				continue
+			}
+
+			qid := q.Question.QuestionId
+			if qid == "" {
+				continue
+			}
+
+			title := q.Title
+			if title == "" {
+				title = qid
+			}
+
+			optBytes := marshalQuestionOptions(q.Question)
+
+			if err := s.Q.UpsertFormQuestion(ctx, db.UpsertFormQuestionParams{
+				FormID:       formID,
+				QuestionID:   qid,
+				Title:        title,
+				QuestionType: detectQuestionType(q.Question),
+				Options:      optBytes,
+			}); err != nil {
+				return err
+			}
+
+			if firstQuestion == "" {
+				firstQuestion = qid
+			}
+			if defaultCandidate == "" && isGoodTitleQuestion(q.Question) {
+				defaultCandidate = qid
+			}
+		}
+	}
+
+	if defaultCandidate == "" {
+		defaultCandidate = firstQuestion
+	}
+
+	if defaultCandidate == "" {
+		return nil
+	}
+
+	current, err := s.Q.GetFormTitleQuestion(ctx, formID)
+	if err != nil {
+		return err
+	}
+	if current.Valid && current.String != "" {
+		return nil
+	}
+
+	return s.Q.UpdateFormTitleQuestion(ctx, db.UpdateFormTitleQuestionParams{
+		FormID: formID,
+		TitleQuestionID: pgtype.Text{
+			String: defaultCandidate,
+			Valid:  true,
+		},
+	})
+}
+
+type questionWithTitle struct {
+	Title    string
+	Question *forms.Question
+}
+
+func extractQuestions(item *forms.Item) []questionWithTitle {
+	var out []questionWithTitle
+	if item.QuestionItem != nil && item.QuestionItem.Question != nil {
+		title := item.Title
+		if title == "" {
+			title = item.QuestionItem.Question.QuestionId
+		}
+		out = append(out, questionWithTitle{Title: title, Question: item.QuestionItem.Question})
+	}
+
+	if item.QuestionGroupItem != nil {
+		for _, q := range item.QuestionGroupItem.Questions {
+			if q == nil {
+				continue
+			}
+			title := item.Title
+			if title == "" {
+				title = q.QuestionId
+			}
+			out = append(out, questionWithTitle{Title: title, Question: q})
+		}
+	}
+
+	return out
+}
+
+func detectQuestionType(q *forms.Question) string {
+	if q == nil {
+		return "unknown"
+	}
+	switch {
+	case q.TextQuestion != nil:
+		if q.TextQuestion.Paragraph {
+			return "paragraph"
+		}
+		return "text"
+	case q.ChoiceQuestion != nil:
+		if q.ChoiceQuestion.Type != "" {
+			return strings.ToLower(q.ChoiceQuestion.Type)
+		}
+		return "choice"
+	case q.ScaleQuestion != nil:
+		return "scale"
+	case q.RatingQuestion != nil:
+		return "rating"
+	case q.FileUploadQuestion != nil:
+		return "file_upload"
+	case q.RowQuestion != nil:
+		return "row"
+	case q.TimeQuestion != nil:
+		return "time"
+	case q.DateQuestion != nil:
+		return "date"
+	default:
+		return "unknown"
+	}
+}
+
+func marshalQuestionOptions(q *forms.Question) []byte {
+	if q == nil {
+		return nil
+	}
+	payload := map[string]any{}
+	if cq := q.ChoiceQuestion; cq != nil {
+		values := make([]string, 0, len(cq.Options))
+		for _, opt := range cq.Options {
+			if opt != nil && opt.Value != "" {
+				values = append(values, opt.Value)
+			}
+		}
+		if len(values) > 0 {
+			payload["choices"] = values
+		}
+		if cq.Shuffle {
+			payload["shuffle"] = true
+		}
+	}
+	if sq := q.ScaleQuestion; sq != nil {
+		payload["low"] = sq.Low
+		payload["high"] = sq.High
+		if sq.LowLabel != "" {
+			payload["low_label"] = sq.LowLabel
+		}
+		if sq.HighLabel != "" {
+			payload["high_label"] = sq.HighLabel
+		}
+	}
+	if len(payload) == 0 {
+		return nil
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return nil
+	}
+	return b
+}
+
+func isGoodTitleQuestion(q *forms.Question) bool {
+	if q == nil {
+		return false
+	}
+	if q.TextQuestion != nil {
+		return true
+	}
+	if q.ChoiceQuestion != nil {
+		return true
+	}
+	return false
 }
