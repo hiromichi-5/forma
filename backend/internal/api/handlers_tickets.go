@@ -56,6 +56,7 @@ func (h *FormsHandler) GetV1TicketsTicketId(c *gin.Context, ticketID string) {
 type patchTicketReq struct {
 	Status     *string    `json:"status" binding:"omitempty,oneof=new in_progress done"`
 	AssigneeID *uuid.UUID `json:"assignee_id"`
+	Priority   *int32     `json:"priority" binding:"omitempty,min=1,max=5"`
 }
 
 func (h *FormsHandler) PatchV1TicketsTicketId(c *gin.Context, ticketID string) {
@@ -71,7 +72,7 @@ func (h *FormsHandler) PatchV1TicketsTicketId(c *gin.Context, ticketID string) {
 		c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 		return
 	}
-	t, err := h.S.UpdateTicket(c, ticketID, req.Status, req.AssigneeID, uid)
+	t, err := h.S.UpdateTicket(c, ticketID, req.Status, req.AssigneeID, req.Priority, uid)
 	if err != nil {
 		if err == service.ErrValidation {
 			c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
