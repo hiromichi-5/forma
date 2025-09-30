@@ -13,36 +13,36 @@ import (
 )
 
 type TicketAssignee struct {
-	ID          uuid.UUID
-	DisplayName string
-	Email       string
+	ID          uuid.UUID `json:"id"`
+	DisplayName string    `json:"display_name"`
+	Email       string    `json:"email"`
 }
 
 type TicketSummary struct {
-	ID              uuid.UUID
-	FormID          string
-	FormTitle       string
-	ResponseID      string
-	Status          string
-	Priority        int32
-	TitleQuestionID string
-	Title           string
-	Assignee        *TicketAssignee
-	SubmittedAt     time.Time
-	UpdatedAt       time.Time
+	ID              uuid.UUID       `json:"id"`
+	FormID          string          `json:"form_id"`
+	FormTitle       string          `json:"form_title"`
+	ResponseID      string          `json:"response_id"`
+	Status          string          `json:"status"`
+	Priority        int32           `json:"priority"`
+	TitleQuestionID string          `json:"title_question_id,omitempty"`
+	Title           string          `json:"title"`
+	Assignee        *TicketAssignee `json:"assignee,omitempty"`
+	SubmittedAt     time.Time       `json:"submitted_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
 }
 
 type TicketAnswer struct {
-	QuestionID    string
-	QuestionTitle string
-	QuestionType  string
-	Values        []string
-	DisplayValue  string
+	QuestionID    string   `json:"question_id"`
+	QuestionTitle string   `json:"question_title"`
+	QuestionType  string   `json:"question_type"`
+	Values        []string `json:"values"`
+	DisplayValue  string   `json:"display_value"`
 }
 
 type TicketDetail struct {
 	TicketSummary
-	Answers []TicketAnswer
+	Answers []TicketAnswer `json:"answers"`
 }
 
 type formQuestionSet struct {
