@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"context"
 	"errors"
 	"net/url"
@@ -18,6 +19,14 @@ var (
 )
 
 var reFormID = regexp.MustCompile(`/forms/d/e/([a-zA-Z0-9_-]+)/`)
+
+type FormQuestion struct {
+	FormID       string
+	QuestionID   string
+	Title        string
+	QuestionType string
+	Options      []string
+}
 
 func extractFormID(u string) (string, error) {
 	// フルURLから/forms/d/e/{ID}/を抜く
@@ -118,4 +127,69 @@ func (s *Service) Health(ctx context.Context, formID string, actor UserID) (map[
 	}
 
 	return map[string]any{"form_id": formID, "title": title}, nil
+}
+
+func (s *Service) ListFormQuestions(ctx context.Context, formID string, actor uuid.UUID) ([]FormQuestion, error) {
+	if err := s.RequireEditor(ctx, formID, actor); err != nil {
+		return nil, err
+	}
+	rows, err := s.Q.ListFormQuestions(ctx, formID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]FormQuestion, 0, len(rows))
+	for _, row := range rows {
+		fq := FormQuestion{
+			FormID:       row.FormID,
+			QuestionID:   row.QuestionID,
+			Title:        row.Title,
+			QuestionType: row.QuestionType,
+		}
+		if len(row.Options) > 0 {
+			var options map[string]any
+			if err := json.Unmarshal(row.Options, &options); err == nil {
+				if rawChoices, ok := options["choices"].([]any); ok {
+					choices := make([]string, 0, len(rawChoices))
+					for _, v := range rawChoices {
+						if str, ok := v.(string); ok {
+							choices = append(choices, str)
+						}
+					}
+					fq.Options = choices
+				}
+			}
+		}
+		out = append(out, fq)
+	}
+	return out, nil
+}
+
+func (s *Service) SetFormTitleQuestion(ctx context.Context, formID string, questionID *string, actor uuid.UUID) error {
+	if err := s.RequireAdmin(ctx, formID, actor); err != nil {
+		return err
+	}
+	var value pgtype.Text
+	if questionID != nil && *questionID != "" {
+		questions, err := s.Q.ListFormQuestions(ctx, formID)
+		if err != nil {
+			return err
+		}
+		found := false
+		for _, q := range questions {
+			if q.QuestionID == *questionID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return ErrValidation
+		}
+		value = pgtype.Text{String: *questionID, Valid: true}
+	} else {
+		value = pgtype.Text{Valid: false}
+	}
+	return s.Q.UpdateFormTitleQuestion(ctx, db.UpdateFormTitleQuestionParams{
+		FormID:          formID,
+		TitleQuestionID: value,
+	})
 }
