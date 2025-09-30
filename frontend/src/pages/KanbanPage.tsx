@@ -84,6 +84,9 @@ const priorityColors = {
   5: "bg-gray-100 text-gray-800",
 };
 
+const UNASSIGNED_VALUE = "__UNASSIGNED__";
+const AUTO_TITLE_VALUE = "__AUTO_TITLE__";
+
 interface TicketCardProps {
   ticket: TicketSummary;
   index: number;
@@ -215,16 +218,19 @@ function TicketCard({
                     {canEdit ? (
                       <Select
                         disabled={isUpdating}
-                        value={assignedMember?.id ?? ""}
+                        value={assignedMember?.id ?? UNASSIGNED_VALUE}
                         onValueChange={(value) =>
-                          onAssigneeChange(ticket.id, value || null)
+                          onAssigneeChange(
+                            ticket.id,
+                            value === UNASSIGNED_VALUE ? null : value
+                          )
                         }
                       >
                         <SelectTrigger className="h-8 w-36">
                           <SelectValue placeholder="未割り当て" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">未割り当て</SelectItem>
+                          <SelectItem value={UNASSIGNED_VALUE}>未割り当て</SelectItem>
                           {members.map((member) => (
                             <SelectItem key={member.id} value={member.id}>
                               {member.display_name || member.email}
@@ -731,16 +737,17 @@ export function KanbanPage() {
       : null;
 
   const handleTitleQuestionUpdate = useCallback(
-    async (questionId: string) => {
+    async (questionId: string | null) => {
       if (!selectedDetail) return;
-      if ((selectedDetail.title_question_id || "") === questionId) {
+      const currentId = selectedDetail.title_question_id ?? null;
+      if (currentId === (questionId ?? null)) {
         return;
       }
       setIsUpdatingTitleQuestion(true);
       try {
         await apiClient.updateFormTitleQuestion(
           selectedDetail.form_id,
-          questionId || null
+          questionId
         );
         const refreshed = await apiClient.getTicket(selectedDetail.id);
         applyTicketDetail(refreshed);
@@ -941,11 +948,11 @@ export function KanbanPage() {
                       disabled={
                         !canEdit || Boolean(updatingTickets[selectedDetail.id])
                       }
-                      value={selectedDetail.assignee?.id ?? ""}
+                      value={selectedDetail.assignee?.id ?? UNASSIGNED_VALUE}
                       onValueChange={(value) =>
                         handleAssigneeChange(
                           selectedDetail.id,
-                          value || null
+                          value === UNASSIGNED_VALUE ? null : value
                         )
                       }
                     >
@@ -953,7 +960,7 @@ export function KanbanPage() {
                         <SelectValue placeholder="未割り当て" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">未割り当て</SelectItem>
+                        <SelectItem value={UNASSIGNED_VALUE}>未割り当て</SelectItem>
                         {members.map((member) => (
                           <SelectItem key={member.id} value={member.id}>
                             {member.display_name || member.email}
@@ -993,14 +1000,18 @@ export function KanbanPage() {
                     </Label>
                     <Select
                       disabled={isUpdatingTitleQuestion || !canEdit}
-                      value={selectedDetail.title_question_id || ""}
-                      onValueChange={(value) => handleTitleQuestionUpdate(value)}
+                      value={selectedDetail.title_question_id || AUTO_TITLE_VALUE}
+                      onValueChange={(value) =>
+                        handleTitleQuestionUpdate(
+                          value === AUTO_TITLE_VALUE ? null : value
+                        )
+                      }
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="質問を選択" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">自動選択</SelectItem>
+                        <SelectItem value={AUTO_TITLE_VALUE}>自動選択</SelectItem>
                         {questionOptions.map((question) => (
                           <SelectItem
                             key={question.question_id}
