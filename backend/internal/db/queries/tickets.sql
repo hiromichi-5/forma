@@ -15,10 +15,13 @@ SELECT t.id,
        f.title AS form_title,
        f.title_question_id,
        r.submitted_at,
-       r.payload
+       r.payload,
+       a.display_name AS assignee_display_name,
+       a.email AS assignee_email
 FROM tickets t
 JOIN forms f ON f.form_id = t.form_id
 JOIN responses r ON r.response_id = t.response_id
+LEFT JOIN users a ON a.id = t.assignee_id
 WHERE ($1::text IS NULL OR t.form_id = $1)
   AND ($2::text = '' OR $2::text IS NULL OR t.status = $2::ticket_status)
 ORDER BY t.created_at DESC
@@ -36,17 +39,20 @@ SELECT t.id,
        f.title AS form_title,
        f.title_question_id,
        r.submitted_at,
-       r.payload
+       r.payload,
+       a.display_name AS assignee_display_name,
+       a.email AS assignee_email
 FROM tickets t
 JOIN forms f ON f.form_id = t.form_id
 JOIN responses r ON r.response_id = t.response_id
+LEFT JOIN users a ON a.id = t.assignee_id
 WHERE t.id = $1;
 
 -- name: UpdateTicket :one
 UPDATE tickets
-SET status = COALESCE($2,status),
-    assignee_id = COALESCE($3,assignee_id),
-    priority = COALESCE($4,priority),
+SET status = COALESCE(sqlc.narg(status)::ticket_status, status),
+    assignee_id = COALESCE(sqlc.narg(assignee_id)::uuid, assignee_id),
+    priority = COALESCE(sqlc.narg(priority), priority),
     updated_at = NOW()
-WHERE id = $1
+WHERE id = sqlc.arg(id)
 RETURNING id, form_id, response_id, status, assignee_id, priority, created_at, updated_at;

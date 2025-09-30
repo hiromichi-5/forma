@@ -51,26 +51,31 @@ SELECT t.id,
        f.title AS form_title,
        f.title_question_id,
        r.submitted_at,
-       r.payload
+       r.payload,
+       a.display_name AS assignee_display_name,
+       a.email AS assignee_email
 FROM tickets t
 JOIN forms f ON f.form_id = t.form_id
 JOIN responses r ON r.response_id = t.response_id
+LEFT JOIN users a ON a.id = t.assignee_id
 WHERE t.id = $1
 `
 
 type GetTicketRow struct {
-	ID              pgtype.UUID        `json:"id"`
-	FormID          string             `json:"form_id"`
-	ResponseID      string             `json:"response_id"`
-	Status          string             `json:"status"`
-	AssigneeID      pgtype.UUID        `json:"assignee_id"`
-	Priority        int32              `json:"priority"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
-	FormTitle       string             `json:"form_title"`
-	TitleQuestionID pgtype.Text        `json:"title_question_id"`
-	SubmittedAt     pgtype.Timestamptz `json:"submitted_at"`
-	Payload         []byte             `json:"payload"`
+	ID                  pgtype.UUID        `json:"id"`
+	FormID              string             `json:"form_id"`
+	ResponseID          string             `json:"response_id"`
+	Status              string             `json:"status"`
+	AssigneeID          pgtype.UUID        `json:"assignee_id"`
+	Priority            int32              `json:"priority"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	FormTitle           string             `json:"form_title"`
+	TitleQuestionID     pgtype.Text        `json:"title_question_id"`
+	SubmittedAt         pgtype.Timestamptz `json:"submitted_at"`
+	Payload             []byte             `json:"payload"`
+	AssigneeDisplayName pgtype.Text        `json:"assignee_display_name"`
+	AssigneeEmail       pgtype.Text        `json:"assignee_email"`
 }
 
 func (q *Queries) GetTicket(ctx context.Context, id pgtype.UUID) (GetTicketRow, error) {
@@ -89,6 +94,8 @@ func (q *Queries) GetTicket(ctx context.Context, id pgtype.UUID) (GetTicketRow, 
 		&i.TitleQuestionID,
 		&i.SubmittedAt,
 		&i.Payload,
+		&i.AssigneeDisplayName,
+		&i.AssigneeEmail,
 	)
 	return i, err
 }
@@ -105,10 +112,13 @@ SELECT t.id,
        f.title AS form_title,
        f.title_question_id,
        r.submitted_at,
-       r.payload
+       r.payload,
+       a.display_name AS assignee_display_name,
+       a.email AS assignee_email
 FROM tickets t
 JOIN forms f ON f.form_id = t.form_id
 JOIN responses r ON r.response_id = t.response_id
+LEFT JOIN users a ON a.id = t.assignee_id
 WHERE ($1::text IS NULL OR t.form_id = $1)
   AND ($2::text = '' OR $2::text IS NULL OR t.status = $2::ticket_status)
 ORDER BY t.created_at DESC
@@ -121,18 +131,20 @@ type ListTicketsParams struct {
 }
 
 type ListTicketsRow struct {
-	ID              pgtype.UUID        `json:"id"`
-	FormID          string             `json:"form_id"`
-	ResponseID      string             `json:"response_id"`
-	Status          string             `json:"status"`
-	AssigneeID      pgtype.UUID        `json:"assignee_id"`
-	Priority        int32              `json:"priority"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
-	FormTitle       string             `json:"form_title"`
-	TitleQuestionID pgtype.Text        `json:"title_question_id"`
-	SubmittedAt     pgtype.Timestamptz `json:"submitted_at"`
-	Payload         []byte             `json:"payload"`
+	ID                  pgtype.UUID        `json:"id"`
+	FormID              string             `json:"form_id"`
+	ResponseID          string             `json:"response_id"`
+	Status              string             `json:"status"`
+	AssigneeID          pgtype.UUID        `json:"assignee_id"`
+	Priority            int32              `json:"priority"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	FormTitle           string             `json:"form_title"`
+	TitleQuestionID     pgtype.Text        `json:"title_question_id"`
+	SubmittedAt         pgtype.Timestamptz `json:"submitted_at"`
+	Payload             []byte             `json:"payload"`
+	AssigneeDisplayName pgtype.Text        `json:"assignee_display_name"`
+	AssigneeEmail       pgtype.Text        `json:"assignee_email"`
 }
 
 func (q *Queries) ListTickets(ctx context.Context, arg ListTicketsParams) ([]ListTicketsRow, error) {
@@ -157,6 +169,8 @@ func (q *Queries) ListTickets(ctx context.Context, arg ListTicketsParams) ([]Lis
 			&i.TitleQuestionID,
 			&i.SubmittedAt,
 			&i.Payload,
+			&i.AssigneeDisplayName,
+			&i.AssigneeEmail,
 		); err != nil {
 			return nil, err
 		}
@@ -170,27 +184,27 @@ func (q *Queries) ListTickets(ctx context.Context, arg ListTicketsParams) ([]Lis
 
 const updateTicket = `-- name: UpdateTicket :one
 UPDATE tickets
-SET status = COALESCE($2,status),
-    assignee_id = COALESCE($3,assignee_id),
-    priority = COALESCE($4,priority),
+SET status = COALESCE($1::ticket_status, status),
+    assignee_id = COALESCE($2::uuid, assignee_id),
+    priority = COALESCE($3, priority),
     updated_at = NOW()
-WHERE id = $1
+WHERE id = $4
 RETURNING id, form_id, response_id, status, assignee_id, priority, created_at, updated_at
 `
 
 type UpdateTicketParams struct {
-	ID         pgtype.UUID `json:"id"`
-	Status     string      `json:"status"`
+	Status     interface{} `json:"status"`
 	AssigneeID pgtype.UUID `json:"assignee_id"`
-	Priority   int32       `json:"priority"`
+	Priority   pgtype.Int4 `json:"priority"`
+	ID         pgtype.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateTicket(ctx context.Context, arg UpdateTicketParams) (Ticket, error) {
 	row := q.db.QueryRow(ctx, updateTicket,
-		arg.ID,
 		arg.Status,
 		arg.AssigneeID,
 		arg.Priority,
+		arg.ID,
 	)
 	var i Ticket
 	err := row.Scan(

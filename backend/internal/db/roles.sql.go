@@ -42,17 +42,18 @@ func (q *Queries) GetUserFormRole(ctx context.Context, arg GetUserFormRoleParams
 }
 
 const listFormMembers = `-- name: ListFormMembers :many
-SELECT u.id, u.email, u.created_at, r.role
+SELECT u.id, u.email, u.display_name, u.created_at, r.role
 FROM user_form_roles r JOIN users u ON u.id = r.user_id
 WHERE r.form_id = $1
 ORDER BY u.email
 `
 
 type ListFormMembersRow struct {
-	ID        pgtype.UUID        `json:"id"`
-	Email     string             `json:"email"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	Role      string             `json:"role"`
+	ID          pgtype.UUID        `json:"id"`
+	Email       string             `json:"email"`
+	DisplayName string             `json:"display_name"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	Role        string             `json:"role"`
 }
 
 func (q *Queries) ListFormMembers(ctx context.Context, formID string) ([]ListFormMembersRow, error) {
@@ -67,6 +68,7 @@ func (q *Queries) ListFormMembers(ctx context.Context, formID string) ([]ListFor
 		if err := rows.Scan(
 			&i.ID,
 			&i.Email,
+			&i.DisplayName,
 			&i.CreatedAt,
 			&i.Role,
 		); err != nil {
