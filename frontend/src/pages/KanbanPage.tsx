@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   DragDropContext,
@@ -31,10 +31,25 @@ import {
 } from "../components/ui/Select";
 import { apiClient, ApiError } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
-import type { Ticket, Member, FormSummary } from "../types";
+import type {
+  TicketSummary,
+  TicketDetail,
+  Member,
+  FormSummary,
+  TicketStatus,
+  FormQuestion,
+} from "../types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../components/ui/Dialog";
+import { Label } from "../components/ui/Label";
 
 interface KanbanColumn {
-  id: Ticket["status"];
+  id: TicketStatus;
   title: string;
   icon: React.ElementType;
   color: string;
@@ -70,11 +85,15 @@ const priorityColors = {
 };
 
 interface TicketCardProps {
-  ticket: Ticket;
+  ticket: TicketSummary;
   index: number;
   members: Member[];
   canEdit: boolean;
-  onUpdateTicket: (ticketId: string, status: Ticket["status"]) => void;
+  onUpdateTicket: (ticketId: string, status: TicketStatus) => void;
+  onOpenDetail: (ticketId: string) => void;
+  onAssigneeChange: (ticketId: string, assigneeId: string | null) => void;
+  onPriorityChange: (ticketId: string, priority: number) => void;
+  isUpdating: boolean;
 }
 
 function TicketCard({
@@ -83,15 +102,22 @@ function TicketCard({
   members,
   canEdit,
   onUpdateTicket,
+  onOpenDetail,
+  onAssigneeChange,
+  onPriorityChange,
+  isUpdating,
 }: TicketCardProps) {
-  const assignedMember = members.find((m) => m.id === ticket.assignee_id);
+  const baseAssignee = ticket.assignee ?? null;
+  const assignedMember = baseAssignee
+    ? members.find((m) => m.id === baseAssignee.id) || baseAssignee
+    : null;
   const priorityColor =
     priorityColors[ticket.priority as keyof typeof priorityColors] ||
     priorityColors[5];
 
   const moveTicket = (direction: "left" | "right") => {
     return () => {
-      const statusOrder: Ticket["status"][] = ["new", "in_progress", "done"];
+      const statusOrder: TicketStatus[] = ["new", "in_progress", "done"];
       const currentIndex = statusOrder.indexOf(ticket.status);
 
       let newIndex: number;
@@ -157,32 +183,92 @@ function TicketCard({
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center text-sm text-gray-600">
-                  <Hash className="h-3 w-3 mr-1" />
-                  <span className="font-mono">{ticket.id.slice(0, 8)}</span>
+                <div className="text-xs text-gray-500 uppercase tracking-wide">
+                  {ticket.form_title}
                 </div>
 
-                <div className="text-xs text-gray-500 space-y-1">
-                  <div>Form: {ticket.form_id}</div>
-                  <div>Response: {ticket.response_id}</div>
-                </div>
+                <button
+                  type="button"
+                  className="text-left text-sm font-semibold text-gray-800 line-clamp-2 hover:text-primary"
+                  onClick={() => onOpenDetail(ticket.id)}
+                >
+                  {ticket.title || "（タイトル未設定）"}
+                </button>
 
                 <div className="flex items-center text-xs text-gray-500">
                   <Calendar className="h-3 w-3 mr-1" />
-                  {new Date(ticket.updated_at).toLocaleDateString("ja-JP")}
+                  {new Date(ticket.submitted_at).toLocaleDateString("ja-JP")}
                 </div>
               </div>
 
-              {assignedMember && (
-                <div className="flex items-center text-sm">
-                  <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs font-medium text-gray-600 mr-2">
-                    {assignedMember.email.charAt(0).toUpperCase()}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center text-sm text-gray-600 flex-1">
+                    <Hash className="h-3 w-3 mr-1" />
+                    <span className="font-mono">{ticket.id.slice(0, 8)}</span>
                   </div>
-                  <span className="text-gray-700 truncate">
-                    {assignedMember.email}
-                  </span>
                 </div>
-              )}
+
+                <div className="text-sm text-gray-700">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs uppercase text-gray-500">担当者</span>
+                    {canEdit ? (
+                      <Select
+                        disabled={isUpdating}
+                        value={assignedMember?.id ?? ""}
+                        onValueChange={(value) =>
+                          onAssigneeChange(ticket.id, value || null)
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-36">
+                          <SelectValue placeholder="未割り当て" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">未割り当て</SelectItem>
+                          {members.map((member) => (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.display_name || member.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span>
+                        {assignedMember?.display_name || assignedMember?.email ||
+                          "未割り当て"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 mt-3">
+                    <span className="text-xs uppercase text-gray-500">
+                      優先度
+                    </span>
+                    {canEdit ? (
+                      <Select
+                        disabled={isUpdating}
+                        value={String(ticket.priority)}
+                        onValueChange={(value) =>
+                          onPriorityChange(ticket.id, Number(value))
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-24">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5].map((level) => (
+                            <SelectItem key={level} value={String(level)}>
+                              {level}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span>{ticket.priority}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </motion.div>
         </div>
@@ -193,10 +279,14 @@ function TicketCard({
 
 interface KanbanColumnProps {
   column: KanbanColumn;
-  tickets: Ticket[];
+  tickets: TicketSummary[];
   members: Member[];
   canEdit: boolean;
-  onUpdateTicket: (ticketId: string, status: Ticket["status"]) => void;
+  onUpdateTicket: (ticketId: string, status: TicketStatus) => void;
+  onOpenDetail: (ticketId: string) => void;
+  onAssigneeChange: (ticketId: string, assigneeId: string | null) => void;
+  onPriorityChange: (ticketId: string, priority: number) => void;
+  updatingTickets: Record<string, boolean>;
 }
 
 function KanbanColumn({
@@ -205,6 +295,10 @@ function KanbanColumn({
   members,
   canEdit,
   onUpdateTicket,
+  onOpenDetail,
+  onAssigneeChange,
+  onPriorityChange,
+  updatingTickets,
 }: KanbanColumnProps) {
   const Icon = column.icon;
 
@@ -237,6 +331,10 @@ function KanbanColumn({
                 members={members}
                 canEdit={canEdit}
                 onUpdateTicket={onUpdateTicket}
+                onOpenDetail={onOpenDetail}
+                onAssigneeChange={onAssigneeChange}
+                onPriorityChange={onPriorityChange}
+                isUpdating={Boolean(updatingTickets[ticket.id])}
               />
             ))}
             {provided.placeholder}
@@ -256,45 +354,87 @@ export function KanbanPage() {
   const { form_id } = useParams<{ form_id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [tickets, setTickets] = useState<TicketSummary[]>([]);
+  const [ticketDetails, setTicketDetails] = useState<
+    Record<string, TicketDetail>
+  >({});
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [forms, setForms] = useState<FormSummary[]>([]);
   const [selectedForm, setSelectedForm] = useState<string>("all");
   const [userRole, setUserRole] = useState<"admin" | "editor" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [formQuestionsCache, setFormQuestionsCache] = useState<
+    Record<string, FormQuestion[]>
+  >({});
+  const [formQuestions, setFormQuestions] = useState<FormQuestion[]>([]);
+  const [isQuestionsLoading, setIsQuestionsLoading] = useState(false);
+  const [updatingTickets, setUpdatingTickets] = useState<Record<string, boolean>>({});
+  const [isUpdatingTitleQuestion, setIsUpdatingTitleQuestion] = useState(false);
 
   const canEdit = userRole === "admin";
 
-  const loadData = async (formId?: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const [formsResponse, ticketsResponse] = await Promise.all([
-        apiClient.getForms(),
-        apiClient.getTickets(formId === "all" ? undefined : formId),
-      ]);
-
-      setForms(formsResponse.forms);
-      setTickets(ticketsResponse.tickets);
-
-      // Get user role for specific form if formId is provided and not "all"
-      if (formId && formId !== "all") {
-        try {
-          const membersResponse = await apiClient.getMembers(formId);
-          setMembers(membersResponse.members);
-          const currentMember = membersResponse.members.find(
-            (m) => m.id === user?.id
-          );
-          setUserRole(currentMember?.role || null);
-        } catch (err) {
-          console.error("Failed to load members:", err);
-        }
-      } else {
-        setMembers([]);
-        setUserRole(null);
+  const ensureFormQuestions = useCallback(
+    async (formId: string) => {
+      if (formQuestionsCache[formId]) {
+        setFormQuestions(formQuestionsCache[formId]);
+        return;
       }
+      setIsQuestionsLoading(true);
+      try {
+        const response = await apiClient.getFormQuestions(formId);
+        setFormQuestions(response.questions);
+        setFormQuestionsCache((prev) => ({
+          ...prev,
+          [formId]: response.questions,
+        }));
+      } catch (err) {
+        console.error("Failed to load form questions:", err);
+        setFormQuestions([]);
+      } finally {
+        setIsQuestionsLoading(false);
+      }
+    },
+    [formQuestionsCache]
+  );
+
+  const loadData = useCallback(
+    async (formId?: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const [formsResponse, ticketsResponse] = await Promise.all([
+          apiClient.getForms(),
+          apiClient.getTickets(formId === "all" ? undefined : formId),
+        ]);
+
+        setForms(formsResponse.forms);
+        setTickets(ticketsResponse.tickets);
+        setTicketDetails({});
+
+        // Get user role for specific form if formId is provided and not "all"
+        if (formId && formId !== "all") {
+          try {
+            const membersResponse = await apiClient.getMembers(formId);
+            setMembers(membersResponse.members);
+            const currentMember = membersResponse.members.find(
+              (m) => m.id === user?.id
+            );
+            setUserRole(currentMember?.role || null);
+          } catch (err) {
+            console.error("Failed to load members:", err);
+          }
+
+          await ensureFormQuestions(formId);
+        } else {
+          setMembers([]);
+          setUserRole(null);
+          setFormQuestions([]);
+        }
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.isForbidden) {
@@ -309,7 +449,9 @@ export function KanbanPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+    },
+    [ensureFormQuestions, user?.id]
+  );
 
   const handleFormSelection = (value: string) => {
     if (value === "all") {
@@ -319,6 +461,51 @@ export function KanbanPage() {
     }
   };
 
+  const applyTicketDetail = useCallback((detail: TicketDetail) => {
+    const summary: TicketSummary = {
+      id: detail.id,
+      form_id: detail.form_id,
+      form_title: detail.form_title,
+      response_id: detail.response_id,
+      status: detail.status,
+      priority: detail.priority,
+      title_question_id: detail.title_question_id,
+      title: detail.title,
+      assignee: detail.assignee ?? null,
+      submitted_at: detail.submitted_at,
+      updated_at: detail.updated_at,
+    };
+    setTickets((prev) => {
+      let found = false;
+      const next = prev.map((ticket) => {
+        if (ticket.id === summary.id) {
+          found = true;
+          return summary;
+        }
+        return ticket;
+      });
+      if (!found) {
+        next.push(summary);
+      }
+      return next;
+    });
+    setTicketDetails((prev) => ({
+      ...prev,
+      [detail.id]: detail,
+    }));
+  }, []);
+
+  const setTicketUpdating = useCallback((ticketId: string, value: boolean) => {
+    setUpdatingTickets((prev) => {
+      if (value) {
+        return { ...prev, [ticketId]: true };
+      }
+      const copy = { ...prev };
+      delete copy[ticketId];
+      return copy;
+    });
+  }, []);
+
   useEffect(() => {
     if (form_id) {
       loadData(form_id);
@@ -326,7 +513,7 @@ export function KanbanPage() {
     } else {
       loadData(selectedForm);
     }
-  }, [form_id, selectedForm, user?.id]);
+  }, [form_id, selectedForm, loadData]);
 
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -345,56 +532,232 @@ export function KanbanPage() {
     const ticket = tickets.find((t) => t.id === draggableId);
     if (!ticket) return;
 
-    const newStatus = destination.droppableId as Ticket["status"];
+    const newStatus = destination.droppableId as TicketStatus;
+    if (ticket.status === newStatus) {
+      return;
+    }
 
+    let snapshot: TicketSummary | null = null;
     setTickets((prev) =>
-      prev.map((t) =>
-        t.id === draggableId
-          ? { ...t, status: newStatus, updated_at: new Date().toISOString() }
-          : t
-      )
+      prev.map((t) => {
+        if (t.id === draggableId) {
+          snapshot = t;
+          return {
+            ...t,
+            status: newStatus,
+            updated_at: new Date().toISOString(),
+          };
+        }
+        return t;
+      })
     );
 
+    if (!snapshot) {
+      return;
+    }
+
+    setTicketUpdating(draggableId, true);
+
     try {
-      await apiClient.updateTicket(draggableId, { status: newStatus });
+      const detail = await apiClient.updateTicket(draggableId, {
+        status: newStatus,
+      });
+      applyTicketDetail(detail);
     } catch (err) {
       setTickets((prev) =>
-        prev.map((t) =>
-          t.id === draggableId ? { ...t, status: ticket.status } : t
-        )
+        prev.map((t) => (t.id === draggableId ? snapshot! : t))
       );
       setError("チケットの更新に失敗しました");
       console.error("Failed to update ticket:", err);
+    } finally {
+      setTicketUpdating(draggableId, false);
     }
   };
 
-  const updateTicketStatus = async (
-    ticketId: string,
-    newStatus: Ticket["status"]
-  ) => {
-    const ticket = tickets.find((t) => t.id === ticketId);
-    if (!ticket) return;
+  const updateTicketStatus = useCallback(
+    async (ticketId: string, newStatus: TicketStatus) => {
+      const ticket = tickets.find((t) => t.id === ticketId);
+      if (!ticket || ticket.status === newStatus) return;
 
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === ticketId
-          ? { ...t, status: newStatus, updated_at: new Date().toISOString() }
-          : t
-      )
-    );
-
-    try {
-      await apiClient.updateTicket(ticketId, { status: newStatus });
-    } catch (err) {
+      const snapshot: TicketSummary = ticket;
       setTickets((prev) =>
         prev.map((t) =>
-          t.id === ticketId ? { ...t, status: ticket.status } : t
+          t.id === ticketId
+            ? {
+                ...t,
+                status: newStatus,
+                updated_at: new Date().toISOString(),
+              }
+            : t
         )
       );
-      setError("チケットの更新に失敗しました");
-      console.error("Failed to update ticket:", err);
-    }
+
+      setTicketUpdating(ticketId, true);
+      try {
+        const detail = await apiClient.updateTicket(ticketId, {
+          status: newStatus,
+        });
+        applyTicketDetail(detail);
+      } catch (err) {
+        setTickets((prev) =>
+          prev.map((t) => (t.id === ticketId ? snapshot : t))
+        );
+        setError("チケットの更新に失敗しました");
+        console.error("Failed to update ticket:", err);
+      } finally {
+        setTicketUpdating(ticketId, false);
+      }
+    },
+    [tickets, applyTicketDetail, setTicketUpdating]
+  );
+
+  const handleAssigneeChange = useCallback(
+    async (ticketId: string, assigneeId: string | null) => {
+      const ticket = tickets.find((t) => t.id === ticketId);
+      if (!ticket) return;
+
+      const snapshot = ticket;
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId
+            ? {
+                ...t,
+                assignee: assigneeId
+                  ? (() => {
+                      const member = members.find((m) => m.id === assigneeId);
+                      if (member) {
+                        return {
+                          id: member.id,
+                          display_name:
+                            member.display_name || member.email,
+                          email: member.email,
+                        };
+                      }
+                      return t.assignee ?? null;
+                    })()
+                  : null,
+              }
+            : t
+        )
+      );
+
+      setTicketUpdating(ticketId, true);
+      try {
+        const detail = await apiClient.updateTicket(ticketId, {
+          assignee_id: assigneeId,
+        });
+        applyTicketDetail(detail);
+      } catch (err) {
+        setTickets((prev) =>
+          prev.map((t) => (t.id === ticketId ? snapshot : t))
+        );
+        setError("担当者の更新に失敗しました");
+        console.error("Failed to update assignee:", err);
+      } finally {
+        setTicketUpdating(ticketId, false);
+      }
+    },
+    [tickets, members, applyTicketDetail, setTicketUpdating]
+  );
+
+  const handlePriorityChange = useCallback(
+    async (ticketId: string, priority: number) => {
+      const ticket = tickets.find((t) => t.id === ticketId);
+      if (!ticket || ticket.priority === priority) return;
+
+      const snapshot = ticket;
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId ? { ...t, priority } : t
+        )
+      );
+
+      setTicketUpdating(ticketId, true);
+      try {
+        const detail = await apiClient.updateTicket(ticketId, { priority });
+        applyTicketDetail(detail);
+      } catch (err) {
+        setTickets((prev) =>
+          prev.map((t) => (t.id === ticketId ? snapshot : t))
+        );
+        setError("優先度の更新に失敗しました");
+        console.error("Failed to update priority:", err);
+      } finally {
+        setTicketUpdating(ticketId, false);
+      }
+    },
+    [tickets, applyTicketDetail, setTicketUpdating]
+  );
+
+  const handleOpenDetail = useCallback(
+    async (ticketId: string) => {
+      setSelectedTicketId(ticketId);
+      setIsDetailOpen(true);
+      const summary = tickets.find((t) => t.id === ticketId);
+      if (summary) {
+        if (formQuestionsCache[summary.form_id]) {
+          setFormQuestions(formQuestionsCache[summary.form_id]);
+        } else {
+          await ensureFormQuestions(summary.form_id);
+        }
+      }
+
+      if (ticketDetails[ticketId]) {
+        return;
+      }
+
+      setIsDetailLoading(true);
+      try {
+        const detail = await apiClient.getTicket(ticketId);
+        applyTicketDetail(detail);
+      } catch (err) {
+        setError("チケット詳細の取得に失敗しました");
+        console.error("Failed to load ticket detail:", err);
+      } finally {
+        setIsDetailLoading(false);
+      }
+    },
+    [tickets, ticketDetails, formQuestionsCache, ensureFormQuestions, applyTicketDetail]
+  );
+
+  const closeDetail = () => {
+    setIsDetailOpen(false);
+    setSelectedTicketId(null);
   };
+
+  const selectedDetail =
+    selectedTicketId && ticketDetails[selectedTicketId]
+      ? ticketDetails[selectedTicketId]
+      : null;
+
+  const handleTitleQuestionUpdate = useCallback(
+    async (questionId: string) => {
+      if (!selectedDetail) return;
+      if ((selectedDetail.title_question_id || "") === questionId) {
+        return;
+      }
+      setIsUpdatingTitleQuestion(true);
+      try {
+        await apiClient.updateFormTitleQuestion(
+          selectedDetail.form_id,
+          questionId || null
+        );
+        const refreshed = await apiClient.getTicket(selectedDetail.id);
+        applyTicketDetail(refreshed);
+        setTicketDetails((prev) => ({
+          ...prev,
+          [refreshed.id]: refreshed,
+        }));
+        await ensureFormQuestions(selectedDetail.form_id);
+      } catch (err) {
+        setError("タイトル用の質問更新に失敗しました");
+        console.error("Failed to update title question:", err);
+      } finally {
+        setIsUpdatingTitleQuestion(false);
+      }
+    },
+    [selectedDetail, applyTicketDetail, ensureFormQuestions]
+  );
 
   const ticketsByStatus = useMemo(() => {
     return {
@@ -403,6 +766,21 @@ export function KanbanPage() {
       done: tickets.filter((t) => t.status === "done"),
     };
   }, [tickets]);
+
+  const questionOptions = useMemo<FormQuestion[]>(() => {
+    if (!selectedDetail) {
+      return [];
+    }
+    if (formQuestions.length > 0) {
+      return formQuestions;
+    }
+    return selectedDetail.answers.map((answer) => ({
+      form_id: selectedDetail.form_id,
+      question_id: answer.question_id,
+      title: answer.question_title,
+      question_type: answer.question_type,
+    }));
+  }, [selectedDetail, formQuestions]);
 
   if (isLoading) {
     return (
@@ -477,7 +855,7 @@ export function KanbanPage() {
           )}
 
           <Button
-            onClick={() => loadData(form_id || selectedForm)}
+            onClick={() => void loadData(form_id || selectedForm)}
             variant="secondary"
           >
             更新
@@ -514,6 +892,10 @@ export function KanbanPage() {
               members={members}
               canEdit={canEdit}
               onUpdateTicket={updateTicketStatus}
+              onOpenDetail={handleOpenDetail}
+              onAssigneeChange={handleAssigneeChange}
+              onPriorityChange={handlePriorityChange}
+              updatingTickets={updatingTickets}
             />
           ))}
         </div>
@@ -535,6 +917,152 @@ export function KanbanPage() {
         <span>合計 {tickets.length} 件のチケット</span>
         <span>最終更新: {new Date().toLocaleString("ja-JP")}</span>
       </div>
+
+      <Dialog open={isDetailOpen} onOpenChange={(open) => (!open ? closeDetail() : null)}>
+        <DialogContent className="sm:max-w-2xl">
+          {isDetailLoading || !selectedDetail ? (
+            <div className="py-12 text-center text-muted-foreground">
+              読み込み中...
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <DialogHeader>
+                <DialogTitle>{selectedDetail.title || "チケット詳細"}</DialogTitle>
+                <DialogDescription>
+                  {selectedDetail.form_title} / 回答ID: {selectedDetail.response_id}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-gray-500">担当者</Label>
+                    <Select
+                      disabled={
+                        !canEdit || Boolean(updatingTickets[selectedDetail.id])
+                      }
+                      value={selectedDetail.assignee?.id ?? ""}
+                      onValueChange={(value) =>
+                        handleAssigneeChange(
+                          selectedDetail.id,
+                          value || null
+                        )
+                      }
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="未割り当て" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">未割り当て</SelectItem>
+                        {members.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.display_name || member.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-gray-500">優先度</Label>
+                    <Select
+                      disabled={
+                        !canEdit || Boolean(updatingTickets[selectedDetail.id])
+                      }
+                      value={String(selectedDetail.priority)}
+                      onValueChange={(value) =>
+                        handlePriorityChange(selectedDetail.id, Number(value))
+                      }
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <SelectItem key={level} value={String(level)}>
+                            {level}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-gray-500">
+                      タイトルに使用する質問
+                    </Label>
+                    <Select
+                      disabled={isUpdatingTitleQuestion || !canEdit}
+                      value={selectedDetail.title_question_id || ""}
+                      onValueChange={(value) => handleTitleQuestionUpdate(value)}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="質問を選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">自動選択</SelectItem>
+                        {questionOptions.map((question) => (
+                          <SelectItem
+                            key={question.question_id}
+                            value={question.question_id}
+                          >
+                            {question.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isQuestionsLoading && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        質問を読み込み中...
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm text-gray-600">
+                  <div>
+                    <span className="font-medium text-gray-700">ステータス:</span>{" "}
+                    {selectedDetail.status}
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">回答日:</span>{" "}
+                    {new Date(selectedDetail.submitted_at).toLocaleString(
+                      "ja-JP"
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      最終更新:
+                    </span>{" "}
+                    {new Date(selectedDetail.updated_at).toLocaleString(
+                      "ja-JP"
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+                {selectedDetail.answers.map((answer) => (
+                  <div
+                    key={answer.question_id}
+                    className="rounded-md border border-gray-200 p-3"
+                  >
+                    <div className="text-xs uppercase text-gray-500">
+                      {answer.question_type}
+                    </div>
+                    <div className="text-sm font-medium text-gray-800">
+                      {answer.question_title}
+                    </div>
+                    <div className="mt-2 text-sm text-gray-700 whitespace-pre-line">
+                      {answer.display_value || "未回答"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

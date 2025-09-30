@@ -20,7 +20,7 @@ import {
 } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { apiClient, ApiError } from "../lib/api";
-import type { FormSummary, Ticket } from "../types";
+import type { FormSummary, TicketSummary } from "../types";
 
 interface DashboardStats {
   totalForms: number;
@@ -36,7 +36,7 @@ export function HomePage() {
     pendingTickets: 0,
     recentResponses: 0,
   });
-  const [recentTickets, setRecentTickets] = useState<Ticket[]>([]);
+  const [recentTickets, setRecentTickets] = useState<TicketSummary[]>([]);
   const [forms, setForms] = useState<FormSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -281,10 +281,10 @@ export function HomePage() {
                     >
                       <div className="space-y-1">
                         <div className="text-sm font-medium">
-                          #{ticket.id.slice(-6)}
+                          {ticket.title || `#${ticket.id.slice(-6)}`}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {ticket.form_id}
+                          {ticket.form_title}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -304,7 +304,7 @@ export function HomePage() {
                             : "完了"}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {new Date(ticket.created_at).toLocaleDateString(
+                          {new Date(ticket.submitted_at).toLocaleDateString(
                             "ja-JP"
                           )}
                         </span>
