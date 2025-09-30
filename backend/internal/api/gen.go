@@ -42,11 +42,18 @@ const (
 	Editor MemberRole = "editor"
 )
 
-// Defines values for TicketStatus.
+// Defines values for TicketDetailStatus.
 const (
-	TicketStatusDone       TicketStatus = "done"
-	TicketStatusInProgress TicketStatus = "in_progress"
-	TicketStatusNew        TicketStatus = "new"
+	TicketDetailStatusDone       TicketDetailStatus = "done"
+	TicketDetailStatusInProgress TicketDetailStatus = "in_progress"
+	TicketDetailStatusNew        TicketDetailStatus = "new"
+)
+
+// Defines values for TicketSummaryStatus.
+const (
+	TicketSummaryStatusDone       TicketSummaryStatus = "done"
+	TicketSummaryStatusInProgress TicketSummaryStatus = "in_progress"
+	TicketSummaryStatusNew        TicketSummaryStatus = "new"
 )
 
 // Defines values for UpdateTicketRequestStatus.
@@ -58,9 +65,9 @@ const (
 
 // Defines values for GetV1TicketsParamsStatus.
 const (
-	Done       GetV1TicketsParamsStatus = "done"
-	InProgress GetV1TicketsParamsStatus = "in_progress"
-	New        GetV1TicketsParamsStatus = "new"
+	GetV1TicketsParamsStatusDone       GetV1TicketsParamsStatus = "done"
+	GetV1TicketsParamsStatusInProgress GetV1TicketsParamsStatus = "in_progress"
+	GetV1TicketsParamsStatusNew        GetV1TicketsParamsStatus = "new"
 )
 
 // AddMemberRequest defines model for AddMemberRequest.
@@ -111,7 +118,7 @@ type ListResponsesResponse struct {
 
 // ListTicketsResponse defines model for ListTicketsResponse.
 type ListTicketsResponse struct {
-	Tickets []Ticket `json:"tickets"`
+	Tickets []TicketSummary `json:"tickets"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -182,24 +189,63 @@ type SyncResponse struct {
 	Synced int `json:"synced"`
 }
 
-// Ticket defines model for Ticket.
-type Ticket struct {
-	AssigneeId *openapi_types.UUID `json:"assignee_id"`
-	CreatedAt  time.Time           `json:"created_at"`
-	FormId     string              `json:"form_id"`
-	Id         openapi_types.UUID  `json:"id"`
-	Priority   int                 `json:"priority"`
-	ResponseId string              `json:"response_id"`
-	Status     TicketStatus        `json:"status"`
-	UpdatedAt  time.Time           `json:"updated_at"`
+// TicketAnswer defines model for TicketAnswer.
+type TicketAnswer struct {
+	DisplayValue  string   `json:"display_value"`
+	QuestionId    string   `json:"question_id"`
+	QuestionTitle string   `json:"question_title"`
+	QuestionType  string   `json:"question_type"`
+	Values        []string `json:"values"`
 }
 
-// TicketStatus defines model for Ticket.Status.
-type TicketStatus string
+// TicketAssignee defines model for TicketAssignee.
+type TicketAssignee struct {
+	DisplayName string              `json:"display_name"`
+	Email       openapi_types.Email `json:"email"`
+	Id          openapi_types.UUID  `json:"id"`
+}
+
+// TicketDetail defines model for TicketDetail.
+type TicketDetail struct {
+	Answers         []TicketAnswer     `json:"answers"`
+	Assignee        *TicketAssignee    `json:"assignee"`
+	FormId          string             `json:"form_id"`
+	FormTitle       string             `json:"form_title"`
+	Id              openapi_types.UUID `json:"id"`
+	Priority        int                `json:"priority"`
+	ResponseId      string             `json:"response_id"`
+	Status          TicketDetailStatus `json:"status"`
+	SubmittedAt     time.Time          `json:"submitted_at"`
+	Title           string             `json:"title"`
+	TitleQuestionId *string            `json:"title_question_id"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+}
+
+// TicketDetailStatus defines model for TicketDetail.Status.
+type TicketDetailStatus string
+
+// TicketSummary defines model for TicketSummary.
+type TicketSummary struct {
+	Assignee        *TicketAssignee     `json:"assignee"`
+	FormId          string              `json:"form_id"`
+	FormTitle       string              `json:"form_title"`
+	Id              openapi_types.UUID  `json:"id"`
+	Priority        int                 `json:"priority"`
+	ResponseId      string              `json:"response_id"`
+	Status          TicketSummaryStatus `json:"status"`
+	SubmittedAt     time.Time           `json:"submitted_at"`
+	Title           string              `json:"title"`
+	TitleQuestionId *string             `json:"title_question_id"`
+	UpdatedAt       time.Time           `json:"updated_at"`
+}
+
+// TicketSummaryStatus defines model for TicketSummary.Status.
+type TicketSummaryStatus string
 
 // UpdateTicketRequest defines model for UpdateTicketRequest.
 type UpdateTicketRequest struct {
 	AssigneeId *openapi_types.UUID        `json:"assignee_id"`
+	Priority   *int                       `json:"priority,omitempty"`
 	Status     *UpdateTicketRequestStatus `json:"status,omitempty"`
 }
 
@@ -813,45 +859,47 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"GwAA//+MtwpCoEcAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -128,31 +128,65 @@ components:
         responses:
           type: array
           items: { $ref: "#/components/schemas/Response" }
-    Ticket:
+    TicketAssignee:
+      type: object
+      required: [id, display_name, email]
+      properties:
+        id: { type: string, format: uuid }
+        display_name: { type: string }
+        email: { type: string, format: email }
+    TicketSummary:
       type: object
       required:
-        [id, form_id, response_id, status, priority, created_at, updated_at]
+        [id, form_id, form_title, response_id, status, priority, title, submitted_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         form_id: { type: string }
+        form_title: { type: string }
         response_id: { type: string }
         status: { type: string, enum: [new, in_progress, done] }
-        assignee_id: { type: string, format: uuid, nullable: true }
-        priority: { type: integer }
-        created_at: { type: string, format: date-time }
+        priority: { type: integer, minimum: 1, maximum: 5 }
+        title_question_id: { type: string, nullable: true }
+        title: { type: string }
+        assignee:
+          allOf:
+            - $ref: "#/components/schemas/TicketAssignee"
+          nullable: true
+        submitted_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    TicketAnswer:
+      type: object
+      required: [question_id, question_title, question_type, values, display_value]
+      properties:
+        question_id: { type: string }
+        question_title: { type: string }
+        question_type: { type: string }
+        values:
+          type: array
+          items: { type: string }
+        display_value: { type: string }
+    TicketDetail:
+      allOf:
+        - $ref: "#/components/schemas/TicketSummary"
+        - type: object
+          required: [answers]
+          properties:
+            answers:
+              type: array
+              items: { $ref: "#/components/schemas/TicketAnswer" }
     ListTicketsResponse:
       type: object
       required: [tickets]
       properties:
         tickets:
           type: array
-          items: { $ref: "#/components/schemas/Ticket" }
+          items: { $ref: "#/components/schemas/TicketSummary" }
     UpdateTicketRequest:
       type: object
       properties:
         status: { type: string, enum: [new, in_progress, done] }
         assignee_id: { type: string, format: uuid, nullable: true }
+        priority: { type: integer, minimum: 1, maximum: 5 }
     UserProfile:
       type: object
       required: [id, email, display_name]
@@ -688,7 +722,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Ticket" }
+              schema: { $ref: "#/components/schemas/TicketDetail" }
         "400":
           description: Validation error (invalid ticket_id format)
           content:
@@ -727,7 +761,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Ticket" }
+              schema: { $ref: "#/components/schemas/TicketDetail" }
         "400":
           description: Validation error
           content:
