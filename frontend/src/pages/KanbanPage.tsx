@@ -1075,20 +1075,6 @@ export function KanbanPage() {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  <div>
-                    <Label className="text-xs text-gray-500">
-                      タイトルに使用する質問
-                    </Label>
-                    <p className="mt-1 text-sm text-gray-700">
-                      {selectedDetail.title_question_id
-                        ? questionOptions.find(
-                            (q) =>
-                              q.question_id === selectedDetail.title_question_id
-                          )?.title || "指定された質問"
-                        : "自動選択"}
-                    </p>
-                  </div>
                 </div>
 
                 <div className="space-y-2 text-sm text-gray-600">
