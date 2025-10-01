@@ -214,7 +214,9 @@ function TicketCard({
 
                 <div className="text-sm text-gray-700">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs uppercase text-gray-500">担当者</span>
+                    <span className="text-xs uppercase text-gray-500">
+                      担当者
+                    </span>
                     {canEdit ? (
                       <Select
                         disabled={isUpdating}
@@ -230,7 +232,9 @@ function TicketCard({
                           <SelectValue placeholder="未割り当て" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={UNASSIGNED_VALUE}>未割り当て</SelectItem>
+                          <SelectItem value={UNASSIGNED_VALUE}>
+                            未割り当て
+                          </SelectItem>
                           {members.map((member) => (
                             <SelectItem key={member.id} value={member.id}>
                               {member.display_name || member.email}
@@ -240,7 +244,8 @@ function TicketCard({
                       </Select>
                     ) : (
                       <span>
-                        {assignedMember?.display_name || assignedMember?.email ||
+                        {assignedMember?.display_name ||
+                          assignedMember?.email ||
                           "未割り当て"}
                       </span>
                     )}
@@ -378,7 +383,9 @@ export function KanbanPage() {
   >({});
   const [formQuestions, setFormQuestions] = useState<FormQuestion[]>([]);
   const [isQuestionsLoading, setIsQuestionsLoading] = useState(false);
-  const [updatingTickets, setUpdatingTickets] = useState<Record<string, boolean>>({});
+  const [updatingTickets, setUpdatingTickets] = useState<
+    Record<string, boolean>
+  >({});
   const [isUpdatingTitleQuestion, setIsUpdatingTitleQuestion] = useState(false);
 
   const canEdit = userRole === "admin";
@@ -441,20 +448,20 @@ export function KanbanPage() {
           setUserRole(null);
           setFormQuestions([]);
         }
-    } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.isForbidden) {
-          setError("このフォームにアクセスする権限がありません");
+      } catch (err) {
+        if (err instanceof ApiError) {
+          if (err.isForbidden) {
+            setError("このフォームにアクセスする権限がありません");
+          } else {
+            setError("データの読み込みに失敗しました");
+          }
         } else {
-          setError("データの読み込みに失敗しました");
+          setError("ネットワークエラーが発生しました");
         }
-      } else {
-        setError("ネットワークエラーが発生しました");
+        console.error("Failed to load kanban data:", err);
+      } finally {
+        setIsLoading(false);
       }
-      console.error("Failed to load kanban data:", err);
-    } finally {
-      setIsLoading(false);
-    }
     },
     [ensureFormQuestions, user?.id]
   );
@@ -634,8 +641,7 @@ export function KanbanPage() {
                       if (member) {
                         return {
                           id: member.id,
-                          display_name:
-                            member.display_name || member.email,
+                          display_name: member.display_name || member.email,
                           email: member.email,
                         };
                       }
@@ -673,9 +679,7 @@ export function KanbanPage() {
 
       const snapshot = ticket;
       setTickets((prev) =>
-        prev.map((t) =>
-          t.id === ticketId ? { ...t, priority } : t
-        )
+        prev.map((t) => (t.id === ticketId ? { ...t, priority } : t))
       );
 
       setTicketUpdating(ticketId, true);
@@ -723,7 +727,13 @@ export function KanbanPage() {
         setIsDetailLoading(false);
       }
     },
-    [tickets, ticketDetails, formQuestionsCache, ensureFormQuestions, applyTicketDetail]
+    [
+      tickets,
+      ticketDetails,
+      formQuestionsCache,
+      ensureFormQuestions,
+      applyTicketDetail,
+    ]
   );
 
   const closeDetail = () => {
@@ -925,8 +935,11 @@ export function KanbanPage() {
         <span>最終更新: {new Date().toLocaleString("ja-JP")}</span>
       </div>
 
-      <Dialog open={isDetailOpen} onOpenChange={(open) => (!open ? closeDetail() : null)}>
-        <DialogContent className="sm:max-w-2xl">
+      <Dialog
+        open={isDetailOpen}
+        onOpenChange={(open) => (!open ? closeDetail() : null)}
+      >
+        <DialogContent className="sm:max-w-2xl bg-white">
           {isDetailLoading || !selectedDetail ? (
             <div className="py-12 text-center text-muted-foreground">
               読み込み中...
@@ -934,9 +947,12 @@ export function KanbanPage() {
           ) : (
             <div className="space-y-6">
               <DialogHeader>
-                <DialogTitle>{selectedDetail.title || "チケット詳細"}</DialogTitle>
+                <DialogTitle>
+                  {selectedDetail.title || "チケット詳細"}
+                </DialogTitle>
                 <DialogDescription>
-                  {selectedDetail.form_title} / 回答ID: {selectedDetail.response_id}
+                  {selectedDetail.form_title} / 回答ID:{" "}
+                  {selectedDetail.response_id}
                 </DialogDescription>
               </DialogHeader>
 
@@ -960,7 +976,9 @@ export function KanbanPage() {
                         <SelectValue placeholder="未割り当て" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={UNASSIGNED_VALUE}>未割り当て</SelectItem>
+                        <SelectItem value={UNASSIGNED_VALUE}>
+                          未割り当て
+                        </SelectItem>
                         {members.map((member) => (
                           <SelectItem key={member.id} value={member.id}>
                             {member.display_name || member.email}
@@ -1000,7 +1018,9 @@ export function KanbanPage() {
                     </Label>
                     <Select
                       disabled={isUpdatingTitleQuestion || !canEdit}
-                      value={selectedDetail.title_question_id || AUTO_TITLE_VALUE}
+                      value={
+                        selectedDetail.title_question_id || AUTO_TITLE_VALUE
+                      }
                       onValueChange={(value) =>
                         handleTitleQuestionUpdate(
                           value === AUTO_TITLE_VALUE ? null : value
@@ -1011,7 +1031,9 @@ export function KanbanPage() {
                         <SelectValue placeholder="質問を選択" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={AUTO_TITLE_VALUE}>自動選択</SelectItem>
+                        <SelectItem value={AUTO_TITLE_VALUE}>
+                          自動選択
+                        </SelectItem>
                         {questionOptions.map((question) => (
                           <SelectItem
                             key={question.question_id}
@@ -1032,7 +1054,9 @@ export function KanbanPage() {
 
                 <div className="space-y-2 text-sm text-gray-600">
                   <div>
-                    <span className="font-medium text-gray-700">ステータス:</span>{" "}
+                    <span className="font-medium text-gray-700">
+                      ステータス:
+                    </span>{" "}
                     {selectedDetail.status}
                   </div>
                   <div>
@@ -1042,9 +1066,7 @@ export function KanbanPage() {
                     )}
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">
-                      最終更新:
-                    </span>{" "}
+                    <span className="font-medium text-gray-700">最終更新:</span>{" "}
                     {new Date(selectedDetail.updated_at).toLocaleString(
                       "ja-JP"
                     )}
