@@ -281,10 +281,10 @@ export function HomePage() {
                     >
                       <div className="space-y-1">
                         <div className="text-sm font-medium">
-                          {ticket.title || `#${ticket.id.slice(-6)}`}
+                          {ticket.form_title}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {ticket.form_title}
+                          {ticket.title || `#${ticket.id.slice(-6)}`}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
