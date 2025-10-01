@@ -387,6 +387,9 @@ export function KanbanPage() {
     Record<string, boolean>
   >({});
   const [isUpdatingTitleQuestion, setIsUpdatingTitleQuestion] = useState(false);
+  const [titleQuestionSelection, setTitleQuestionSelection] = useState<
+    string | null
+  >(null);
 
   const canEdit = userRole === "admin";
 
@@ -748,32 +751,43 @@ export function KanbanPage() {
 
   const handleTitleQuestionUpdate = useCallback(
     async (questionId: string | null) => {
-      if (!selectedDetail) return;
-      const currentId = selectedDetail.title_question_id ?? null;
-      if (currentId === (questionId ?? null)) {
+      if (!form_id) return;
+      const previous = titleQuestionSelection ?? null;
+      if (previous === (questionId ?? null)) {
         return;
       }
+
+      setTitleQuestionSelection(questionId ?? null);
       setIsUpdatingTitleQuestion(true);
       try {
-        await apiClient.updateFormTitleQuestion(
-          selectedDetail.form_id,
-          questionId
-        );
-        const refreshed = await apiClient.getTicket(selectedDetail.id);
-        applyTicketDetail(refreshed);
-        setTicketDetails((prev) => ({
-          ...prev,
-          [refreshed.id]: refreshed,
-        }));
-        await ensureFormQuestions(selectedDetail.form_id);
+        await apiClient.updateFormTitleQuestion(form_id, questionId);
+        const refreshed = await apiClient.getTickets(form_id);
+        setTickets(refreshed.tickets);
+        setTicketDetails({});
+        await ensureFormQuestions(form_id);
+        if (selectedTicketId) {
+          try {
+            const detail = await apiClient.getTicket(selectedTicketId);
+            applyTicketDetail(detail);
+          } catch (detailErr) {
+            console.error("Failed to refresh ticket detail:", detailErr);
+          }
+        }
       } catch (err) {
+        setTitleQuestionSelection(previous);
         setError("タイトル用の質問更新に失敗しました");
         console.error("Failed to update title question:", err);
       } finally {
         setIsUpdatingTitleQuestion(false);
       }
     },
-    [selectedDetail, applyTicketDetail, ensureFormQuestions]
+    [
+      form_id,
+      titleQuestionSelection,
+      ensureFormQuestions,
+      selectedTicketId,
+      applyTicketDetail,
+    ]
   );
 
   const ticketsByStatus = useMemo(() => {
@@ -784,20 +798,29 @@ export function KanbanPage() {
     };
   }, [tickets]);
 
-  const questionOptions = useMemo<FormQuestion[]>(() => {
-    if (!selectedDetail) {
-      return [];
+  useEffect(() => {
+    if (form_id) {
+      const current = tickets.find((t) => t.form_id === form_id);
+      setTitleQuestionSelection(current?.title_question_id ?? null);
+    } else {
+      setTitleQuestionSelection(null);
     }
+  }, [form_id, tickets]);
+
+  const questionOptions = useMemo<FormQuestion[]>(() => {
     if (formQuestions.length > 0) {
       return formQuestions;
     }
-    return selectedDetail.answers.map((answer) => ({
-      form_id: selectedDetail.form_id,
-      question_id: answer.question_id,
-      title: answer.question_title,
-      question_type: answer.question_type,
-    }));
-  }, [selectedDetail, formQuestions]);
+    if (selectedDetail) {
+      return selectedDetail.answers.map((answer) => ({
+        form_id: selectedDetail.form_id,
+        question_id: answer.question_id,
+        title: answer.question_title,
+        question_type: answer.question_type,
+      }));
+    }
+    return [];
+  }, [formQuestions, selectedDetail]);
 
   if (isLoading) {
     return (
@@ -879,6 +902,47 @@ export function KanbanPage() {
           </Button>
         </div>
       </div>
+
+      {form_id && canEdit && (
+        <div className="flex items-center gap-3 text-sm">
+          <Label className="text-xs uppercase text-gray-500">
+            カードタイトル質問
+          </Label>
+          <Select
+            disabled={
+              isUpdatingTitleQuestion ||
+              isQuestionsLoading ||
+              questionOptions.length === 0
+            }
+            value={titleQuestionSelection ?? AUTO_TITLE_VALUE}
+            onValueChange={(value) =>
+              handleTitleQuestionUpdate(
+                value === AUTO_TITLE_VALUE ? null : value
+              )
+            }
+          >
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="質問を選択" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={AUTO_TITLE_VALUE}>自動選択</SelectItem>
+              {questionOptions.map((question) => (
+                <SelectItem
+                  key={question.question_id}
+                  value={question.question_id}
+                >
+                  {question.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {isQuestionsLoading && (
+            <span className="text-xs text-muted-foreground">
+              質問を読み込み中...
+            </span>
+          )}
+        </div>
+      )}
 
       {!canEdit && userRole && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
@@ -1016,39 +1080,14 @@ export function KanbanPage() {
                     <Label className="text-xs text-gray-500">
                       タイトルに使用する質問
                     </Label>
-                    <Select
-                      disabled={isUpdatingTitleQuestion || !canEdit}
-                      value={
-                        selectedDetail.title_question_id || AUTO_TITLE_VALUE
-                      }
-                      onValueChange={(value) =>
-                        handleTitleQuestionUpdate(
-                          value === AUTO_TITLE_VALUE ? null : value
-                        )
-                      }
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="質問を選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={AUTO_TITLE_VALUE}>
-                          自動選択
-                        </SelectItem>
-                        {questionOptions.map((question) => (
-                          <SelectItem
-                            key={question.question_id}
-                            value={question.question_id}
-                          >
-                            {question.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {isQuestionsLoading && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        質問を読み込み中...
-                      </p>
-                    )}
+                    <p className="mt-1 text-sm text-gray-700">
+                      {selectedDetail.title_question_id
+                        ? questionOptions.find(
+                            (q) =>
+                              q.question_id === selectedDetail.title_question_id
+                          )?.title || "指定された質問"
+                        : "自動選択"}
+                    </p>
                   </div>
                 </div>
 
