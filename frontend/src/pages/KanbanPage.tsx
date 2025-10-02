@@ -446,10 +446,15 @@ export function KanbanPage() {
           }
 
           await ensureFormQuestions(formId);
+          const firstTicket = ticketsResponse.tickets.find(
+            (ticket) => ticket.form_id === formId
+          );
+          setTitleQuestionSelection(firstTicket?.title_question_id ?? null);
         } else {
           setMembers([]);
           setUserRole(null);
           setFormQuestions([]);
+          setTitleQuestionSelection(null);
         }
       } catch (err) {
         if (err instanceof ApiError) {
@@ -807,20 +812,29 @@ export function KanbanPage() {
     }
   }, [form_id, tickets]);
 
-  const questionOptions = useMemo<FormQuestion[]>(() => {
-    if (formQuestions.length > 0) {
-      return formQuestions;
+  const questionOptions = useMemo<FormQuestion[]>(() => formQuestions, [
+    formQuestions,
+  ]);
+
+  const titleQuestionLabel = useMemo(() => {
+    if (!selectedDetail) return "";
+    if (!selectedDetail.title_question_id) {
+      return "自動選択";
     }
-    if (selectedDetail) {
-      return selectedDetail.answers.map((answer) => ({
-        form_id: selectedDetail.form_id,
-        question_id: answer.question_id,
-        title: answer.question_title,
-        question_type: answer.question_type,
-      }));
+    const fromQuestions = formQuestions.find(
+      (q) => q.question_id === selectedDetail.title_question_id
+    );
+    if (fromQuestions) {
+      return fromQuestions.title;
     }
-    return [];
-  }, [formQuestions, selectedDetail]);
+    const fromDetail = selectedDetail.answers.find(
+      (a) => a.question_id === selectedDetail.title_question_id
+    );
+    if (fromDetail) {
+      return fromDetail.question_title;
+    }
+    return selectedDetail.title_question_id;
+  }, [selectedDetail, formQuestions]);
 
   if (isLoading) {
     return (
@@ -904,7 +918,7 @@ export function KanbanPage() {
       </div>
 
       {form_id && canEdit && (
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
           <Label className="text-xs uppercase text-gray-500">
             カードタイトル質問
           </Label>
@@ -939,6 +953,11 @@ export function KanbanPage() {
           {isQuestionsLoading && (
             <span className="text-xs text-muted-foreground">
               質問を読み込み中...
+            </span>
+          )}
+          {!isQuestionsLoading && questionOptions.length === 0 && (
+            <span className="text-xs text-muted-foreground">
+              フォームの質問が登録されていません。同期を実行してください。
             </span>
           )}
         </div>
@@ -1095,6 +1114,12 @@ export function KanbanPage() {
                     {new Date(selectedDetail.updated_at).toLocaleString(
                       "ja-JP"
                     )}
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      タイトル質問:
+                    </span>{" "}
+                    {titleQuestionLabel || "自動選択"}
                   </div>
                 </div>
               </div>
