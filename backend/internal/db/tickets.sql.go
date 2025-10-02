@@ -185,23 +185,29 @@ func (q *Queries) ListTickets(ctx context.Context, arg ListTicketsParams) ([]Lis
 const updateTicket = `-- name: UpdateTicket :one
 UPDATE tickets
 SET status = COALESCE($1::ticket_status, status),
-    assignee_id = COALESCE($2::uuid, assignee_id),
-    priority = COALESCE($3, priority),
+    assignee_id = CASE
+        WHEN $2::bool THEN NULL
+        WHEN $3::uuid IS NOT NULL THEN $3::uuid
+        ELSE assignee_id
+    END,
+    priority = COALESCE($4, priority),
     updated_at = NOW()
-WHERE id = $4
+WHERE id = $5
 RETURNING id, form_id, response_id, status, assignee_id, priority, created_at, updated_at
 `
 
 type UpdateTicketParams struct {
-	Status     interface{} `json:"status"`
-	AssigneeID pgtype.UUID `json:"assignee_id"`
-	Priority   pgtype.Int4 `json:"priority"`
-	ID         pgtype.UUID `json:"id"`
+	Status        interface{} `json:"status"`
+	ClearAssignee bool        `json:"clear_assignee"`
+	AssigneeID    pgtype.UUID `json:"assignee_id"`
+	Priority      pgtype.Int4 `json:"priority"`
+	ID            pgtype.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateTicket(ctx context.Context, arg UpdateTicketParams) (Ticket, error) {
 	row := q.db.QueryRow(ctx, updateTicket,
 		arg.Status,
+		arg.ClearAssignee,
 		arg.AssigneeID,
 		arg.Priority,
 		arg.ID,

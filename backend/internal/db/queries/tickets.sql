@@ -51,7 +51,11 @@ WHERE t.id = $1;
 -- name: UpdateTicket :one
 UPDATE tickets
 SET status = COALESCE(sqlc.narg(status)::ticket_status, status),
-    assignee_id = COALESCE(sqlc.narg(assignee_id)::uuid, assignee_id),
+    assignee_id = CASE
+        WHEN sqlc.arg(clear_assignee)::bool THEN NULL
+        WHEN sqlc.narg(assignee_id)::uuid IS NOT NULL THEN sqlc.narg(assignee_id)::uuid
+        ELSE assignee_id
+    END,
     priority = COALESCE(sqlc.narg(priority), priority),
     updated_at = NOW()
 WHERE id = sqlc.arg(id)
