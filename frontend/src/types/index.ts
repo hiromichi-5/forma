@@ -40,6 +40,7 @@ export interface ListFormsResponse {
 export interface Member {
   id: string;
   email: string;
+  display_name: string;
   role: "admin" | "editor";
 }
 
@@ -63,11 +64,23 @@ export interface SyncResponse {
   last: string;
 }
 
+export interface FormQuestion {
+  form_id: string;
+  question_id: string;
+  title: string;
+  question_type: string;
+  options?: string[];
+}
+
+export interface ListFormQuestionsResponse {
+  questions: FormQuestion[];
+}
+
 export interface Response {
   response_id: string;
   form_id: string;
   submitted_at: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   schema_version: number;
   created_at: string;
 }
@@ -76,30 +89,54 @@ export interface ListResponsesResponse {
   responses: Response[];
 }
 
-export interface Ticket {
+export type TicketStatus = "new" | "in_progress" | "done";
+
+export interface TicketAssignee {
+  id: string;
+  display_name: string;
+  email: string;
+}
+
+export interface TicketSummary {
   id: string;
   form_id: string;
+  form_title: string;
   response_id: string;
-  status: "new" | "in_progress" | "done";
-  assignee_id?: string | null;
+  status: TicketStatus;
   priority: number;
-  created_at: string;
+  title_question_id?: string | null;
+  title: string;
+  assignee?: TicketAssignee | null;
+  submitted_at: string;
   updated_at: string;
 }
 
 export interface ListTicketsResponse {
-  tickets: Ticket[];
+  tickets: TicketSummary[];
+}
+
+export interface TicketAnswer {
+  question_id: string;
+  question_title: string;
+  question_type: string;
+  values: string[];
+  display_value: string;
+}
+
+export interface TicketDetail extends TicketSummary {
+  answers: TicketAnswer[];
 }
 
 export interface UpdateTicketRequest {
-  status?: "new" | "in_progress" | "done";
+  status?: TicketStatus;
   assignee_id?: string | null;
+  priority?: number;
 }
 
 export interface ErrorResponse {
   code: string;
   message?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export interface User {

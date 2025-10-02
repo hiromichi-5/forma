@@ -9,13 +9,24 @@ import (
 )
 
 type Form struct {
-	FormID      string             `json:"form_id"`
-	Title       string             `json:"title"`
-	ConnectedAt pgtype.Timestamptz `json:"connected_at"`
-	Description pgtype.Text        `json:"description"`
-	PollingSec  pgtype.Int4        `json:"polling_sec"`
-	SyncCursor  pgtype.Timestamptz `json:"sync_cursor"`
-	Enabled     bool               `json:"enabled"`
+	FormID          string             `json:"form_id"`
+	Title           string             `json:"title"`
+	ConnectedAt     pgtype.Timestamptz `json:"connected_at"`
+	Description     pgtype.Text        `json:"description"`
+	PollingSec      pgtype.Int4        `json:"polling_sec"`
+	SyncCursor      pgtype.Timestamptz `json:"sync_cursor"`
+	Enabled         bool               `json:"enabled"`
+	TitleQuestionID pgtype.Text        `json:"title_question_id"`
+}
+
+type FormQuestion struct {
+	FormID       string             `json:"form_id"`
+	QuestionID   string             `json:"question_id"`
+	Title        string             `json:"title"`
+	QuestionType string             `json:"question_type"`
+	Options      []byte             `json:"options"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Response struct {

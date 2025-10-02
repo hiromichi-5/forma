@@ -17,9 +17,10 @@ type RolesService interface {
 }
 
 type Member struct {
-	ID    uuid.UUID `json:"id"`
-	Email string    `json:"email"`
-	Role  string    `json:"role"`
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	DisplayName string    `json:"display_name"`
+	Role        string    `json:"role"`
 }
 
 func (s *Service) RequireAdmin(ctx context.Context, formID string, actor uuid.UUID) error {
@@ -106,7 +107,12 @@ func (s *Service) ListMembers(ctx context.Context, formID string) ([]Member, err
 	}
 	out := make([]Member, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, Member{ID: r.ID.Bytes, Email: r.Email, Role: r.Role})
+		out = append(out, Member{
+			ID:          r.ID.Bytes,
+			Email:       r.Email,
+			DisplayName: r.DisplayName,
+			Role:        r.Role,
+		})
 	}
 	return out, nil
 }

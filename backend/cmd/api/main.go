@@ -127,6 +127,12 @@ func main() {
 	authz.POST("/forms/:form_id/members", fh.PostV1FormsFormIdMembers)
 	authz.PATCH("/forms/:form_id/members", fh.PatchV1FormsFormIdMembers)
 	authz.DELETE("/forms/:form_id/members", fh.DeleteV1FormsFormIdMembers)
+	authz.GET("/forms/:form_id/questions", func(c *gin.Context) {
+		fh.GetV1FormsFormIdQuestions(c, c.Param("form_id"))
+	})
+	authz.PATCH("/forms/:form_id/title-question", func(c *gin.Context) {
+		fh.PatchV1FormsFormIdTitleQuestion(c, c.Param("form_id"))
+	})
 
 	authz.GET("/responses", fh.GetV1Responses)
 

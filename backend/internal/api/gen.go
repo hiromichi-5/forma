@@ -42,11 +42,18 @@ const (
 	Editor MemberRole = "editor"
 )
 
-// Defines values for TicketStatus.
+// Defines values for TicketDetailStatus.
 const (
-	TicketStatusDone       TicketStatus = "done"
-	TicketStatusInProgress TicketStatus = "in_progress"
-	TicketStatusNew        TicketStatus = "new"
+	TicketDetailStatusDone       TicketDetailStatus = "done"
+	TicketDetailStatusInProgress TicketDetailStatus = "in_progress"
+	TicketDetailStatusNew        TicketDetailStatus = "new"
+)
+
+// Defines values for TicketSummaryStatus.
+const (
+	TicketSummaryStatusDone       TicketSummaryStatus = "done"
+	TicketSummaryStatusInProgress TicketSummaryStatus = "in_progress"
+	TicketSummaryStatusNew        TicketSummaryStatus = "new"
 )
 
 // Defines values for UpdateTicketRequestStatus.
@@ -58,9 +65,9 @@ const (
 
 // Defines values for GetV1TicketsParamsStatus.
 const (
-	Done       GetV1TicketsParamsStatus = "done"
-	InProgress GetV1TicketsParamsStatus = "in_progress"
-	New        GetV1TicketsParamsStatus = "new"
+	GetV1TicketsParamsStatusDone       GetV1TicketsParamsStatus = "done"
+	GetV1TicketsParamsStatusInProgress GetV1TicketsParamsStatus = "in_progress"
+	GetV1TicketsParamsStatusNew        GetV1TicketsParamsStatus = "new"
 )
 
 // AddMemberRequest defines model for AddMemberRequest.
@@ -88,10 +95,24 @@ type Error struct {
 	Message *string                 `json:"message"`
 }
 
+// FormQuestion defines model for FormQuestion.
+type FormQuestion struct {
+	FormId       string    `json:"form_id"`
+	Options      *[]string `json:"options"`
+	QuestionId   string    `json:"question_id"`
+	QuestionType string    `json:"question_type"`
+	Title        string    `json:"title"`
+}
+
 // FormSummary defines model for FormSummary.
 type FormSummary struct {
 	FormId string `json:"form_id"`
 	Title  string `json:"title"`
+}
+
+// ListFormQuestionsResponse defines model for ListFormQuestionsResponse.
+type ListFormQuestionsResponse struct {
+	Questions []FormQuestion `json:"questions"`
 }
 
 // ListFormsResponse defines model for ListFormsResponse.
@@ -111,7 +132,7 @@ type ListResponsesResponse struct {
 
 // ListTicketsResponse defines model for ListTicketsResponse.
 type ListTicketsResponse struct {
-	Tickets []Ticket `json:"tickets"`
+	Tickets []TicketSummary `json:"tickets"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -182,24 +203,68 @@ type SyncResponse struct {
 	Synced int `json:"synced"`
 }
 
-// Ticket defines model for Ticket.
-type Ticket struct {
-	AssigneeId *openapi_types.UUID `json:"assignee_id"`
-	CreatedAt  time.Time           `json:"created_at"`
-	FormId     string              `json:"form_id"`
-	Id         openapi_types.UUID  `json:"id"`
-	Priority   int                 `json:"priority"`
-	ResponseId string              `json:"response_id"`
-	Status     TicketStatus        `json:"status"`
-	UpdatedAt  time.Time           `json:"updated_at"`
+// TicketAnswer defines model for TicketAnswer.
+type TicketAnswer struct {
+	DisplayValue  string   `json:"display_value"`
+	QuestionId    string   `json:"question_id"`
+	QuestionTitle string   `json:"question_title"`
+	QuestionType  string   `json:"question_type"`
+	Values        []string `json:"values"`
 }
 
-// TicketStatus defines model for Ticket.Status.
-type TicketStatus string
+// TicketAssignee defines model for TicketAssignee.
+type TicketAssignee struct {
+	DisplayName string              `json:"display_name"`
+	Email       openapi_types.Email `json:"email"`
+	Id          openapi_types.UUID  `json:"id"`
+}
+
+// TicketDetail defines model for TicketDetail.
+type TicketDetail struct {
+	Answers         []TicketAnswer     `json:"answers"`
+	Assignee        *TicketAssignee    `json:"assignee"`
+	FormId          string             `json:"form_id"`
+	FormTitle       string             `json:"form_title"`
+	Id              openapi_types.UUID `json:"id"`
+	Priority        int                `json:"priority"`
+	ResponseId      string             `json:"response_id"`
+	Status          TicketDetailStatus `json:"status"`
+	SubmittedAt     time.Time          `json:"submitted_at"`
+	Title           string             `json:"title"`
+	TitleQuestionId *string            `json:"title_question_id"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+}
+
+// TicketDetailStatus defines model for TicketDetail.Status.
+type TicketDetailStatus string
+
+// TicketSummary defines model for TicketSummary.
+type TicketSummary struct {
+	Assignee        *TicketAssignee     `json:"assignee"`
+	FormId          string              `json:"form_id"`
+	FormTitle       string              `json:"form_title"`
+	Id              openapi_types.UUID  `json:"id"`
+	Priority        int                 `json:"priority"`
+	ResponseId      string              `json:"response_id"`
+	Status          TicketSummaryStatus `json:"status"`
+	SubmittedAt     time.Time           `json:"submitted_at"`
+	Title           string              `json:"title"`
+	TitleQuestionId *string             `json:"title_question_id"`
+	UpdatedAt       time.Time           `json:"updated_at"`
+}
+
+// TicketSummaryStatus defines model for TicketSummary.Status.
+type TicketSummaryStatus string
+
+// UpdateFormTitleQuestionRequest defines model for UpdateFormTitleQuestionRequest.
+type UpdateFormTitleQuestionRequest struct {
+	TitleQuestionId *string `json:"title_question_id"`
+}
 
 // UpdateTicketRequest defines model for UpdateTicketRequest.
 type UpdateTicketRequest struct {
 	AssigneeId *openapi_types.UUID        `json:"assignee_id"`
+	Priority   *int                       `json:"priority,omitempty"`
 	Status     *UpdateTicketRequestStatus `json:"status,omitempty"`
 }
 
@@ -259,6 +324,9 @@ type PatchV1FormsFormIdMembersJSONRequestBody = ChangeMemberRoleRequest
 // PostV1FormsFormIdMembersJSONRequestBody defines body for PostV1FormsFormIdMembers for application/json ContentType.
 type PostV1FormsFormIdMembersJSONRequestBody = AddMemberRequest
 
+// PatchV1FormsFormIdTitleQuestionJSONRequestBody defines body for PatchV1FormsFormIdTitleQuestion for application/json ContentType.
+type PatchV1FormsFormIdTitleQuestionJSONRequestBody = UpdateFormTitleQuestionRequest
+
 // PutV1MeJSONRequestBody defines body for PutV1Me for application/json ContentType.
 type PutV1MeJSONRequestBody = UpdateUserProfileRequest
 
@@ -297,9 +365,15 @@ type ServerInterface interface {
 	// メンバー追加（admin専用）
 	// (POST /v1/forms/{form_id}/members)
 	PostV1FormsFormIdMembers(c *gin.Context, formId string)
+	// フォームの質問一覧取得（admin/editor）
+	// (GET /v1/forms/{form_id}/questions)
+	GetV1FormsFormIdQuestions(c *gin.Context, formId string)
 	// フォーム回答の手動同期（admin/editor）
 	// (POST /v1/forms/{form_id}/sync)
 	PostV1FormsFormIdSync(c *gin.Context, formId string)
+	// タイトル用質問の更新（admin）
+	// (PATCH /v1/forms/{form_id}/title-question)
+	PatchV1FormsFormIdTitleQuestion(c *gin.Context, formId string)
 	// アカウント削除
 	// (DELETE /v1/me)
 	DeleteV1Me(c *gin.Context)
@@ -552,6 +626,32 @@ func (siw *ServerInterfaceWrapper) PostV1FormsFormIdMembers(c *gin.Context) {
 	siw.Handler.PostV1FormsFormIdMembers(c, formId)
 }
 
+// GetV1FormsFormIdQuestions operation middleware
+func (siw *ServerInterfaceWrapper) GetV1FormsFormIdQuestions(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "form_id" -------------
+	var formId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetV1FormsFormIdQuestions(c, formId)
+}
+
 // PostV1FormsFormIdSync operation middleware
 func (siw *ServerInterfaceWrapper) PostV1FormsFormIdSync(c *gin.Context) {
 
@@ -576,6 +676,32 @@ func (siw *ServerInterfaceWrapper) PostV1FormsFormIdSync(c *gin.Context) {
 	}
 
 	siw.Handler.PostV1FormsFormIdSync(c, formId)
+}
+
+// PatchV1FormsFormIdTitleQuestion operation middleware
+func (siw *ServerInterfaceWrapper) PatchV1FormsFormIdTitleQuestion(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "form_id" -------------
+	var formId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PatchV1FormsFormIdTitleQuestion(c, formId)
 }
 
 // DeleteV1Me operation middleware
@@ -799,7 +925,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/v1/forms/:form_id/members", wrapper.GetV1FormsFormIdMembers)
 	router.PATCH(options.BaseURL+"/v1/forms/:form_id/members", wrapper.PatchV1FormsFormIdMembers)
 	router.POST(options.BaseURL+"/v1/forms/:form_id/members", wrapper.PostV1FormsFormIdMembers)
+	router.GET(options.BaseURL+"/v1/forms/:form_id/questions", wrapper.GetV1FormsFormIdQuestions)
 	router.POST(options.BaseURL+"/v1/forms/:form_id/sync", wrapper.PostV1FormsFormIdSync)
+	router.PATCH(options.BaseURL+"/v1/forms/:form_id/title-question", wrapper.PatchV1FormsFormIdTitleQuestion)
 	router.DELETE(options.BaseURL+"/v1/me", wrapper.DeleteV1Me)
 	router.GET(options.BaseURL+"/v1/me", wrapper.GetV1Me)
 	router.PUT(options.BaseURL+"/v1/me", wrapper.PutV1Me)
@@ -813,45 +941,50 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"GwAA//+MtwpCoEcAAA==",
+	"H4sIAAAAAAAC/+wc3XMTx/1f0Vz7ADMKsmMyQ/RGIbSekoby1QfG41nr1tKGu91jdw9QGM8gaSYxiVuY",
+	"DoYSmJJQQiAeHLfQTgkG/pizZPPEv9DZ3Tvpvu9kW0au9QKybvf3/X27uqJViGkRDDFnWvmKxio1aAL5",
+	"8bCufwrNGUhPwgs2ZFx8Z1FiQcoRlCugCZAhPswSagKuld1vihqvW1Ara4xThKvaXFGjxIByC7ZNrXxO",
+	"A7qJsFbUoI44odpUZIvYAy/YiEJdrPcASzi91WTmc1jhAsGRGsBV6BJMDJhIdN+UFDWbQTqN9ACnto10",
+	"LYtqb2MK3Z9QSmiUygrRJZURWnTIATLkGqDriCOCgXHCt5dTGxY1bBsGmBGcqr8jeE3IGKhKHAlrE3iS",
+	"lMVxcoxQ849C5ojgKENCcK4MIzwRS+yRyxCHJotdlEAloBTUxfMLLuokJN3n6knMCo64EfckJACPkyBK",
+	"b3sYUZKkTtmmCWi9P0H1TaHaEEfDccS4X2PsJGQWwQxGKfIYCiro1xTOamXtV6VeACm50aMUMIW5sK5C",
+	"1PbAp9GZQp9gtz/aPOFnkaYgJ5Glgk0KYaZakJs0BTCTKg9sEl0eQSmUUW9Jbtq6sLKo64FOou80qpyH",
+	"PIU6rhbkpk0BzKtUD3oseaSK8HbkOwswdolQPdtZPRDdHSl0JQqMnIc4G5VaFgfftbytcJwrP269EJBQ",
+	"M6uBk7CKGIdUOHuiOi1iGAhXpxmsiD91OAtsg2vlibEuRIQ5rCqXtKmhVrEKRZZKctpvCakasCADVMFp",
+	"LJ85edxpvHYa953Gz05r0Wk+cVqrTuu7yaPZtQI1crCSFgPjs0ZCbohHlQS+QiHgUJ8GPKBkHXD4AUcm",
+	"jNN0WiKzQN0gQM+qYiIUesElCa6KCNMXIWVuFRJVJLNnTMT74yYhxqkk20u3AdA9LiN0Ff0CjdPEKVTF",
+	"tpVouTpilgHq0xiY8aXMJiOVifBxiKu8ppUPFfuNW8UgWWlsDSyOnarjSjJ4AyhhBn24c+9q+/WC01hq",
+	"31jo3LvvNBad5oLTuN+++/f1pzedxvLbq421N9937jTb8y/frc6fPHZkYmLi4/arB+3V6+9Wr3Udfv3J",
+	"L51bX7Wf3m7P346TNIaXTvcyW4iIWysbj66vvbrXmb/RpcBpNZzmP51Wy2nNdxZXtLiwxOq4AvUowFhm",
+	"4oGEpOtCDNAbJ2v17DBml+Iyh2cLF4Fhw/SCPLNgT6h689T0En1GZ5GrOg1V/PHFfhdfMcR/ivwYQ1UM",
+	"4WCdfDPNK4q4tIcymZujsjuVYd0wPpvVyuf6q9zCMgDSuvqtBF2bzFKtBzzKzlSXocQ2Dfj01g+vXX3P",
+	"TYV72oycKZ8l+0LO+suiiFDEJUcmuIxMUYZ9VBShX30ej4symXmXA24zf12H4SWtqCE8bVFSpZBJnyAY",
+	"xg5YNpOSk7th98l0KMBkjDmKmm3pYEtlQaga8CmsGCoZXHn51NGbH4SKCB9VcX53Rj4WxeFpsd/ruhNL",
+	"h82IZi4Rr7LpRGSekyQMzzI1sjlj3ZIxJvN6hkF6gpJZlDJczIjZIXvJrJd8KIc0P3gQM1gRWoEVW+jy",
+	"lAiHioMZCCikh21Rb7qjZ7FJfd3DX+Pc0uYEDIRnSbTUOXxisqCTim1CzIH4rjBLaIHXVF8GCodPTHbd",
+	"q6z5v+v2CdrYgbEDH6pZJMTAQlpZmzgwdmBCFri8Jskt1SAweO0L8bkKpfaFPiTKSV10g5D/zl1SDI5Y",
+	"PhwbU1NdzCGWOzm8zEuWARDujd2lyV4GpiUJJedjVCAnwH7mP/t9QLpa+dyUCCFu1tKc1t+c1pLTfCFr",
+	"yR9FLdn8We4oXRwvAZvXSgapKiIswmKYOkEYPzsulCSHEJoyAsj4b4heDzEFLMtAFbm39DkjIdbSkmNg",
+	"8DIXNDU3N2YIdMu4vflWvIyL2sFtRKmm/jGozgID6cqIoVojEI8PHvEkvihQFyoU6hBzBAwmcH+0E0xP",
+	"Yg4pBkaBQXoRUo/zVLN+6jRXnOZDp/UsaM1Mtph5zFk1owOy52ADv8MGHWqzh9GiPx484k9EaioAg0Kg",
+	"1wvwMmJ8qE26+W9lz07zgWz5b3cNu/uCIynrnB2XE0htkEEy8h4mxax2IF6dwcLdCUVfQH0YtOoLTb2x",
+	"79p/r248+lFWsinBqKe77Y9DcYPwXNFofEAkJBvPETUS/f9PtWHTPTg2MXikxwidQboOscJ4cEcwmqyA",
+	"CS/MEhsPr5Ou33n5duFfwWBbuuK28XNu0Z8j+op/JnXVAMi2gQITcjm9OndFEyW2bCVE3ys7Nt+kIOiM",
+	"RZ8EwvX/1BZD/Hs4azBUaWLkazvua52//LD+n287D+9tPF5N9DLfUQkdGpDDqKcdld8HnM09gTEwbyu6",
+	"kC7YkNZ7oHzHuhJBZc1Soo58MDrZ+AMpHHH1976yYmGfiRhDuFpwud6/R3y3sE8eTShQYsCCp+f9Q5bF",
+	"vhf9QuuG01ptX/v67Z2H71bnJdXtleb6zcfvVq8JenPlrUG70tSAe5PwYay9nHZ2memqLql9/Vb79e1Y",
+	"A7YAr9Riuifx9c4b8fY3aUlnl/OPjfbevHLkYX14mNN6Kv9daj+81rn7PN7JsiYUu9rFIpcZ8g9BRlOK",
+	"oXKwHemnzjBIh3Z00fPrjTev2l9/F+POCV1W4CR/rrKwez1g1xaG8ZccRuUhLqkj18Odw3pjOqexvPHs",
+	"p/bi9bhy0eUlzfZZHVeyXgv6DP+UWL4bbT5wBDZG7upgaHt5Ye2XL0cGP8QG3z1/3Ln2TfubRaW3Pgxe",
+	"zmM/uOC/kZe3jwocJdttpV7GibhchV/MLE6BHRV+o87Kab6Rb+rnndbS+s3HKisJP737vHNrxfNQv2uq",
+	"A3pZg+1PobaZofCeftnefOA0l5zmI1kSz6shaPrMM07K28eN/8TmsNWYe71vui3HIItO8x/uMESWkHL2",
+	"YceVhHbPWgaVpWLOFO/wWbGcBru3Et7IU4KeojJbN50FjDE50nbvoUcryCBRHqolkVlbP8kzcCvrNx87",
+	"jeXIJdq497G+C5hpr3JDN+4Wvmovf6tu9a29/OHtnT87jWW35m7+tdtehm/7JZDAEK5ALfYFcNr9kUEP",
+	"P6I/BTBcPl7Yh9xzx1KABSW0/aO+dMhKXuUXOScvvp9vSA4O3s3SYQwNaUibL5zWlwKpaAJeJEUD73qX",
+	"717HJq4iDTo6hH+IYzQU3R0zot6t8P48snRFfZhG+lwu71T/Teq5RkBd2Nt8Lmr7xB64ozysibArxlEy",
+	"fA8v/pSJ+AvzRN/bePJs/flKsu9lnVt5zz42qJY2eCV4h7vZIfbwkRsPcR4Njm5jMuilGgEmSk+af1Jr",
+	"tvWEvu+nJ/P91GTe8/cBUbibRQPszsRCN9WCd7XPTYkQokSrQpX8cSx5UbtcKhmkAowaYbx8aOzQmDY3",
+	"Nfe/AAAA//+PC+UuZlQAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
