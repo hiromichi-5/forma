@@ -21,11 +21,11 @@ var (
 var reFormID = regexp.MustCompile(`/forms/d/e/([a-zA-Z0-9_-]+)/`)
 
 type FormQuestion struct {
-	FormID       string
-	QuestionID   string
-	Title        string
-	QuestionType string
-	Options      []string
+	FormID       string   `json:"form_id"`
+	QuestionID   string   `json:"question_id"`
+	Title        string   `json:"title"`
+	QuestionType string   `json:"question_type"`
+	Options      []string `json:"options,omitempty"`
 }
 
 func extractFormID(u string) (string, error) {
