@@ -95,3 +95,61 @@ func (h *FormsHandler) GetV1FormsFormIdHealth(c *gin.Context, formID string) {
 	}
 	c.JSON(200, res)
 }
+
+func (h *FormsHandler) GetV1FormsFormIdQuestions(c *gin.Context, formID string) {
+	uidStr, _ := auth.UserID(c)
+	uid, _ := uuid.Parse(uidStr)
+	if uid == uuid.Nil {
+		c.JSON(401, gin.H{"code": "UNAUTHORIZED"})
+		return
+	}
+
+	questions, err := h.S.ListFormQuestions(c, formID, uid)
+	if err != nil {
+		if err == service.ErrForbidden {
+			c.JSON(403, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
+		} else {
+			c.JSON(500, gin.H{"code": "INTERNAL"})
+		}
+		return
+	}
+	c.JSON(200, gin.H{"questions": questions})
+}
+
+type updateTitleQuestionReq struct {
+	TitleQuestionID *string `json:"title_question_id"`
+}
+
+func (h *FormsHandler) PatchV1FormsFormIdTitleQuestion(c *gin.Context, formID string) {
+	uidStr, _ := auth.UserID(c)
+	uid, _ := uuid.Parse(uidStr)
+	if uid == uuid.Nil {
+		c.JSON(401, gin.H{"code": "UNAUTHORIZED"})
+		return
+	}
+
+	var req updateTitleQuestionReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
+		return
+	}
+
+	var questionID *string
+	if req.TitleQuestionID != nil && *req.TitleQuestionID != "" {
+		questionID = req.TitleQuestionID
+	}
+
+	if err := h.S.SetFormTitleQuestion(c, formID, questionID, uid); err != nil {
+		switch err {
+		case service.ErrForbidden:
+			c.JSON(403, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
+		case service.ErrValidation:
+			c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
+		default:
+			c.JSON(500, gin.H{"code": "INTERNAL"})
+		}
+		return
+	}
+
+	c.Status(204)
+}

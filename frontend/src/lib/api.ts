@@ -11,12 +11,14 @@ import type {
   ChangeMemberRoleRequest,
   SyncResponse,
   ListResponsesResponse,
-  Ticket,
   ListTicketsResponse,
+  ListFormQuestionsResponse,
+  TicketDetail,
   UpdateTicketRequest,
   UserProfile,
   UpdateUserProfileRequest,
   ErrorResponse,
+  TicketStatus,
 } from "../types";
 
 export class ApiError extends Error {
@@ -217,9 +219,25 @@ class ApiClient {
     return this.request<ListResponsesResponse>(endpoint);
   }
 
+  async getFormQuestions(formId: string): Promise<ListFormQuestionsResponse> {
+    return this.request<ListFormQuestionsResponse>(
+      `/v1/forms/${formId}/questions`
+    );
+  }
+
+  async updateFormTitleQuestion(
+    formId: string,
+    questionId: string | null
+  ): Promise<void> {
+    await this.request<void>(`/v1/forms/${formId}/title-question`, {
+      method: "PATCH",
+      body: JSON.stringify({ title_question_id: questionId }),
+    });
+  }
+
   async getTickets(
     formId?: string,
-    status?: string
+    status?: TicketStatus
   ): Promise<ListTicketsResponse> {
     const params = new URLSearchParams();
     if (formId) params.append("form_id", formId);
@@ -231,15 +249,15 @@ class ApiClient {
     return this.request<ListTicketsResponse>(endpoint);
   }
 
-  async getTicket(ticketId: string): Promise<Ticket> {
-    return this.request<Ticket>(`/v1/tickets/${ticketId}`);
+  async getTicket(ticketId: string): Promise<TicketDetail> {
+    return this.request<TicketDetail>(`/v1/tickets/${ticketId}`);
   }
 
   async updateTicket(
     ticketId: string,
     request: UpdateTicketRequest
-  ): Promise<Ticket> {
-    return this.request<Ticket>(`/v1/tickets/${ticketId}`, {
+  ): Promise<TicketDetail> {
+    return this.request<TicketDetail>(`/v1/tickets/${ticketId}`, {
       method: "PATCH",
       body: JSON.stringify(request),
     });

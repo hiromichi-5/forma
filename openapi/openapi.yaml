@@ -165,6 +165,29 @@ components:
           type: array
           items: { type: string }
         display_value: { type: string }
+    FormQuestion:
+      type: object
+      required: [form_id, question_id, title, question_type]
+      properties:
+        form_id: { type: string }
+        question_id: { type: string }
+        title: { type: string }
+        question_type: { type: string }
+        options:
+          type: array
+          items: { type: string }
+          nullable: true
+    ListFormQuestionsResponse:
+      type: object
+      required: [questions]
+      properties:
+        questions:
+          type: array
+          items: { $ref: "#/components/schemas/FormQuestion" }
+    UpdateFormTitleQuestionRequest:
+      type: object
+      properties:
+        title_question_id: { type: string, nullable: true }
     TicketDetail:
       allOf:
         - $ref: "#/components/schemas/TicketSummary"
@@ -587,6 +610,73 @@ paths:
           description: No Content
         "400":
           description: Validation error (missing user_id)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden (admin role required)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{form_id}/questions:
+    get:
+      summary: フォームの質問一覧取得（admin/editor）
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListFormQuestionsResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden (admin/editor role required)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{form_id}/title-question:
+    patch:
+      summary: タイトル用質問の更新（admin）
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateFormTitleQuestionRequest" }
+      responses:
+        "204":
+          description: Updated
+        "400":
+          description: Validation error
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
