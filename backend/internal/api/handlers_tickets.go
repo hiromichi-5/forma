@@ -1,6 +1,9 @@
 package api
 
 import (
+	"bytes"
+	"encoding/json"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
@@ -54,10 +57,43 @@ func (h *FormsHandler) GetV1TicketsTicketId(c *gin.Context, ticketID string) {
 }
 
 type patchTicketReq struct {
-	Status     *string    `json:"status" binding:"omitempty,oneof=new in_progress done"`
-	AssigneeID *uuid.UUID `json:"assignee_id"`
-	Priority   *int32     `json:"priority" binding:"omitempty,min=1,max=5"`
+	Status   *string             `json:"status" binding:"omitempty,oneof=new in_progress done"`
+	Assignee nullableUUIDPayload `json:"assignee_id"`
+	Priority *int32              `json:"priority" binding:"omitempty,min=1,max=5"`
 }
+
+type nullableUUIDPayload struct {
+	set   bool
+	null  bool
+	value uuid.UUID
+}
+
+func (n *nullableUUIDPayload) UnmarshalJSON(data []byte) error {
+	n.set = true
+	trimmed := bytes.TrimSpace(data)
+	if bytes.Equal(trimmed, []byte("null")) {
+		n.null = true
+		n.value = uuid.UUID{}
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(trimmed, &s); err != nil {
+		return err
+	}
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return err
+	}
+	n.null = false
+	n.value = id
+	return nil
+}
+
+func (n nullableUUIDPayload) Provided() bool { return n.set }
+
+func (n nullableUUIDPayload) IsNull() bool { return n.set && n.null }
+
+func (n nullableUUIDPayload) UUID() uuid.UUID { return n.value }
 
 func (h *FormsHandler) PatchV1TicketsTicketId(c *gin.Context, ticketID string) {
 	uidStr, _ := auth.UserID(c)
@@ -72,7 +108,18 @@ func (h *FormsHandler) PatchV1TicketsTicketId(c *gin.Context, ticketID string) {
 		c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 		return
 	}
-	t, err := h.S.UpdateTicket(c, ticketID, req.Status, req.AssigneeID, req.Priority, uid)
+	var assigneeID *uuid.UUID
+	clearAssignee := false
+	if req.Assignee.Provided() {
+		if req.Assignee.IsNull() {
+			clearAssignee = true
+		} else {
+			id := req.Assignee.UUID()
+			assigneeID = &id
+		}
+	}
+
+	t, err := h.S.UpdateTicket(c, ticketID, req.Status, assigneeID, clearAssignee, req.Priority, uid)
 	if err != nil {
 		if err == service.ErrValidation {
 			c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})

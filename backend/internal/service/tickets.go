@@ -70,7 +70,7 @@ func (s *Service) GetTicket(ctx context.Context, id string, actor uuid.UUID) (Ti
 	return buildTicketDetail(row, answers, *set), nil
 }
 
-func (s *Service) UpdateTicket(ctx context.Context, id string, status *string, assignee *uuid.UUID, priority *int32, actor uuid.UUID) (TicketDetail, error) {
+func (s *Service) UpdateTicket(ctx context.Context, id string, status *string, assignee *uuid.UUID, clearAssignee bool, priority *int32, actor uuid.UUID) (TicketDetail, error) {
 	if err := s.RequireFormAccessForTicket(ctx, id, actor); err != nil {
 		return TicketDetail{}, err
 	}
@@ -88,6 +88,10 @@ func (s *Service) UpdateTicket(ctx context.Context, id string, status *string, a
 		return TicketDetail{}, err
 	}
 
+	if clearAssignee && assignee != nil {
+		return TicketDetail{}, ErrValidation
+	}
+
 	if assignee != nil {
 		if err := s.validateAssignee(ctx, currentRow.FormID, *assignee); err != nil {
 			return TicketDetail{}, err
@@ -100,6 +104,7 @@ func (s *Service) UpdateTicket(ctx context.Context, id string, status *string, a
 		AssigneeID: pgtype.UUID{},
 		Priority:   pgtype.Int4{},
 	}
+	params.ClearAssignee = clearAssignee
 
 	if status != nil {
 		st := strings.TrimSpace(*status)
