@@ -9,6 +9,9 @@ import type {
   ListMembersResponse,
   AddMemberRequest,
   ChangeMemberRoleRequest,
+  ListFormInvitesResponse,
+  AcceptInviteRequest,
+  IssueInviteResponse,
   SyncResponse,
   ListResponsesResponse,
   ListTicketsResponse,
@@ -196,6 +199,31 @@ class ApiClient {
   async removeMember(formId: string, userId: string): Promise<void> {
     return this.request<void>(`/v1/forms/${formId}/members?user_id=${userId}`, {
       method: "DELETE",
+    });
+  }
+
+  async listInvites(formId: string): Promise<ListFormInvitesResponse> {
+    return this.request<ListFormInvitesResponse>(
+      `/v1/forms/${formId}/invites`
+    );
+  }
+
+  async createInvite(formId: string): Promise<IssueInviteResponse> {
+    return this.request<IssueInviteResponse>(`/v1/forms/${formId}/invites`, {
+      method: "POST",
+    });
+  }
+
+  async revokeInvite(formId: string, code: string): Promise<void> {
+    return this.request<void>(`/v1/forms/${formId}/invites/${code}`, {
+      method: "DELETE",
+    });
+  }
+
+  async acceptInvite(request: AcceptInviteRequest): Promise<void> {
+    return this.request<void>(`/v1/invites/accept`, {
+      method: "POST",
+      body: JSON.stringify(request),
     });
   }
 

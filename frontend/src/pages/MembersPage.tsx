@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -12,6 +12,10 @@ import {
   UserCheck,
   FileSpreadsheet,
   ArrowLeft,
+  Clipboard,
+  ClipboardCheck,
+  Trash2,
+  Clock,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import {
@@ -30,7 +34,7 @@ import {
   SelectValue,
 } from "../components/ui/Select";
 import { apiClient, ApiError } from "../lib/api";
-import type { Member, FormSummary } from "../types";
+import type { Member, FormSummary, FormInvite } from "../types";
 
 export default function MembersPage() {
   const { form_id } = useParams<{ form_id: string }>();
@@ -41,6 +45,30 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [invites, setInvites] = useState<FormInvite[]>([]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [issuing, setIssuing] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+
+  const fetchInvites = useCallback(
+    async (formId: string) => {
+      try {
+        setInviteLoading(true);
+        setInviteError(null);
+        const data = await apiClient.listInvites(formId);
+        setInvites(data.invites);
+      } catch (err) {
+        console.error("Failed to fetch invites:", err);
+        setInviteError(
+          err instanceof ApiError ? err.message : "招待の取得に失敗しました"
+        );
+      } finally {
+        setInviteLoading(false);
+      }
+    }, []
+  );
 
   useEffect(() => {
     fetchForms();
@@ -54,9 +82,12 @@ export default function MembersPage() {
 
   useEffect(() => {
     if (selectedFormId) {
+      setInfoMessage(null);
+      setInvites([]);
       fetchMembers(selectedFormId);
+      fetchInvites(selectedFormId);
     }
-  }, [selectedFormId]);
+  }, [selectedFormId, fetchInvites]);
 
   const fetchForms = async () => {
     try {
@@ -128,6 +159,57 @@ export default function MembersPage() {
     }
   };
 
+  const copyToClipboard = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => {
+        setCopiedCode((prev) => (prev === code ? null : prev));
+      }, 2000);
+    } catch (err) {
+      console.error("Clipboard copy failed:", err);
+      setInviteError("クリップボードへのコピーに失敗しました");
+    }
+  };
+
+  const handleIssueInvite = async () => {
+    if (!selectedFormId) return;
+    try {
+      setIssuing(true);
+      setInviteError(null);
+      const invite = await apiClient.createInvite(selectedFormId);
+      await fetchInvites(selectedFormId);
+      setInfoMessage("新しい招待コードを発行しました。コピーして共有してください。");
+      await copyToClipboard(invite.code);
+    } catch (err) {
+      console.error("Failed to issue invite:", err);
+      setInviteError(
+        err instanceof ApiError ? err.message : "招待コードの発行に失敗しました"
+      );
+    } finally {
+      setIssuing(false);
+    }
+  };
+
+  const handleCopy = async (code: string) => {
+    setInviteError(null);
+    await copyToClipboard(code);
+  };
+
+  const handleRevoke = async (code: string) => {
+    if (!selectedFormId) return;
+    try {
+      setInviteError(null);
+      await apiClient.revokeInvite(selectedFormId, code);
+      setInvites((prev) => prev.filter((inv) => inv.code !== code));
+    } catch (err) {
+      console.error("Failed to revoke invite:", err);
+      setInviteError(
+        err instanceof ApiError ? err.message : "招待コードの失効に失敗しました"
+      );
+    }
+  };
+
   if (loading && forms.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -161,9 +243,13 @@ export default function MembersPage() {
           </div>
         </div>
         {selectedFormId && (
-          <Button className="flex items-center gap-2">
+          <Button
+            className="flex items-center gap-2"
+            onClick={handleIssueInvite}
+            disabled={issuing}
+          >
             <Plus className="h-4 w-4" />
-            メンバーを招待
+            {issuing ? "発行中..." : "招待コードを発行"}
           </Button>
         )}
       </div>
@@ -216,7 +302,98 @@ export default function MembersPage() {
           </div>
         </div>
       )}
-      {selectedFormId && members.length > 0 && (
+
+      {inviteError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-red-800">
+            <RefreshCw className="h-5 w-5" />
+            {inviteError}
+          </div>
+        </div>
+      )}
+
+      {infoMessage && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4">
+          {infoMessage}
+        </div>
+      )}
+
+      {selectedFormId && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">招待コード</h2>
+            {inviteLoading && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                読み込み中...
+              </div>
+            )}
+          </div>
+
+          {invites.length === 0 && !inviteLoading ? (
+            <div className="rounded-md border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+              招待コードがありません。上の「招待コードを発行」ボタンから新しいコードを作成してください。
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {invites.map((invite, index) => (
+                <motion.div
+                  key={invite.code}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <Card className="h-full border-blue-100">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between text-base">
+                        <span className="font-mono text-sm">{invite.code}</span>
+                        <Badge variant="outline" className="flex items-center gap-1 text-blue-700 border-blue-200">
+                          <Clock className="h-3 w-3" />
+                          期限 {formatRelativeTime(invite.expires_at)}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <div className="flex justify-between text-gray-500">
+                        <span>発行日</span>
+                        <span>{formatDate(invite.created_at)}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-500">
+                        <span>ロール</span>
+                        <span className="font-medium text-gray-700">編集者</span>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="secondary"
+                          className="flex-1 flex items-center gap-2"
+                          onClick={() => handleCopy(invite.code)}
+                        >
+                          {copiedCode === invite.code ? (
+                            <ClipboardCheck className="h-4 w-4" />
+                          ) : (
+                            <Clipboard className="h-4 w-4" />
+                          )}
+                          コピー
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="text-red-600 hover:bg-red-50"
+                          onClick={() => handleRevoke(invite.code)}
+                          aria-label={`${invite.code} を失効させる`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+     {selectedFormId && members.length > 0 && (
         <div className="rounded-lg p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
             <div>
@@ -308,9 +485,9 @@ export default function MembersPage() {
           </p>
           {!searchQuery && (
             <div className="mt-6">
-              <Button className="flex items-center gap-2">
+              <Button className="flex items-center gap-2" onClick={handleIssueInvite}>
                 <Plus className="h-4 w-4" />
-                メンバーを招待
+                招待コードを発行
               </Button>
             </div>
           )}
@@ -330,4 +507,38 @@ export default function MembersPage() {
       )}
     </div>
   );
+}
+
+function formatDate(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${d} ${hh}:${mm}`;
+}
+
+function formatRelativeTime(iso: string) {
+  const target = new Date(iso);
+  const diffMs = target.getTime() - Date.now();
+  if (Number.isNaN(diffMs)) {
+    return iso;
+  }
+  if (diffMs <= 0) {
+    return "期限切れ";
+  }
+  const minutes = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) {
+    return `${days}日${hours % 24}時間後`;
+  }
+  if (hours > 0) {
+    return `${hours}時間${minutes % 60}分後`;
+  }
+  return `${Math.max(minutes, 1)}分後`;
 }

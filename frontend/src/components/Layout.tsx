@@ -14,6 +14,7 @@ import {
   X,
   User,
   LogOut,
+  UserPlus,
 } from "lucide-react";
 
 interface NavItem {
@@ -110,6 +111,12 @@ function Sidebar() {
       href: "/members",
       icon: Users,
       current: location.pathname.startsWith("/members"),
+    },
+    {
+      label: "招待受理",
+      href: "/invites/accept",
+      icon: UserPlus,
+      current: location.pathname.startsWith("/invites/accept"),
     },
     {
       label: "設定",
