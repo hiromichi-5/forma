@@ -13,7 +13,6 @@ import (
 
 const inviteTTL = 7 * 24 * time.Hour
 
-// CreateInvite はフォーム管理者のみが招待コードを発行できる。
 func (s *Service) CreateInvite(ctx context.Context, formID string, actor uuid.UUID) (db.FormInvite, error) {
 	if err := s.RequireAdmin(ctx, formID, actor); err != nil {
 		return db.FormInvite{}, err
@@ -40,7 +39,6 @@ func (s *Service) CreateInvite(ctx context.Context, formID string, actor uuid.UU
 	return invite, nil
 }
 
-// ListInvites は有効な招待コードのみを返す。
 func (s *Service) ListInvites(ctx context.Context, formID string, actor uuid.UUID) ([]db.FormInvite, error) {
 	if err := s.RequireAdmin(ctx, formID, actor); err != nil {
 		return nil, err
@@ -52,7 +50,6 @@ func (s *Service) ListInvites(ctx context.Context, formID string, actor uuid.UUI
 	})
 }
 
-// RevokeInvite は招待コードを失効させる。存在しない場合は ErrInviteNotFound。
 func (s *Service) RevokeInvite(ctx context.Context, formID, code string, actor uuid.UUID) (db.FormInvite, error) {
 	if err := s.RequireAdmin(ctx, formID, actor); err != nil {
 		return db.FormInvite{}, err
@@ -71,7 +68,6 @@ func (s *Service) RevokeInvite(ctx context.Context, formID, code string, actor u
 	return invite, nil
 }
 
-// AcceptInvite は招待コードを受理し、editor 権限で参加させる。
 func (s *Service) AcceptInvite(ctx context.Context, code string, actor uuid.UUID) error {
 	invite, err := s.Invites.GetFormInviteForUpdate(ctx, code)
 	if err != nil {
