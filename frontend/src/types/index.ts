@@ -58,6 +58,28 @@ export interface ChangeMemberRoleRequest {
   role: "admin" | "editor";
 }
 
+export interface FormInvite {
+  code: string;
+  form_id: string;
+  role: "editor";
+  expires_at: string;
+  created_by: string;
+  created_at: string;
+  revoked: boolean;
+}
+
+export interface ListFormInvitesResponse {
+  invites: FormInvite[];
+}
+
+export interface AcceptInviteRequest {
+  code: string;
+}
+
+export interface IssueInviteResponse {
+  code: string;
+}
+
 export interface SyncResponse {
   synced: number;
   newTickets: number;

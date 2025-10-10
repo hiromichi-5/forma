@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/db"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -24,22 +25,34 @@ type Member struct {
 }
 
 func (s *Service) RequireAdmin(ctx context.Context, formID string, actor uuid.UUID) error {
-	r, err := s.Q.GetUserFormRole(ctx, db.GetUserFormRoleParams{
+	r, err := s.Roles.GetUserFormRole(ctx, db.GetUserFormRoleParams{
 		UserID: pgtype.UUID{Bytes: actor, Valid: true},
 		FormID: formID,
 	})
-	if err != nil || r != "admin" {
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return ErrForbidden
+		}
+		return err
+	}
+	if r != "admin" {
 		return ErrForbidden
 	}
 	return nil
 }
 
 func (s *Service) RequireEditor(ctx context.Context, formID string, actor uuid.UUID) error {
-	r, err := s.Q.GetUserFormRole(ctx, db.GetUserFormRoleParams{
+	r, err := s.Roles.GetUserFormRole(ctx, db.GetUserFormRoleParams{
 		UserID: pgtype.UUID{Bytes: actor, Valid: true},
 		FormID: formID,
 	})
-	if err != nil || (r != "admin" && r != "editor") {
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return ErrForbidden
+		}
+		return err
+	}
+	if r != "admin" && r != "editor" {
 		return ErrForbidden
 	}
 	return nil
@@ -65,9 +78,12 @@ func (s *Service) AddMember(ctx context.Context, formID, email, role string) err
 	}
 	u, err := s.Q.GetUserByEmail(ctx, email)
 	if err != nil {
-		return ErrUserNotFound
+		if err == pgx.ErrNoRows {
+			return ErrUserNotFound
+		}
+		return err
 	}
-	return s.Q.UpsertUserFormRole(ctx, db.UpsertUserFormRoleParams{
+	return s.Roles.UpsertUserFormRole(ctx, db.UpsertUserFormRoleParams{
 		UserID: pgtype.UUID{Bytes: u.ID.Bytes, Valid: true},
 		FormID: formID,
 		Role:   role,
@@ -82,7 +98,7 @@ func (s *Service) ChangeRole(ctx context.Context, formID, userID, role string) e
 	if err != nil {
 		return ErrValidation
 	}
-	return s.Q.UpsertUserFormRole(ctx, db.UpsertUserFormRoleParams{
+	return s.Roles.UpsertUserFormRole(ctx, db.UpsertUserFormRoleParams{
 		UserID: pgtype.UUID{Bytes: uid, Valid: true},
 		FormID: formID,
 		Role:   role,
@@ -94,14 +110,14 @@ func (s *Service) RemoveMember(ctx context.Context, formID, userID string) error
 	if err != nil {
 		return ErrValidation
 	}
-	return s.Q.DeleteUserFormRole(ctx, db.DeleteUserFormRoleParams{
+	return s.Roles.DeleteUserFormRole(ctx, db.DeleteUserFormRoleParams{
 		UserID: pgtype.UUID{Bytes: uid, Valid: true},
 		FormID: formID,
 	})
 }
 
 func (s *Service) ListMembers(ctx context.Context, formID string) ([]Member, error) {
-	rows, err := s.Q.ListFormMembers(ctx, formID)
+	rows, err := s.Roles.ListFormMembers(ctx, formID)
 	if err != nil {
 		return nil, err
 	}

@@ -13,6 +13,7 @@ import { KanbanPage } from "./pages/KanbanPage";
 import FormsPage from "./pages/FormsPage";
 import MembersPage from "./pages/MembersPage";
 import SettingsPage from "./pages/SettingsPage";
+import InviteAcceptPage from "./pages/InviteAcceptPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoading, shouldRedirect } = useRequireAuth();
@@ -51,6 +52,7 @@ function AppRoutes() {
         <Route path="forms" element={<FormsPage />} />
         <Route path="members" element={<MembersPage />} />
         <Route path="members/:form_id" element={<MembersPage />} />
+        <Route path="invites/accept" element={<InviteAcceptPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

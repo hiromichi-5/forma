@@ -19,6 +19,16 @@ type Form struct {
 	TitleQuestionID pgtype.Text        `json:"title_question_id"`
 }
 
+type FormInvite struct {
+	Code      string             `json:"code"`
+	FormID    string             `json:"form_id"`
+	Role      string             `json:"role"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	CreatedBy pgtype.UUID        `json:"created_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Revoked   bool               `json:"revoked"`
+}
+
 type FormQuestion struct {
 	FormID       string             `json:"form_id"`
 	QuestionID   string             `json:"question_id"`
