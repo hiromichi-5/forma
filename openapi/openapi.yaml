@@ -92,6 +92,24 @@ components:
       properties:
         user_id: { type: string, format: uuid }
         role: { type: string, enum: [admin, editor] }
+    FormInvite:
+      type: object
+      required: [code, form_id, role, expires_at, created_by, created_at, revoked]
+      properties:
+        code: { type: string }
+        form_id: { type: string }
+        role: { type: string, enum: [editor] }
+        expires_at: { type: string, format: date-time }
+        created_by: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        revoked: { type: boolean }
+    ListFormInvitesResponse:
+      type: object
+      required: [invites]
+      properties:
+        invites:
+          type: array
+          items: { $ref: "#/components/schemas/FormInvite" }
     SyncResponse:
       type: object
       required: [synced, newTickets]
@@ -620,6 +638,151 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "403":
           description: Forbidden (admin role required)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{form_id}/invites:
+    get:
+      summary: 招待コード一覧取得（admin専用）
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListFormInvitesResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden (admin role required)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+    post:
+      summary: 招待コード発行（admin専用）
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden (admin role required)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{form_id}/invites/{code}:
+    delete:
+      summary: 招待コード失効（admin専用）
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema: { type: string }
+        - in: path
+          name: code
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden (admin role required)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Invite not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/invites/accept:
+    post:
+      summary: 招待コード受理
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Invite not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Already member
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
+          description: Invite expired or revoked
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
