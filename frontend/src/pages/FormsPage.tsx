@@ -6,8 +6,9 @@ import {
   Plus,
   RefreshCw,
   ExternalLink,
-  Settings,
+  LayoutDashboard,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import {
   Card,
@@ -24,7 +25,6 @@ export default function FormsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [syncing, setSyncing] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchForms();
@@ -43,24 +43,6 @@ export default function FormsPage() {
       );
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSync = async (formId: string) => {
-    try {
-      setSyncing((prev) => new Set(prev).add(formId));
-      await apiClient.syncForm(formId);
-    } catch (err) {
-      console.error("Failed to sync form:", err);
-      setError(
-        err instanceof ApiError ? err.message : "フォームの同期に失敗しました"
-      );
-    } finally {
-      setSyncing((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(formId);
-        return newSet;
-      });
     }
   };
 
@@ -130,31 +112,26 @@ export default function FormsPage() {
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    onClick={() => handleSync(form.form_id)}
-                    disabled={syncing.has(form.form_id)}
-                    className="flex items-center gap-1 flex-1"
-                  >
-                    <RefreshCw
-                      className={`h-3 w-3 ${
-                        syncing.has(form.form_id) ? "animate-spin" : ""
-                      }`}
-                    />
-                    {syncing.has(form.form_id) ? "同期中..." : "同期"}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="flex items-center gap-1"
+                <div className="flex justify-end gap-2 pt-2">
+                  <Link to={`/kanban/${form.form_id}`} className="inline-flex">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="flex items-center gap-1"
+                    >
+                      <LayoutDashboard className="h-3 w-3" />
+                      看板
+                    </Button>
+                  </Link>
+                  <a
+                    href={`https://docs.google.com/forms/d/${form.form_id}/viewform`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                   >
                     <ExternalLink className="h-3 w-3" />
                     開く
-                  </Button>
-                  <Button variant="ghost" size="sm" className="px-2">
-                    <Settings className="h-3 w-3" />
-                  </Button>
+                  </a>
                 </div>
               </CardContent>
             </Card>
