@@ -119,13 +119,15 @@ export interface TicketAssignee {
   email: string;
 }
 
+export type TicketPriority = "High" | "Medium" | "Low";
+
 export interface TicketSummary {
   id: string;
   form_id: string;
   form_title: string;
   response_id: string;
   status: TicketStatus;
-  priority: number;
+  priority: TicketPriority;
   title_question_id?: string | null;
   title: string;
   assignee?: TicketAssignee | null;
@@ -152,7 +154,7 @@ export interface TicketDetail extends TicketSummary {
 export interface UpdateTicketRequest {
   status?: TicketStatus;
   assignee_id?: string | null;
-  priority?: number;
+  priority?: TicketPriority;
 }
 
 export interface ErrorResponse {

@@ -38,6 +38,7 @@ import type {
   FormSummary,
   TicketStatus,
   FormQuestion,
+  TicketPriority,
 } from "../types";
 import {
   Dialog,
@@ -76,13 +77,25 @@ const columns: KanbanColumn[] = [
   },
 ];
 
-const priorityColors = {
-  1: "bg-red-100 text-red-800",
-  2: "bg-orange-100 text-orange-800",
-  3: "bg-yellow-100 text-yellow-800",
-  4: "bg-green-100 text-green-800",
-  5: "bg-gray-100 text-gray-800",
+const DEFAULT_PRIORITY: TicketPriority = "Medium";
+
+const priorityColors: Record<TicketPriority, string> = {
+  High: "bg-red-100 text-red-800",
+  Medium: "bg-orange-100 text-orange-800",
+  Low: "bg-gray-100 text-gray-800",
 };
+
+const priorityLabels: Record<TicketPriority, string> = {
+  High: "高",
+  Medium: "中",
+  Low: "低",
+};
+
+const PRIORITY_OPTIONS: { value: TicketPriority; label: string }[] = [
+  { value: "High", label: "高" },
+  { value: "Medium", label: "中" },
+  { value: "Low", label: "低" },
+];
 
 const UNASSIGNED_VALUE = "__UNASSIGNED__";
 const AUTO_TITLE_VALUE = "__AUTO_TITLE__";
@@ -95,7 +108,7 @@ interface TicketCardProps {
   onUpdateTicket: (ticketId: string, status: TicketStatus) => void;
   onOpenDetail: (ticketId: string) => void;
   onAssigneeChange: (ticketId: string, assigneeId: string | null) => void;
-  onPriorityChange: (ticketId: string, priority: number) => void;
+  onPriorityChange: (ticketId: string, priority: TicketPriority) => void;
   isUpdating: boolean;
 }
 
@@ -115,8 +128,7 @@ function TicketCard({
     ? members.find((m) => m.id === baseAssignee.id) || baseAssignee
     : null;
   const priorityColor =
-    priorityColors[ticket.priority as keyof typeof priorityColors] ||
-    priorityColors[5];
+    priorityColors[ticket.priority] ?? priorityColors[DEFAULT_PRIORITY];
 
   const moveTicket = (direction: "left" | "right") => {
     return () => {
@@ -157,7 +169,7 @@ function TicketCard({
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <Badge className={`text-xs ${priorityColor}`}>
-                  優先度 {ticket.priority}
+                  優先度 {priorityLabels[ticket.priority]}
                 </Badge>
                 {canEdit && (
                   <div className="flex space-x-1">
@@ -258,24 +270,24 @@ function TicketCard({
                     {canEdit ? (
                       <Select
                         disabled={isUpdating}
-                        value={String(ticket.priority)}
+                        value={ticket.priority}
                         onValueChange={(value) =>
-                          onPriorityChange(ticket.id, Number(value))
+                          onPriorityChange(ticket.id, value as TicketPriority)
                         }
                       >
                         <SelectTrigger className="h-8 w-24">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {[1, 2, 3, 4, 5].map((level) => (
-                            <SelectItem key={level} value={String(level)}>
-                              {level}
+                          {PRIORITY_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     ) : (
-                      <span>{ticket.priority}</span>
+                      <span>{priorityLabels[ticket.priority]}</span>
                     )}
                   </div>
                 </div>
@@ -296,7 +308,7 @@ interface KanbanColumnProps {
   onUpdateTicket: (ticketId: string, status: TicketStatus) => void;
   onOpenDetail: (ticketId: string) => void;
   onAssigneeChange: (ticketId: string, assigneeId: string | null) => void;
-  onPriorityChange: (ticketId: string, priority: number) => void;
+  onPriorityChange: (ticketId: string, priority: TicketPriority) => void;
   updatingTickets: Record<string, boolean>;
 }
 
@@ -681,7 +693,7 @@ export function KanbanPage() {
   );
 
   const handlePriorityChange = useCallback(
-    async (ticketId: string, priority: number) => {
+    async (ticketId: string, priority: TicketPriority) => {
       const ticket = tickets.find((t) => t.id === ticketId);
       if (!ticket || ticket.priority === priority) return;
 
@@ -1077,18 +1089,21 @@ export function KanbanPage() {
                       disabled={
                         !canEdit || Boolean(updatingTickets[selectedDetail.id])
                       }
-                      value={String(selectedDetail.priority)}
+                      value={selectedDetail.priority}
                       onValueChange={(value) =>
-                        handlePriorityChange(selectedDetail.id, Number(value))
+                        handlePriorityChange(
+                          selectedDetail.id,
+                          value as TicketPriority
+                        )
                       }
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {[1, 2, 3, 4, 5].map((level) => (
-                          <SelectItem key={level} value={String(level)}>
-                            {level}
+                        {PRIORITY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
