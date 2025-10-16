@@ -7,7 +7,6 @@ import {
   Plus,
   Mail,
   Shield,
-  Settings,
   RefreshCw,
   UserCheck,
   FileSpreadsheet,
@@ -16,6 +15,7 @@ import {
   ClipboardCheck,
   Trash2,
   Clock,
+  Trash,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import {
@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/Select";
+import { Label } from "../components/ui/Label";
 import { apiClient, ApiError } from "../lib/api";
 import type { Member, FormSummary, FormInvite } from "../types";
 
@@ -51,24 +52,26 @@ export default function MembersPage() {
   const [issuing, setIssuing] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [memberRoleUpdating, setMemberRoleUpdating] = useState<
+    Record<string, boolean>
+  >({});
+  const [memberRemovingId, setMemberRemovingId] = useState<string | null>(null);
 
-  const fetchInvites = useCallback(
-    async (formId: string) => {
-      try {
-        setInviteLoading(true);
-        setInviteError(null);
-        const data = await apiClient.listInvites(formId);
-        setInvites(data.invites);
-      } catch (err) {
-        console.error("Failed to fetch invites:", err);
-        setInviteError(
-          err instanceof ApiError ? err.message : "招待の取得に失敗しました"
-        );
-      } finally {
-        setInviteLoading(false);
-      }
-    }, []
-  );
+  const fetchInvites = useCallback(async (formId: string) => {
+    try {
+      setInviteLoading(true);
+      setInviteError(null);
+      const data = await apiClient.listInvites(formId);
+      setInvites(data.invites);
+    } catch (err) {
+      console.error("Failed to fetch invites:", err);
+      setInviteError(
+        err instanceof ApiError ? err.message : "招待の取得に失敗しました"
+      );
+    } finally {
+      setInviteLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchForms();
@@ -179,7 +182,9 @@ export default function MembersPage() {
       setInviteError(null);
       const invite = await apiClient.createInvite(selectedFormId);
       await fetchInvites(selectedFormId);
-      setInfoMessage("新しい招待コードを発行しました。コピーして共有してください。");
+      setInfoMessage(
+        "新しい招待コードを発行しました。コピーして共有してください。"
+      );
       await copyToClipboard(invite.code);
     } catch (err) {
       console.error("Failed to issue invite:", err);
@@ -207,6 +212,66 @@ export default function MembersPage() {
       setInviteError(
         err instanceof ApiError ? err.message : "招待コードの失効に失敗しました"
       );
+    }
+  };
+
+  const handleChangeRole = async (member: Member, nextRole: Member["role"]) => {
+    if (!selectedFormId || member.role === nextRole) {
+      return;
+    }
+    setInfoMessage(null);
+    setError(null);
+    setMemberRoleUpdating((prev) => ({ ...prev, [member.id]: true }));
+    const previousRole = member.role;
+    setMembers((prev) =>
+      prev.map((m) => (m.id === member.id ? { ...m, role: nextRole } : m))
+    );
+    try {
+      await apiClient.changeMemberRole(selectedFormId, {
+        user_id: member.id,
+        role: nextRole,
+      });
+      setInfoMessage(
+        `「${member.email}」の権限を「${
+          nextRole === "admin" ? "管理者" : "編集者"
+        }」に更新しました。`
+      );
+    } catch (err) {
+      console.error("Failed to change member role:", err);
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "メンバーの権限変更に失敗しました"
+      );
+      setMembers((prev) =>
+        prev.map((m) => (m.id === member.id ? { ...m, role: previousRole } : m))
+      );
+    } finally {
+      setMemberRoleUpdating((prev) => ({ ...prev, [member.id]: false }));
+    }
+  };
+
+  const handleRemoveMember = async (member: Member) => {
+    if (!selectedFormId) return;
+    const confirmed = window.confirm(
+      `メンバー「${member.email}」を削除してもよろしいですか？`
+    );
+    if (!confirmed) return;
+
+    setInfoMessage(null);
+    setError(null);
+    setMemberRemovingId(member.id);
+    try {
+      await apiClient.removeMember(selectedFormId, member.id);
+      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+      setInfoMessage(`「${member.email}」をメンバーから削除しました。`);
+    } catch (err) {
+      console.error("Failed to remove member:", err);
+      setError(
+        err instanceof ApiError ? err.message : "メンバーの削除に失敗しました"
+      );
+    } finally {
+      setMemberRemovingId(null);
     }
   };
 
@@ -347,7 +412,10 @@ export default function MembersPage() {
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center justify-between text-base">
                         <span className="font-mono text-sm">{invite.code}</span>
-                        <Badge variant="outline" className="flex items-center gap-1 text-blue-700 border-blue-200">
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1 text-blue-700 border-blue-200"
+                        >
                           <Clock className="h-3 w-3" />
                           期限 {formatRelativeTime(invite.expires_at)}
                         </Badge>
@@ -360,7 +428,9 @@ export default function MembersPage() {
                       </div>
                       <div className="flex justify-between text-gray-500">
                         <span>ロール</span>
-                        <span className="font-medium text-gray-700">編集者</span>
+                        <span className="font-medium text-gray-700">
+                          編集者
+                        </span>
                       </div>
                       <div className="flex gap-2 pt-2">
                         <Button
@@ -393,7 +463,7 @@ export default function MembersPage() {
         </div>
       )}
 
-     {selectedFormId && members.length > 0 && (
+      {selectedFormId && members.length > 0 && (
         <div className="rounded-lg p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
             <div>
@@ -439,9 +509,6 @@ export default function MembersPage() {
                         {member.email}
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      <Settings className="h-4 w-4" />
-                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -449,6 +516,38 @@ export default function MembersPage() {
                     <div className="text-sm">
                       <span className="text-gray-500">メンバーID: </span>
                       <span className="font-mono text-xs">{member.id}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`member-role-${member.id}`}>権限</Label>
+                      <Select
+                        value={member.role}
+                        onValueChange={(value) =>
+                          handleChangeRole(member, value as Member["role"])
+                        }
+                        disabled={!!memberRoleUpdating[member.id]}
+                      >
+                        <SelectTrigger
+                          id={`member-role-${member.id}`}
+                          className="w-full"
+                        >
+                          <SelectValue placeholder="権限を選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">管理者</SelectItem>
+                          <SelectItem value="editor">編集者</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Button
+                        variant="danger"
+                        className="w-full flex items-center gap-2"
+                        onClick={() => handleRemoveMember(member)}
+                        loading={memberRemovingId === member.id}
+                      >
+                        <Trash className="h-4 w-4 text-white" />
+                        <span className="text-white">メンバーから削除</span>
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -485,7 +584,10 @@ export default function MembersPage() {
           </p>
           {!searchQuery && (
             <div className="mt-6">
-              <Button className="flex items-center gap-2" onClick={handleIssueInvite}>
+              <Button
+                className="flex items-center gap-2"
+                onClick={handleIssueInvite}
+              >
                 <Plus className="h-4 w-4" />
                 招待コードを発行
               </Button>
