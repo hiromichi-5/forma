@@ -12,6 +12,17 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/db"
 )
 
+var allowedTicketPriorities = map[string]struct{}{
+	"High":   {},
+	"Medium": {},
+	"Low":    {},
+}
+
+func isValidTicketPriority(p string) bool {
+	_, ok := allowedTicketPriorities[p]
+	return ok
+}
+
 func (s *Service) ListTickets(ctx context.Context, formID, status string, actor uuid.UUID) ([]TicketSummary, error) {
 	if formID == "" {
 		return []TicketSummary{}, nil
@@ -70,7 +81,7 @@ func (s *Service) GetTicket(ctx context.Context, id string, actor uuid.UUID) (Ti
 	return buildTicketDetail(row, answers, *set), nil
 }
 
-func (s *Service) UpdateTicket(ctx context.Context, id string, status *string, assignee *uuid.UUID, clearAssignee bool, priority *int32, actor uuid.UUID) (TicketDetail, error) {
+func (s *Service) UpdateTicket(ctx context.Context, id string, status *string, assignee *uuid.UUID, clearAssignee bool, priority *string, actor uuid.UUID) (TicketDetail, error) {
 	if err := s.RequireFormAccessForTicket(ctx, id, actor); err != nil {
 		return TicketDetail{}, err
 	}
@@ -102,7 +113,6 @@ func (s *Service) UpdateTicket(ctx context.Context, id string, status *string, a
 		ID:         pgtype.UUID{Bytes: uid, Valid: true},
 		Status:     nil,
 		AssigneeID: pgtype.UUID{},
-		Priority:   pgtype.Int4{},
 	}
 	params.ClearAssignee = clearAssignee
 
@@ -117,10 +127,11 @@ func (s *Service) UpdateTicket(ctx context.Context, id string, status *string, a
 		params.AssigneeID = pgtype.UUID{Bytes: *assignee, Valid: true}
 	}
 	if priority != nil {
-		if *priority < 1 || *priority > 5 {
+		p := strings.TrimSpace(*priority)
+		if !isValidTicketPriority(p) {
 			return TicketDetail{}, ErrValidation
 		}
-		params.Priority = pgtype.Int4{Int32: *priority, Valid: true}
+		params.Priority = pgtype.Text{String: p, Valid: true}
 	}
 
 	if _, err := s.Q.UpdateTicket(ctx, params); err != nil {

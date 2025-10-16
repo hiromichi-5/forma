@@ -56,7 +56,7 @@ SET status = COALESCE(sqlc.narg(status)::ticket_status, status),
         WHEN sqlc.narg(assignee_id)::uuid IS NOT NULL THEN sqlc.narg(assignee_id)::uuid
         ELSE assignee_id
     END,
-    priority = COALESCE(sqlc.narg(priority), priority),
+    priority = COALESCE(sqlc.narg(priority)::ticket_priority, priority),
     updated_at = NOW()
 WHERE id = sqlc.arg(id)
 RETURNING id, form_id, response_id, status, assignee_id, priority, created_at, updated_at;

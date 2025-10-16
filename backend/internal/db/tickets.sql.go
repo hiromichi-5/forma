@@ -23,9 +23,20 @@ type CreateTicketParams struct {
 	ResponseID string      `json:"response_id"`
 }
 
-func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) (Ticket, error) {
+type CreateTicketRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	FormID     string             `json:"form_id"`
+	ResponseID string             `json:"response_id"`
+	Status     string             `json:"status"`
+	AssigneeID pgtype.UUID        `json:"assignee_id"`
+	Priority   string             `json:"priority"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) (CreateTicketRow, error) {
 	row := q.db.QueryRow(ctx, createTicket, arg.ID, arg.FormID, arg.ResponseID)
-	var i Ticket
+	var i CreateTicketRow
 	err := row.Scan(
 		&i.ID,
 		&i.FormID,
@@ -67,7 +78,7 @@ type GetTicketRow struct {
 	ResponseID          string             `json:"response_id"`
 	Status              string             `json:"status"`
 	AssigneeID          pgtype.UUID        `json:"assignee_id"`
-	Priority            int32              `json:"priority"`
+	Priority            string             `json:"priority"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	FormTitle           string             `json:"form_title"`
@@ -136,7 +147,7 @@ type ListTicketsRow struct {
 	ResponseID          string             `json:"response_id"`
 	Status              string             `json:"status"`
 	AssigneeID          pgtype.UUID        `json:"assignee_id"`
-	Priority            int32              `json:"priority"`
+	Priority            string             `json:"priority"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	FormTitle           string             `json:"form_title"`
@@ -190,7 +201,7 @@ SET status = COALESCE($1::ticket_status, status),
         WHEN $3::uuid IS NOT NULL THEN $3::uuid
         ELSE assignee_id
     END,
-    priority = COALESCE($4, priority),
+    priority = COALESCE($4::ticket_priority, priority),
     updated_at = NOW()
 WHERE id = $5
 RETURNING id, form_id, response_id, status, assignee_id, priority, created_at, updated_at
@@ -200,11 +211,22 @@ type UpdateTicketParams struct {
 	Status        interface{} `json:"status"`
 	ClearAssignee bool        `json:"clear_assignee"`
 	AssigneeID    pgtype.UUID `json:"assignee_id"`
-	Priority      pgtype.Int4 `json:"priority"`
+	Priority      interface{} `json:"priority"`
 	ID            pgtype.UUID `json:"id"`
 }
 
-func (q *Queries) UpdateTicket(ctx context.Context, arg UpdateTicketParams) (Ticket, error) {
+type UpdateTicketRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	FormID     string             `json:"form_id"`
+	ResponseID string             `json:"response_id"`
+	Status     string             `json:"status"`
+	AssigneeID pgtype.UUID        `json:"assignee_id"`
+	Priority   string             `json:"priority"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpdateTicket(ctx context.Context, arg UpdateTicketParams) (UpdateTicketRow, error) {
 	row := q.db.QueryRow(ctx, updateTicket,
 		arg.Status,
 		arg.ClearAssignee,
@@ -212,7 +234,7 @@ func (q *Queries) UpdateTicket(ctx context.Context, arg UpdateTicketParams) (Tic
 		arg.Priority,
 		arg.ID,
 	)
-	var i Ticket
+	var i UpdateTicketRow
 	err := row.Scan(
 		&i.ID,
 		&i.FormID,

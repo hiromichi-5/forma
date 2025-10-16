@@ -47,6 +47,13 @@ const (
 	MemberRoleEditor MemberRole = "editor"
 )
 
+// Defines values for TicketDetailPriority.
+const (
+	TicketDetailPriorityHigh   TicketDetailPriority = "High"
+	TicketDetailPriorityLow    TicketDetailPriority = "Low"
+	TicketDetailPriorityMedium TicketDetailPriority = "Medium"
+)
+
 // Defines values for TicketDetailStatus.
 const (
 	TicketDetailStatusDone       TicketDetailStatus = "done"
@@ -54,11 +61,25 @@ const (
 	TicketDetailStatusNew        TicketDetailStatus = "new"
 )
 
+// Defines values for TicketSummaryPriority.
+const (
+	TicketSummaryPriorityHigh   TicketSummaryPriority = "High"
+	TicketSummaryPriorityLow    TicketSummaryPriority = "Low"
+	TicketSummaryPriorityMedium TicketSummaryPriority = "Medium"
+)
+
 // Defines values for TicketSummaryStatus.
 const (
 	TicketSummaryStatusDone       TicketSummaryStatus = "done"
 	TicketSummaryStatusInProgress TicketSummaryStatus = "in_progress"
 	TicketSummaryStatusNew        TicketSummaryStatus = "new"
+)
+
+// Defines values for UpdateTicketRequestPriority.
+const (
+	High   UpdateTicketRequestPriority = "High"
+	Low    UpdateTicketRequestPriority = "Low"
+	Medium UpdateTicketRequestPriority = "Medium"
 )
 
 // Defines values for UpdateTicketRequestStatus.
@@ -245,37 +266,43 @@ type TicketAssignee struct {
 
 // TicketDetail defines model for TicketDetail.
 type TicketDetail struct {
-	Answers         []TicketAnswer     `json:"answers"`
-	Assignee        *TicketAssignee    `json:"assignee"`
-	FormId          string             `json:"form_id"`
-	FormTitle       string             `json:"form_title"`
-	Id              openapi_types.UUID `json:"id"`
-	Priority        int                `json:"priority"`
-	ResponseId      string             `json:"response_id"`
-	Status          TicketDetailStatus `json:"status"`
-	SubmittedAt     time.Time          `json:"submitted_at"`
-	Title           string             `json:"title"`
-	TitleQuestionId *string            `json:"title_question_id"`
-	UpdatedAt       time.Time          `json:"updated_at"`
+	Answers         []TicketAnswer       `json:"answers"`
+	Assignee        *TicketAssignee      `json:"assignee"`
+	FormId          string               `json:"form_id"`
+	FormTitle       string               `json:"form_title"`
+	Id              openapi_types.UUID   `json:"id"`
+	Priority        TicketDetailPriority `json:"priority"`
+	ResponseId      string               `json:"response_id"`
+	Status          TicketDetailStatus   `json:"status"`
+	SubmittedAt     time.Time            `json:"submitted_at"`
+	Title           string               `json:"title"`
+	TitleQuestionId *string              `json:"title_question_id"`
+	UpdatedAt       time.Time            `json:"updated_at"`
 }
+
+// TicketDetailPriority defines model for TicketDetail.Priority.
+type TicketDetailPriority string
 
 // TicketDetailStatus defines model for TicketDetail.Status.
 type TicketDetailStatus string
 
 // TicketSummary defines model for TicketSummary.
 type TicketSummary struct {
-	Assignee        *TicketAssignee     `json:"assignee"`
-	FormId          string              `json:"form_id"`
-	FormTitle       string              `json:"form_title"`
-	Id              openapi_types.UUID  `json:"id"`
-	Priority        int                 `json:"priority"`
-	ResponseId      string              `json:"response_id"`
-	Status          TicketSummaryStatus `json:"status"`
-	SubmittedAt     time.Time           `json:"submitted_at"`
-	Title           string              `json:"title"`
-	TitleQuestionId *string             `json:"title_question_id"`
-	UpdatedAt       time.Time           `json:"updated_at"`
+	Assignee        *TicketAssignee       `json:"assignee"`
+	FormId          string                `json:"form_id"`
+	FormTitle       string                `json:"form_title"`
+	Id              openapi_types.UUID    `json:"id"`
+	Priority        TicketSummaryPriority `json:"priority"`
+	ResponseId      string                `json:"response_id"`
+	Status          TicketSummaryStatus   `json:"status"`
+	SubmittedAt     time.Time             `json:"submitted_at"`
+	Title           string                `json:"title"`
+	TitleQuestionId *string               `json:"title_question_id"`
+	UpdatedAt       time.Time             `json:"updated_at"`
 }
+
+// TicketSummaryPriority defines model for TicketSummary.Priority.
+type TicketSummaryPriority string
 
 // TicketSummaryStatus defines model for TicketSummary.Status.
 type TicketSummaryStatus string
@@ -287,10 +314,13 @@ type UpdateFormTitleQuestionRequest struct {
 
 // UpdateTicketRequest defines model for UpdateTicketRequest.
 type UpdateTicketRequest struct {
-	AssigneeId *openapi_types.UUID        `json:"assignee_id"`
-	Priority   *int                       `json:"priority,omitempty"`
-	Status     *UpdateTicketRequestStatus `json:"status,omitempty"`
+	AssigneeId *openapi_types.UUID          `json:"assignee_id"`
+	Priority   *UpdateTicketRequestPriority `json:"priority,omitempty"`
+	Status     *UpdateTicketRequestStatus   `json:"status,omitempty"`
 }
+
+// UpdateTicketRequestPriority defines model for UpdateTicketRequest.Priority.
+type UpdateTicketRequestPriority string
 
 // UpdateTicketRequestStatus defines model for UpdateTicketRequest.Status.
 type UpdateTicketRequestStatus string
@@ -1091,54 +1121,54 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

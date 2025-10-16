@@ -163,7 +163,7 @@ components:
         form_title: { type: string }
         response_id: { type: string }
         status: { type: string, enum: [new, in_progress, done] }
-        priority: { type: integer, minimum: 1, maximum: 5 }
+        priority: { type: string, enum: [High, Medium, Low] }
         title_question_id: { type: string, nullable: true }
         title: { type: string }
         assignee:
@@ -227,7 +227,7 @@ components:
       properties:
         status: { type: string, enum: [new, in_progress, done] }
         assignee_id: { type: string, format: uuid, nullable: true }
-        priority: { type: integer, minimum: 1, maximum: 5 }
+        priority: { type: string, enum: [High, Medium, Low] }
     UserProfile:
       type: object
       required: [id, email, display_name]

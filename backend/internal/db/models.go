@@ -54,9 +54,9 @@ type Ticket struct {
 	ResponseID string             `json:"response_id"`
 	Status     string             `json:"status"`
 	AssigneeID pgtype.UUID        `json:"assignee_id"`
-	Priority   int32              `json:"priority"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	Priority   string             `json:"priority"`
 }
 
 type User struct {
