@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import {
   FileSpreadsheet,
@@ -17,6 +17,16 @@ import {
   CardTitle,
 } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/Dialog";
+import { Label } from "../components/ui/Form";
 import { apiClient, ApiError } from "../lib/api";
 import type { FormSummary } from "../types";
 
@@ -25,14 +35,21 @@ export default function FormsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newFormUrl, setNewFormUrl] = useState("");
+  const [newFormUrlError, setNewFormUrlError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchForms();
   }, []);
 
-  const fetchForms = async () => {
+  const fetchForms = async (withSpinner: boolean = true) => {
     try {
-      setLoading(true);
+      if (withSpinner) {
+        setLoading(true);
+      }
       setError(null);
       const data = await apiClient.getForms();
       setForms(data.forms);
@@ -43,6 +60,54 @@ export default function FormsPage() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resetDialogState = () => {
+    setNewFormUrl("");
+    setNewFormUrlError(null);
+    setSubmitError(null);
+    setIsSubmitting(false);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      resetDialogState();
+    }
+  };
+
+  const handleRegisterForm = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedUrl = newFormUrl.trim();
+    if (!trimmedUrl) {
+      setNewFormUrlError("フォームのURLまたはIDを入力してください");
+      return;
+    }
+
+    setNewFormUrlError(null);
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    try {
+      await apiClient.registerForm({ url: trimmedUrl });
+      await fetchForms(false);
+      handleDialogOpenChange(false);
+    } catch (err) {
+      console.error("Failed to register form:", err);
+      setSubmitError(
+        err instanceof ApiError
+          ? err.message
+          : "フォームの登録に失敗しました。しばらくしてから再度お試しください。"
+      );
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUrlChange = (value: string) => {
+    setNewFormUrl(value);
+    if (newFormUrlError) {
+      setNewFormUrlError(null);
     }
   };
 
@@ -68,10 +133,71 @@ export default function FormsPage() {
           </h1>
           <p className="text-gray-600 mt-2">Googleフォームの連携と同期管理</p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          新規フォーム連携
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              新規フォーム連携
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-white">
+            <form onSubmit={handleRegisterForm} className="space-y-6">
+              <DialogHeader>
+                <DialogTitle>新規フォームを登録</DialogTitle>
+                <DialogDescription>
+                  GoogleフォームのURLまたはフォームIDを入力してください。
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-form-url" required>
+                  フォームURLまたはID
+                </Label>
+                <Input
+                  id="new-form-url"
+                  type="text"
+                  placeholder="https://docs.google.com/forms/d/..."
+                  value={newFormUrl}
+                  onChange={(event) => handleUrlChange(event.target.value)}
+                  aria-describedby={
+                    newFormUrlError ? "new-form-url-error" : undefined
+                  }
+                  aria-invalid={newFormUrlError ? "true" : "false"}
+                  disabled={isSubmitting}
+                />
+                {newFormUrlError && (
+                  <p
+                    id="new-form-url-error"
+                    className="text-sm text-red-600"
+                    role="alert"
+                  >
+                    {newFormUrlError}
+                  </p>
+                )}
+              </div>
+
+              {submitError && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {submitError}
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => handleDialogOpenChange(false)}
+                  disabled={isSubmitting}
+                >
+                  キャンセル
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "登録中..." : "登録する"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="relative max-w-md">
@@ -152,7 +278,10 @@ export default function FormsPage() {
           </p>
           {!searchQuery && (
             <div className="mt-6">
-              <Button className="flex items-center gap-2">
+              <Button
+                className="flex items-center gap-2"
+                onClick={() => handleDialogOpenChange(true)}
+              >
                 <Plus className="h-4 w-4" />
                 新規フォーム連携
               </Button>
