@@ -13,3 +13,5 @@ sql:
         overrides:
           - db_type: "ticket_status"
             go_type: "string"
+          - db_type: "ticket_priority"
+            go_type: "string"

@@ -24,7 +24,7 @@ type TicketSummary struct {
 	FormTitle       string          `json:"form_title"`
 	ResponseID      string          `json:"response_id"`
 	Status          string          `json:"status"`
-	Priority        int32           `json:"priority"`
+	Priority        string          `json:"priority"`
 	TitleQuestionID string          `json:"title_question_id,omitempty"`
 	Title           string          `json:"title"`
 	Assignee        *TicketAssignee `json:"assignee,omitempty"`

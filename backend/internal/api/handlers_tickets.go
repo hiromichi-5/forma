@@ -59,7 +59,7 @@ func (h *FormsHandler) GetV1TicketsTicketId(c *gin.Context, ticketID string) {
 type patchTicketReq struct {
 	Status   *string             `json:"status" binding:"omitempty,oneof=new in_progress done"`
 	Assignee nullableUUIDPayload `json:"assignee_id"`
-	Priority *int32              `json:"priority" binding:"omitempty,min=1,max=5"`
+	Priority *string             `json:"priority" binding:"omitempty,oneof=High Medium Low"`
 }
 
 type nullableUUIDPayload struct {
