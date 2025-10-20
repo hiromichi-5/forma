@@ -239,16 +239,16 @@ export default function FormsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex justify-end gap-2 pt-2">
-                  <Link to={`/kanban/${form.form_id}`} className="inline-flex">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex items-center gap-1"
-                    >
+                  <Button
+                    asChild
+                    variant="secondary"
+                    size="sm"
+                    className="flex items-center gap-1"
+                  >
+                    <Link to={`/kanban/${form.form_id}`} className="inline-flex">
                       <LayoutDashboard className="h-3 w-3" />
                       看板
-                    </Button>
-                  </Link>
+                    </Link>
                   <a
                     href={`https://docs.google.com/forms/d/${form.form_id}/viewform`}
                     target="_blank"
