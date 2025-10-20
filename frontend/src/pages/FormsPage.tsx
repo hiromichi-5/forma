@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import {
   FileSpreadsheet,
@@ -6,8 +6,9 @@ import {
   Plus,
   RefreshCw,
   ExternalLink,
-  Settings,
+  LayoutDashboard,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import {
   Card,
@@ -16,6 +17,16 @@ import {
   CardTitle,
 } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/Dialog";
+import { Label } from "../components/ui/Form";
 import { apiClient, ApiError } from "../lib/api";
 import type { FormSummary } from "../types";
 
@@ -24,15 +35,21 @@ export default function FormsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [syncing, setSyncing] = useState<Set<string>>(new Set());
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newFormUrl, setNewFormUrl] = useState("");
+  const [newFormUrlError, setNewFormUrlError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchForms();
   }, []);
 
-  const fetchForms = async () => {
+  const fetchForms = async (withSpinner: boolean = true) => {
     try {
-      setLoading(true);
+      if (withSpinner) {
+        setLoading(true);
+      }
       setError(null);
       const data = await apiClient.getForms();
       setForms(data.forms);
@@ -46,21 +63,51 @@ export default function FormsPage() {
     }
   };
 
-  const handleSync = async (formId: string) => {
+  const resetDialogState = () => {
+    setNewFormUrl("");
+    setNewFormUrlError(null);
+    setSubmitError(null);
+    setIsSubmitting(false);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      resetDialogState();
+    }
+  };
+
+  const handleRegisterForm = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedUrl = newFormUrl.trim();
+    if (!trimmedUrl) {
+      setNewFormUrlError("フォームのURLまたはIDを入力してください");
+      return;
+    }
+
+    setNewFormUrlError(null);
+    setSubmitError(null);
+    setIsSubmitting(true);
+
     try {
-      setSyncing((prev) => new Set(prev).add(formId));
-      await apiClient.syncForm(formId);
+      await apiClient.registerForm({ url: trimmedUrl });
+      await fetchForms(false);
+      handleDialogOpenChange(false);
     } catch (err) {
-      console.error("Failed to sync form:", err);
-      setError(
-        err instanceof ApiError ? err.message : "フォームの同期に失敗しました"
+      console.error("Failed to register form:", err);
+      setSubmitError(
+        err instanceof ApiError
+          ? err.message
+          : "フォームの登録に失敗しました。しばらくしてから再度お試しください。"
       );
-    } finally {
-      setSyncing((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(formId);
-        return newSet;
-      });
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUrlChange = (value: string) => {
+    setNewFormUrl(value);
+    if (newFormUrlError) {
+      setNewFormUrlError(null);
     }
   };
 
@@ -86,10 +133,71 @@ export default function FormsPage() {
           </h1>
           <p className="text-gray-600 mt-2">Googleフォームの連携と同期管理</p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          新規フォーム連携
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              新規フォーム連携
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-white">
+            <form onSubmit={handleRegisterForm} className="space-y-6">
+              <DialogHeader>
+                <DialogTitle>新規フォームを登録</DialogTitle>
+                <DialogDescription>
+                  GoogleフォームのURLまたはフォームIDを入力してください。
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-form-url" required>
+                  フォームURLまたはID
+                </Label>
+                <Input
+                  id="new-form-url"
+                  type="text"
+                  placeholder="https://docs.google.com/forms/d/..."
+                  value={newFormUrl}
+                  onChange={(event) => handleUrlChange(event.target.value)}
+                  aria-describedby={
+                    newFormUrlError ? "new-form-url-error" : undefined
+                  }
+                  aria-invalid={!!newFormUrlError}
+                  disabled={isSubmitting}
+                />
+                {newFormUrlError && (
+                  <p
+                    id="new-form-url-error"
+                    className="text-sm text-red-600"
+                    role="alert"
+                  >
+                    {newFormUrlError}
+                  </p>
+                )}
+              </div>
+
+              {submitError && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {submitError}
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => handleDialogOpenChange(false)}
+                  disabled={isSubmitting}
+                >
+                  キャンセル
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "登録中..." : "登録する"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="relative max-w-md">
@@ -130,31 +238,26 @@ export default function FormsPage() {
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex justify-end gap-2 pt-2">
                   <Button
-                    size="sm"
-                    onClick={() => handleSync(form.form_id)}
-                    disabled={syncing.has(form.form_id)}
-                    className="flex items-center gap-1 flex-1"
-                  >
-                    <RefreshCw
-                      className={`h-3 w-3 ${
-                        syncing.has(form.form_id) ? "animate-spin" : ""
-                      }`}
-                    />
-                    {syncing.has(form.form_id) ? "同期中..." : "同期"}
-                  </Button>
-                  <Button
+                    asChild
                     variant="secondary"
                     size="sm"
                     className="flex items-center gap-1"
                   >
+                    <Link to={`/kanban/${form.form_id}`} className="inline-flex">
+                      <LayoutDashboard className="h-3 w-3" />
+                      看板
+                    </Link>
+                  <a
+                    href={`https://docs.google.com/forms/d/${form.form_id}/viewform`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  >
                     <ExternalLink className="h-3 w-3" />
                     開く
-                  </Button>
-                  <Button variant="ghost" size="sm" className="px-2">
-                    <Settings className="h-3 w-3" />
-                  </Button>
+                  </a>
                 </div>
               </CardContent>
             </Card>
@@ -175,7 +278,10 @@ export default function FormsPage() {
           </p>
           {!searchQuery && (
             <div className="mt-6">
-              <Button className="flex items-center gap-2">
+              <Button
+                className="flex items-center gap-2"
+                onClick={() => handleDialogOpenChange(true)}
+              >
                 <Plus className="h-4 w-4" />
                 新規フォーム連携
               </Button>
