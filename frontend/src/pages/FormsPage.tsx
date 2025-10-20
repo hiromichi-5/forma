@@ -162,7 +162,7 @@ export default function FormsPage() {
                   aria-describedby={
                     newFormUrlError ? "new-form-url-error" : undefined
                   }
-                  aria-invalid={newFormUrlError ? "true" : "false"}
+                  aria-invalid={!!newFormUrlError}
                   disabled={isSubmitting}
                 />
                 {newFormUrlError && (
