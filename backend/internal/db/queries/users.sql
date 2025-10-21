@@ -17,6 +17,10 @@ RETURNING id, email, password_hash, created_at, display_name;
 -- name: DeleteUser :exec
 DELETE FROM users WHERE id = $1;
 
+-- name: UpdateUserPasswordHash :exec
+UPDATE users SET password_hash = $2
+WHERE id = $1;
+
 -- name: ListForms :many
 SELECT form_id, title FROM forms;
 
