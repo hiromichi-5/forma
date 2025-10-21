@@ -220,6 +220,23 @@ export default function FormsPage() {
         </div>
       )}
 
+      {forms.length > 0 && (
+        <div className="bg-gray-50 rounded-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-blue-600">{forms.length}</p>
+              <p className="text-sm text-gray-600">総フォーム数</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-green-600">
+                {filteredForms.length}
+              </p>
+              <p className="text-sm text-gray-600">表示中のフォーム</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredForms.map((form, index) => (
           <motion.div
@@ -233,22 +250,12 @@ export default function FormsPage() {
                 <CardTitle className="text-lg line-clamp-2">
                   {form.title}
                 </CardTitle>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 break-words">
                   フォームID: {form.form_id}
                 </p>
               </CardHeader>
               <CardContent>
                 <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    asChild
-                    variant="secondary"
-                    size="sm"
-                    className="flex items-center gap-1"
-                  >
-                    <Link to={`/kanban/${form.form_id}`} className="inline-flex">
-                      <LayoutDashboard className="h-3 w-3" />
-                      看板
-                    </Link>
                   <a
                     href={`https://docs.google.com/forms/d/${form.form_id}/viewform`}
                     target="_blank"
@@ -256,8 +263,15 @@ export default function FormsPage() {
                     className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                   >
                     <ExternalLink className="h-3 w-3" />
-                    開く
+                    Googleフォーム
                   </a>
+                  <Link
+                    to={`/forms/${form.form_id}/dashboard`}
+                    className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  >
+                    <LayoutDashboard className="h-3 w-3" />
+                    看板
+                  </Link>
                 </div>
               </CardContent>
             </Card>
@@ -287,23 +301,6 @@ export default function FormsPage() {
               </Button>
             </div>
           )}
-        </div>
-      )}
-
-      {forms.length > 0 && (
-        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-blue-600">{forms.length}</p>
-              <p className="text-sm text-gray-600">総フォーム数</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-green-600">
-                {filteredForms.length}
-              </p>
-              <p className="text-sm text-gray-600">表示中のフォーム</p>
-            </div>
-          </div>
         </div>
       )}
     </div>

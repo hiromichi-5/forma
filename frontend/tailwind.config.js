@@ -4,7 +4,14 @@ export default {
   theme: {
     extend: {
       colors: {
+        border: "#e5e7eb",
+        input: "#d1d5db",
+        ring: "#2563eb",
+        background: "#ffffff",
+        foreground: "#111827",
         primary: {
+          DEFAULT: "#3b82f6",
+          foreground: "#f8fafc",
           50: "#eff6ff",
           100: "#dbeafe",
           200: "#bfdbfe",
@@ -16,6 +23,10 @@ export default {
           800: "#1e40af",
           900: "#1e3a8a",
           950: "#172554",
+        },
+        secondary: {
+          DEFAULT: "#f3f4f6",
+          foreground: "#1f2937",
         },
         gray: {
           50: "#f9fafb",
@@ -31,6 +42,8 @@ export default {
           950: "#030712",
         },
         accent: {
+          DEFAULT: "#34d399",
+          foreground: "#064e3b",
           50: "#ecfdf5",
           100: "#d1fae5",
           200: "#a7f3d0",
@@ -42,6 +55,16 @@ export default {
           800: "#065f46",
           900: "#064e3b",
         },
+        muted: {
+          DEFAULT: "#f9fafb",
+          foreground: "#6b7280",
+        },
+        destructive: {
+          DEFAULT: "#ef4444",
+          foreground: "#ffffff",
+        },
+        popover: "#ffffff",
+        "popover-foreground": "#111827",
       },
     },
   },
