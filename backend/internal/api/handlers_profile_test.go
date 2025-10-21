@@ -14,8 +14,9 @@ import (
 )
 
 type fakeProfileService struct {
-	users map[string]db.User
-	err   error
+	users     map[string]db.User
+	passwords map[string]string
+	err       error
 }
 
 func (f *fakeProfileService) GetProfile(_ context.Context, userID string) (db.User, error) {
@@ -56,6 +57,24 @@ func (f *fakeProfileService) DeleteProfile(_ context.Context, userID string) err
 	return nil
 }
 
+func (f *fakeProfileService) ChangePassword(_ context.Context, userID, currentPassword, newPassword string) error {
+	if f.err != nil {
+		return f.err
+	}
+	if len(newPassword) < 8 {
+		return service.ErrValidation
+	}
+	expected, ok := f.passwords[userID]
+	if !ok {
+		return service.ErrUserNotFound
+	}
+	if expected != currentPassword {
+		return service.ErrIncorrectPassword
+	}
+	f.passwords[userID] = newPassword
+	return nil
+}
+
 func profileRouter(h *ProfileHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -68,6 +87,7 @@ func profileRouter(h *ProfileHandler) *gin.Engine {
 	r.GET("/v1/me", h.GetV1Me)
 	r.PUT("/v1/me", h.PutV1Me)
 	r.DELETE("/v1/me", h.DeleteV1Me)
+	r.PATCH("/v1/me/password", h.PatchV1MePassword)
 	return r
 }
 
@@ -175,5 +195,95 @@ func TestDeleteV1Me_Success(t *testing.T) {
 
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("want 204, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestPatchV1MePassword_Success(t *testing.T) {
+	svc := &fakeProfileService{
+		users: map[string]db.User{
+			"test-user-id": {
+				Email:       "test@example.com",
+				DisplayName: "Test User",
+			},
+		},
+		passwords: map[string]string{
+			"test-user-id": "oldpassword",
+		},
+	}
+	h := &ProfileHandler{Svc: svc}
+	r := profileRouter(h)
+
+	body, _ := json.Marshal(map[string]string{
+		"current_password": "oldpassword",
+		"new_password":     "newpassword",
+	})
+	req := httptest.NewRequest("PATCH", "/v1/me/password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("want 204, got %d body=%s", w.Code, w.Body.String())
+	}
+	if svc.passwords["test-user-id"] != "newpassword" {
+		t.Fatalf("password not updated")
+	}
+}
+
+func TestPatchV1MePassword_ValidationError(t *testing.T) {
+	svc := &fakeProfileService{
+		users: map[string]db.User{
+			"test-user-id": {
+				Email:       "test@example.com",
+				DisplayName: "Test User",
+			},
+		},
+		passwords: map[string]string{
+			"test-user-id": "oldpassword",
+		},
+	}
+	h := &ProfileHandler{Svc: svc}
+	r := profileRouter(h)
+
+	body, _ := json.Marshal(map[string]string{
+		"current_password": "",
+		"new_password":     "newpassword",
+	})
+	req := httptest.NewRequest("PATCH", "/v1/me/password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("want 400, got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestPatchV1MePassword_IncorrectPassword(t *testing.T) {
+	svc := &fakeProfileService{
+		users: map[string]db.User{
+			"test-user-id": {
+				Email:       "test@example.com",
+				DisplayName: "Test User",
+			},
+		},
+		passwords: map[string]string{
+			"test-user-id": "oldpassword",
+		},
+	}
+	h := &ProfileHandler{Svc: svc}
+	r := profileRouter(h)
+
+	body, _ := json.Marshal(map[string]string{
+		"current_password": "wrongpassword",
+		"new_password":     "newpassword",
+	})
+	req := httptest.NewRequest("PATCH", "/v1/me/password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("want 403, got %d body=%s", w.Code, w.Body.String())
 	}
 }
