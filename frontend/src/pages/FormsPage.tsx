@@ -240,24 +240,27 @@ export default function FormsPage() {
               <CardContent>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button
-                    asChild
                     variant="secondary"
                     size="sm"
                     className="flex items-center gap-1"
                   >
-                    <Link to={`/kanban/${form.form_id}`} className="inline-flex">
+                    <Link
+                      to={`/kanban/${form.form_id}`}
+                      className="inline-flex"
+                    >
                       <LayoutDashboard className="h-3 w-3" />
                       看板
                     </Link>
-                  <a
-                    href={`https://docs.google.com/forms/d/${form.form_id}/viewform`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    開く
-                  </a>
+                    <a
+                      href={`https://docs.google.com/forms/d/${form.form_id}/viewform`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      開く
+                    </a>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
