@@ -150,22 +150,7 @@ func buildTicketSummary(row db.ListTicketsRow, answers map[string][]string, ques
 }
 
 func buildTicketDetail(row db.GetTicketRow, answers map[string][]string, questions formQuestionSet) TicketDetail {
-	listRow := db.ListTicketsRow{
-		ID:                  row.ID,
-		FormID:              row.FormID,
-		ResponseID:          row.ResponseID,
-		Status:              row.Status,
-		AssigneeID:          row.AssigneeID,
-		Priority:            row.Priority,
-		CreatedAt:           row.CreatedAt,
-		UpdatedAt:           row.UpdatedAt,
-		FormTitle:           row.FormTitle,
-		TitleQuestionID:     row.TitleQuestionID,
-		SubmittedAt:         row.SubmittedAt,
-		Payload:             row.Payload,
-		AssigneeDisplayName: row.AssigneeDisplayName,
-		AssigneeEmail:       row.AssigneeEmail,
-	}
+	listRow := db.ListTicketsRow(row)
 	summary := buildTicketSummary(listRow, answers, questions)
 	detail := TicketDetail{TicketSummary: summary}
 	detail.Answers = buildTicketAnswers(answers, questions)
