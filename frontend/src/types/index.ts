@@ -185,3 +185,8 @@ export interface ToastMessage {
   message?: string;
   duration?: number;
 }
+
+export type ChangePasswordRequest = {
+  current_password: string;
+  new_password: string;
+};

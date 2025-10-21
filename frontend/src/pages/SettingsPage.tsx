@@ -14,12 +14,23 @@ import { useAuth } from "../hooks/useAuth";
 import { ApiError } from "../lib/api";
 
 export default function SettingsPage() {
-  const { profile, isProfileLoading, refreshProfile, updateProfile } =
-    useAuth();
+  const {
+    profile,
+    isProfileLoading,
+    refreshProfile,
+    updateProfile,
+    changePassword,
+  } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile?.display_name) {
@@ -57,6 +68,49 @@ export default function SettingsPage() {
     }
   };
 
+  const resetPasswordState = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  };
+
+  const handlePasswordUpdate = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError("未入力のフィールドがあります");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError("新しいパスワードは8文字以上で入力してください");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("新しいパスワードと確認用パスワードが一致しません");
+      return;
+    }
+
+    setPasswordLoading(true);
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    try {
+      await changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setPasswordSuccess(true);
+      resetPasswordState();
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setPasswordError(err.message || "パスワードの更新に失敗しました");
+      } else {
+        setPasswordError("パスワードの更新に失敗しました");
+      }
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
@@ -88,6 +142,19 @@ export default function SettingsPage() {
           className="bg-red-50 border border-red-200 rounded-lg p-4"
         >
           <div className="text-red-800">{error}</div>
+        </motion.div>
+      )}
+      {passwordSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="bg-green-50 border border-green-200 rounded-lg p-4"
+        >
+          <div className="flex items-center gap-2 text-green-800">
+            <Shield className="h-5 w-5" />
+            パスワードを更新しました
+          </div>
         </motion.div>
       )}
 
@@ -140,11 +207,18 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {passwordError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-800">
+                {passwordError}
+              </div>
+            )}
             <div>
               <Label htmlFor="current-password">現在のパスワード</Label>
               <Input
                 id="current-password"
                 type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="現在のパスワードを入力"
               />
             </div>
@@ -154,20 +228,42 @@ export default function SettingsPage() {
                 <Input
                   id="new-password"
                   type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="新しいパスワードを入力"
                 />
               </div>
               <div>
-                <Label htmlFor="confirm-password">パスワード確認</Label>
+                <Label htmlFor="confirm-password">
+                  新しいパスワード（確認）
+                </Label>
                 <Input
                   id="confirm-password"
                   type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="パスワードを再入力"
                 />
               </div>
             </div>
-            <Button variant="secondary" size="sm">
-              パスワードを更新
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handlePasswordUpdate}
+              disabled={
+                passwordLoading ||
+                !currentPassword ||
+                !newPassword ||
+                !confirmPassword
+              }
+              className="flex items-center gap-2"
+            >
+              {passwordLoading ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Shield className="h-4 w-4" />
+              )}
+              {passwordLoading ? "更新中..." : "パスワードを更新"}
             </Button>
           </CardContent>
         </Card>

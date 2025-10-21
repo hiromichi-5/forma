@@ -7,6 +7,7 @@ import type {
   LoginRequest,
   SignupRequest,
   UpdateUserProfileRequest,
+  ChangePasswordRequest,
 } from "@/types";
 
 interface AuthContextType {
@@ -20,6 +21,7 @@ interface AuthContextType {
   logout: () => void;
   updateProfile: (request: UpdateUserProfileRequest) => Promise<UserProfile>;
   refreshProfile: () => Promise<void>;
+  changePassword: (request: ChangePasswordRequest) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch (profileError) {
             console.error("Failed to fetch profile:", profileError);
           }
-        } catch (error) {
+        } catch {
           localStorage.removeItem("forma_token");
           apiClient.clearToken();
         }
@@ -78,59 +80,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (credentials: LoginRequest) => {
-    try {
-      const response = await apiClient.login(credentials);
-      apiClient.setToken(response.token);
+    const response = await apiClient.login(credentials);
+    apiClient.setToken(response.token);
 
-      const whoamiResponse = await apiClient.whoami();
-      const newUser: User = {
-        id: whoamiResponse.user_id,
-      };
+    const whoamiResponse = await apiClient.whoami();
+    const newUser: User = {
+      id: whoamiResponse.user_id,
+    };
 
-      setUser(newUser);
-      await refreshProfile();
-    } catch (error) {
-      throw error;
-    }
+    setUser(newUser);
+    await refreshProfile();
   };
 
   const signup = async (credentials: SignupRequest) => {
-    try {
-      const response = await apiClient.signup(credentials);
-      apiClient.setToken(response.token);
+    const response = await apiClient.signup(credentials);
+    apiClient.setToken(response.token);
 
-      const whoamiResponse = await apiClient.whoami();
-      const newUser: User = {
-        id: whoamiResponse.user_id,
-      };
+    const whoamiResponse = await apiClient.whoami();
+    const newUser: User = {
+      id: whoamiResponse.user_id,
+    };
 
-      setUser(newUser);
-      await refreshProfile();
-    } catch (error) {
-      throw error;
-    }
+    setUser(newUser);
+    await refreshProfile();
   };
 
   const updateProfile = async (
     request: UpdateUserProfileRequest
   ): Promise<UserProfile> => {
-    try {
-      const updatedProfile = await apiClient.updateProfile(request);
-      setProfile(updatedProfile);
-      // userのemailも更新（メールが変更可能になった場合のため）
-      setUser((prev) =>
-        prev ? { ...prev, email: updatedProfile.email } : null
-      );
-      return updatedProfile;
-    } catch (error) {
-      throw error;
-    }
+    const updatedProfile = await apiClient.updateProfile(request);
+    setProfile(updatedProfile);
+    // userのemailも更新（メールが変更可能になった場合のため）
+    setUser((prev) => (prev ? { ...prev, email: updatedProfile.email } : null));
+    return updatedProfile;
   };
 
   const logout = () => {
     apiClient.clearToken();
     setUser(null);
     setProfile(null);
+  };
+
+  const changePassword = async (request: ChangePasswordRequest) => {
+    await apiClient.changePassword(request);
   };
 
   return (
@@ -146,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         updateProfile,
         refreshProfile,
+        changePassword,
       }}
     >
       {children}
@@ -153,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/* eslint-disable react-refresh/only-export-components */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

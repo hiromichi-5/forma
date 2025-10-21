@@ -22,6 +22,7 @@ import type {
   UpdateUserProfileRequest,
   ErrorResponse,
   TicketStatus,
+  ChangePasswordRequest,
 } from "../types";
 
 export class ApiError extends Error {
@@ -144,6 +145,13 @@ class ApiClient {
   async updateProfile(request: UpdateUserProfileRequest): Promise<UserProfile> {
     return this.request<UserProfile>("/v1/me", {
       method: "PUT",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async changePassword(request: ChangePasswordRequest): Promise<void> {
+    await this.request<void>("/v1/me/password", {
+      method: "PATCH",
       body: JSON.stringify(request),
     });
   }

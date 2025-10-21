@@ -138,6 +138,21 @@ func (q *Queries) UpdateUserDisplayName(ctx context.Context, arg UpdateUserDispl
 	return i, err
 }
 
+const updateUserPasswordHash = `-- name: UpdateUserPasswordHash :exec
+UPDATE users SET password_hash = $2
+WHERE id = $1
+`
+
+type UpdateUserPasswordHashParams struct {
+	ID           pgtype.UUID `json:"id"`
+	PasswordHash string      `json:"password_hash"`
+}
+
+func (q *Queries) UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error {
+	_, err := q.db.Exec(ctx, updateUserPasswordHash, arg.ID, arg.PasswordHash)
+	return err
+}
+
 const upsertForm = `-- name: UpsertForm :exec
 INSERT INTO forms (form_id, title, description, polling_sec)
 VALUES ($1, $2, $3, $4)

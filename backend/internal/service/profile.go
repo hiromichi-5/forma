@@ -8,12 +8,14 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/db"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type ProfileStore interface {
 	GetUser(ctx context.Context, id pgtype.UUID) (db.User, error)
 	UpdateUserDisplayName(ctx context.Context, arg db.UpdateUserDisplayNameParams) (db.User, error)
 	DeleteUser(ctx context.Context, id pgtype.UUID) error
+	UpdateUserPasswordHash(ctx context.Context, arg db.UpdateUserPasswordHashParams) error
 }
 
 type ProfileService struct {
@@ -76,6 +78,47 @@ func (s *ProfileService) DeleteProfile(ctx context.Context, userID string) error
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrUserNotFound
 		}
+		return err
+	}
+
+	return nil
+}
+
+func (s *ProfileService) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	if currentPassword == "" || newPassword == "" {
+		return ErrValidation
+	}
+
+	if len(newPassword) < 8 {
+		return ErrValidation
+	}
+
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return ErrValidation
+	}
+
+	user, err := s.q.GetUser(ctx, dbUUID(uid))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)) != nil {
+		return ErrIncorrectPassword
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	if err := s.q.UpdateUserPasswordHash(ctx, db.UpdateUserPasswordHashParams{
+		ID:           user.ID,
+		PasswordHash: string(hashed),
+	}); err != nil {
 		return err
 	}
 

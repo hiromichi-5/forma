@@ -94,7 +94,8 @@ components:
         role: { type: string, enum: [admin, editor] }
     FormInvite:
       type: object
-      required: [code, form_id, role, expires_at, created_by, created_at, revoked]
+      required:
+        [code, form_id, role, expires_at, created_by, created_at, revoked]
       properties:
         code: { type: string }
         form_id: { type: string }
@@ -156,7 +157,17 @@ components:
     TicketSummary:
       type: object
       required:
-        [id, form_id, form_title, response_id, status, priority, title, submitted_at, updated_at]
+        [
+          id,
+          form_id,
+          form_title,
+          response_id,
+          status,
+          priority,
+          title,
+          submitted_at,
+          updated_at,
+        ]
       properties:
         id: { type: string, format: uuid }
         form_id: { type: string }
@@ -174,7 +185,8 @@ components:
         updated_at: { type: string, format: date-time }
     TicketAnswer:
       type: object
-      required: [question_id, question_title, question_type, values, display_value]
+      required:
+        [question_id, question_title, question_type, values, display_value]
       properties:
         question_id: { type: string }
         question_title: { type: string }
@@ -398,6 +410,43 @@ paths:
           description: No Content
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/me/password:
+    patch:
+      summary: パスワード変更
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string }
+                new_password: { type: string, minLength: 8 }
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Current password incorrect
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -834,7 +883,8 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/UpdateFormTitleQuestionRequest" }
+            schema:
+              { $ref: "#/components/schemas/UpdateFormTitleQuestionRequest" }
       responses:
         "204":
           description: Updated

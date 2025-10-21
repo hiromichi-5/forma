@@ -15,11 +15,17 @@ type ProfileHandler struct {
 		GetProfile(ctx context.Context, userID string) (db.User, error)
 		UpdateDisplayName(ctx context.Context, userID, displayName string) (db.User, error)
 		DeleteProfile(ctx context.Context, userID string) error
+		ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
 	}
 }
 
 type updateDisplayNameReq struct {
 	DisplayName string `json:"display_name" binding:"required"`
+}
+
+type changePasswordReq struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=8"`
 }
 
 type userProfileResp struct {
@@ -106,6 +112,39 @@ func (h *ProfileHandler) DeleteV1Me(c *gin.Context) {
 		switch err {
 		case service.ErrUserNotFound:
 			c.JSON(http.StatusNotFound, gin.H{"code": "USER_NOT_FOUND"})
+			return
+		case service.ErrValidation:
+			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
+			return
+		}
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func (h *ProfileHandler) PatchV1MePassword(c *gin.Context) {
+	userID, ok := auth.UserID(c)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
+		return
+	}
+
+	var req changePasswordReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR", "message": "bad request"})
+		return
+	}
+
+	if err := h.Svc.ChangePassword(c, userID, req.CurrentPassword, req.NewPassword); err != nil {
+		switch err {
+		case service.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"code": "USER_NOT_FOUND"})
+			return
+		case service.ErrIncorrectPassword:
+			c.JSON(http.StatusForbidden, gin.H{"code": "INCORRECT_PASSWORD"})
 			return
 		case service.ErrValidation:
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})

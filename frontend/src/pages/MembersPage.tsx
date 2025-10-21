@@ -73,9 +73,36 @@ export default function MembersPage() {
     }
   }, []);
 
+  const fetchForms = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiClient.getForms();
+      setForms(data.forms);
+      if (data.forms.length > 0) {
+        setSelectedFormId((prev) => {
+          if (prev) {
+            return prev;
+          }
+          if (form_id) {
+            return form_id;
+          }
+          return data.forms[0].form_id;
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch forms:", err);
+      setError(
+        err instanceof ApiError ? err.message : "フォームの取得に失敗しました"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [form_id]);
+
   useEffect(() => {
     fetchForms();
-  }, []);
+  }, [fetchForms]);
 
   useEffect(() => {
     if (form_id) {
@@ -91,25 +118,6 @@ export default function MembersPage() {
       fetchInvites(selectedFormId);
     }
   }, [selectedFormId, fetchInvites]);
-
-  const fetchForms = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await apiClient.getForms();
-      setForms(data.forms);
-      if (data.forms.length > 0 && !selectedFormId && !form_id) {
-        setSelectedFormId(data.forms[0].form_id);
-      }
-    } catch (err) {
-      console.error("Failed to fetch forms:", err);
-      setError(
-        err instanceof ApiError ? err.message : "フォームの取得に失敗しました"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchMembers = async (formId: string) => {
     try {
