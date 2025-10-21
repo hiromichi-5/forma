@@ -10,6 +10,7 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/db"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type fakeProfileStore struct {
@@ -45,6 +46,17 @@ func (f *fakeProfileStore) DeleteUser(_ context.Context, id pgtype.UUID) error {
 	return nil
 }
 
+func (f *fakeProfileStore) UpdateUserPasswordHash(_ context.Context, arg db.UpdateUserPasswordHashParams) error {
+	uid := uuid.UUID(arg.ID.Bytes).String()
+	u, ok := f.users[uid]
+	if !ok {
+		return pgx.ErrNoRows
+	}
+	u.PasswordHash = arg.PasswordHash
+	f.users[uid] = u
+	return nil
+}
+
 func fakeProfileStoreWith(userID, email, displayName string) *fakeProfileStore {
 	return &fakeProfileStore{
 		users: map[string]db.User{
@@ -63,6 +75,14 @@ func fakeProfileStoreWith(userID, email, displayName string) *fakeProfileStore {
 			},
 		},
 	}
+}
+
+func fakeProfileStoreWithPassword(userID, email, displayName, passwordHash string) *fakeProfileStore {
+	store := fakeProfileStoreWith(userID, email, displayName)
+	u := store.users[userID]
+	u.PasswordHash = passwordHash
+	store.users[userID] = u
+	return store
 }
 
 func TestGetProfile_Success(t *testing.T) {
@@ -131,5 +151,72 @@ func TestDeleteProfile_Success(t *testing.T) {
 	_, err = s.GetProfile(context.Background(), userID)
 	if !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("want ErrUserNotFound after deletion, got %v", err)
+	}
+}
+
+func TestChangePassword_Success(t *testing.T) {
+	t.Helper()
+	userID := "00000000-0000-0000-0000-000000000001"
+	originalPassword := "oldpassword"
+	hashed, err := bcrypt.GenerateFromPassword([]byte(originalPassword), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("bcrypt generate: %v", err)
+	}
+	store := fakeProfileStoreWithPassword(userID, "test@example.com", "Test User", string(hashed))
+	s := NewProfileService(store)
+
+	newPassword := "newpassword"
+	if err := s.ChangePassword(context.Background(), userID, originalPassword, newPassword); err != nil {
+		t.Fatalf("want nil err, got %v", err)
+	}
+
+	updated := store.users[userID]
+	if bcrypt.CompareHashAndPassword([]byte(updated.PasswordHash), []byte(newPassword)) != nil {
+		t.Fatalf("stored password does not match new password")
+	}
+}
+
+func TestChangePassword_IncorrectCurrentPassword(t *testing.T) {
+	userID := "00000000-0000-0000-0000-000000000001"
+	hashed, err := bcrypt.GenerateFromPassword([]byte("correct-pass"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("bcrypt generate: %v", err)
+	}
+	store := fakeProfileStoreWithPassword(userID, "test@example.com", "Test User", string(hashed))
+	s := NewProfileService(store)
+
+	err = s.ChangePassword(context.Background(), userID, "wrong-pass", "newpassword")
+	if !errors.Is(err, ErrIncorrectPassword) {
+		t.Fatalf("want ErrIncorrectPassword, got %v", err)
+	}
+}
+
+func TestChangePassword_ValidationErrors(t *testing.T) {
+	userID := "00000000-0000-0000-0000-000000000001"
+	hashed, err := bcrypt.GenerateFromPassword([]byte("correct-pass"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("bcrypt generate: %v", err)
+	}
+	store := fakeProfileStoreWithPassword(userID, "test@example.com", "Test User", string(hashed))
+	s := NewProfileService(store)
+
+	if err := s.ChangePassword(context.Background(), userID, "", "newpassword"); !errors.Is(err, ErrValidation) {
+		t.Fatalf("empty current password: want ErrValidation, got %v", err)
+	}
+	if err := s.ChangePassword(context.Background(), userID, "correct-pass", "short"); !errors.Is(err, ErrValidation) {
+		t.Fatalf("short new password: want ErrValidation, got %v", err)
+	}
+	if err := s.ChangePassword(context.Background(), "not-a-uuid", "correct-pass", "newpassword"); !errors.Is(err, ErrValidation) {
+		t.Fatalf("invalid user id: want ErrValidation, got %v", err)
+	}
+}
+
+func TestChangePassword_UserNotFound(t *testing.T) {
+	store := &fakeProfileStore{users: map[string]db.User{}}
+	s := NewProfileService(store)
+
+	err := s.ChangePassword(context.Background(), "00000000-0000-0000-0000-000000000001", "password", "newpassword")
+	if !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("want ErrUserNotFound, got %v", err)
 	}
 }
