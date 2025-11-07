@@ -10,7 +10,7 @@ import type {
   ChangePasswordRequest,
 } from "@/types";
 
-interface AuthContextType {
+type AuthContextType = {
   user: User | null;
   profile: UserProfile | null;
   isLoading: boolean;
@@ -22,7 +22,8 @@ interface AuthContextType {
   updateProfile: (request: UpdateUserProfileRequest) => Promise<UserProfile>;
   refreshProfile: () => Promise<void>;
   changePassword: (request: ChangePasswordRequest) => Promise<void>;
-}
+  deleteAccount: () => Promise<void>;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -125,6 +126,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await apiClient.changePassword(request);
   };
 
+  const deleteAccount = async () => {
+    try {
+      await apiClient.deleteProfile();
+      logout();
+    } catch (error) {
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -139,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateProfile,
         refreshProfile,
         changePassword,
+        deleteAccount,
       }}
     >
       {children}

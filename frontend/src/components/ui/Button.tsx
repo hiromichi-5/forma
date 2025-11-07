@@ -42,7 +42,7 @@ export function Button({
       "active:bg-gray-100",
     ],
     danger: [
-      "bg-red-600 text-gray-700 border-red-600",
+      "bg-red-600 text-white border-red-600",
       "hover:bg-red-700 hover:border-red-700",
       "active:bg-red-800",
     ],
