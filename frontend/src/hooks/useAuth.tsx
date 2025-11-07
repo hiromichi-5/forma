@@ -127,8 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteAccount = async () => {
-    await apiClient.deleteProfile();
-    logout();
+    try {
+      await apiClient.deleteProfile();
+      logout();
+    } catch (error) {
+      throw error;
+    }
   };
 
   return (
