@@ -21,7 +21,7 @@ SELECT t.id,
 FROM tickets t
 JOIN forms f ON f.form_id = t.form_id
 JOIN responses r ON r.response_id = t.response_id
-LEFT JOIN users a ON a.id = t.assignee_id
+LEFT JOIN users a ON a.id = t.assignee_id AND a.deletedAt IS NULL
 WHERE ($1::text IS NULL OR t.form_id = $1)
   AND ($2::text = '' OR $2::text IS NULL OR t.status = $2::ticket_status)
 ORDER BY t.created_at DESC
@@ -45,7 +45,7 @@ SELECT t.id,
 FROM tickets t
 JOIN forms f ON f.form_id = t.form_id
 JOIN responses r ON r.response_id = t.response_id
-LEFT JOIN users a ON a.id = t.assignee_id
+LEFT JOIN users a ON a.id = t.assignee_id AND a.deletedAt IS NULL
 WHERE t.id = $1;
 
 -- name: UpdateTicket :one

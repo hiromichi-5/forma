@@ -37,13 +37,13 @@ func (f *fakeProfileStore) UpdateUserDisplayName(_ context.Context, arg db.Updat
 	return u, nil
 }
 
-func (f *fakeProfileStore) DeleteUser(_ context.Context, id pgtype.UUID) error {
+func (f *fakeProfileStore) DeleteUser(_ context.Context, id pgtype.UUID) (int64, error) {
 	uid := uuid.UUID(id.Bytes).String()
 	if _, ok := f.users[uid]; !ok {
-		return pgx.ErrNoRows
+		return 0, pgx.ErrNoRows
 	}
 	delete(f.users, uid)
-	return nil
+	return 1, nil
 }
 
 func (f *fakeProfileStore) UpdateUserPasswordHash(_ context.Context, arg db.UpdateUserPasswordHashParams) error {
@@ -151,6 +151,21 @@ func TestDeleteProfile_Success(t *testing.T) {
 	_, err = s.GetProfile(context.Background(), userID)
 	if !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("want ErrUserNotFound after deletion, got %v", err)
+	}
+}
+
+func TestDeleteProfile_AlreadyDeleted(t *testing.T) {
+	userID := "00000000-0000-0000-0000-000000000001"
+	store := fakeProfileStoreWith(userID, "test@example.com", "Test User")
+	s := NewProfileService(store)
+
+	if err := s.DeleteProfile(context.Background(), userID); err != nil {
+		t.Fatalf("first delete: want nil err, got %v", err)
+	}
+
+	err := s.DeleteProfile(context.Background(), userID)
+	if !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("second delete: want ErrUserNotFound, got %v", err)
 	}
 }
 

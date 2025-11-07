@@ -65,6 +65,7 @@ type User struct {
 	PasswordHash string             `json:"password_hash"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	DisplayName  string             `json:"display_name"`
+	Deletedat    pgtype.Timestamptz `json:"deletedat"`
 }
 
 type UserFormRole struct {

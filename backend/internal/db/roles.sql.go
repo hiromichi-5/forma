@@ -43,7 +43,9 @@ func (q *Queries) GetUserFormRole(ctx context.Context, arg GetUserFormRoleParams
 
 const listFormMembers = `-- name: ListFormMembers :many
 SELECT u.id, u.email, u.display_name, u.created_at, r.role
-FROM user_form_roles r JOIN users u ON u.id = r.user_id
+FROM user_form_roles r
+JOIN users u ON u.id = r.user_id
+AND u.deletedAt IS NULL
 WHERE r.form_id = $1
 ORDER BY u.email
 `
