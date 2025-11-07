@@ -23,7 +23,8 @@ RETURNING id, email, password_hash, created_at, display_name, deletedAt;
 
 -- name: DeleteUser :exec
 UPDATE users SET deletedAt = NOW()
-WHERE id = $1;
+WHERE id = $1
+  AND deletedAt IS NULL;
 
 -- name: UpdateUserPasswordHash :exec
 UPDATE users
