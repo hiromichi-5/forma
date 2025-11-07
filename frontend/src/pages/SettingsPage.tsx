@@ -43,6 +43,7 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -124,14 +125,19 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      "アカウントを完全に削除します。この操作は元に戻せません。続行してよろしいですか？"
-    );
-    if (!confirmed) {
+  const startDeleteConfirmation = () => {
+    setDeleteError(null);
+    setIsDeleteConfirming(true);
+  };
+
+  const cancelDeleteConfirmation = () => {
+    if (deleteLoading) {
       return;
     }
+    setIsDeleteConfirming(false);
+  };
 
+  const handleDeleteAccount = async () => {
     setDeleteLoading(true);
     setDeleteError(null);
 
@@ -146,6 +152,7 @@ export default function SettingsPage() {
       }
     } finally {
       setDeleteLoading(false);
+      setIsDeleteConfirming(false);
     }
   };
 
@@ -315,27 +322,54 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-gray-600">
-              アカウントと関連データを完全に削除します。この操作は取り消せません。
+              アカウントと関連データを削除します。この操作は取り消せません。
             </p>
             {deleteError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-800">
                 {deleteError}
               </div>
             )}
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={handleDeleteAccount}
-              disabled={deleteLoading}
-              className="flex items-center gap-2"
-            >
-              {deleteLoading ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
+            {isDeleteConfirming ? (
+              <div className="space-y-3">
+                <p className="text-sm text-red-700">
+                  本当にアカウントを削除しますか？
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={handleDeleteAccount}
+                    disabled={deleteLoading}
+                    className="flex items-center gap-2"
+                  >
+                    {deleteLoading ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    {deleteLoading ? "削除中..." : "削除する"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={cancelDeleteConfirmation}
+                    disabled={deleteLoading}
+                  >
+                    キャンセル
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={startDeleteConfirmation}
+                className="flex items-center gap-2"
+              >
                 <Trash2 className="h-4 w-4" />
-              )}
-              {deleteLoading ? "削除中..." : "アカウントを削除"}
-            </Button>
+                アカウントを削除
+              </Button>
+            )}
           </CardContent>
         </Card>
 
