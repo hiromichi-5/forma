@@ -15,7 +15,8 @@ WHERE id = $1
 RETURNING id, email, password_hash, created_at, display_name;
 
 -- name: DeleteUser :exec
-DELETE FROM users WHERE id = $1;
+UPDATE users SET deletedAt = NOW()
+WHERE id = $1;
 
 -- name: UpdateUserPasswordHash :exec
 UPDATE users SET password_hash = $2
