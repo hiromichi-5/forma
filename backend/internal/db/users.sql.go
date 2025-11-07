@@ -13,7 +13,7 @@ import (
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, email, password_hash, display_name) VALUES ($1, $2, $3, $4)
-RETURNING id, email, password_hash, created_at, display_name
+RETURNING id, email, password_hash, created_at, display_name, deletedAt
 `
 
 type CreateUserParams struct {
@@ -37,12 +37,14 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.DisplayName,
+		&i.Deletedat,
 	)
 	return i, err
 }
 
 const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users WHERE id = $1
+UPDATE users SET deletedAt = NOW()
+WHERE id = $1
 `
 
 func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
@@ -51,8 +53,10 @@ func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, email, password_hash, created_at, display_name FROM users
+SELECT id, email, password_hash, created_at, display_name, deletedAt
+FROM users
 WHERE id = $1
+  AND deletedAt IS NULL
 `
 
 func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -64,12 +68,16 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.DisplayName,
+		&i.Deletedat,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, created_at, display_name FROM users WHERE email=$1
+SELECT id, email, password_hash, created_at, display_name, deletedAt
+FROM users
+WHERE email = $1
+  AND deletedAt IS NULL
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -81,6 +89,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.DisplayName,
+		&i.Deletedat,
 	)
 	return i, err
 }
@@ -115,9 +124,11 @@ func (q *Queries) ListForms(ctx context.Context) ([]ListFormsRow, error) {
 }
 
 const updateUserDisplayName = `-- name: UpdateUserDisplayName :one
-UPDATE users SET display_name = $2
+UPDATE users
+SET display_name = $2
 WHERE id = $1
-RETURNING id, email, password_hash, created_at, display_name
+  AND deletedAt IS NULL
+RETURNING id, email, password_hash, created_at, display_name, deletedAt
 `
 
 type UpdateUserDisplayNameParams struct {
@@ -134,13 +145,16 @@ func (q *Queries) UpdateUserDisplayName(ctx context.Context, arg UpdateUserDispl
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.DisplayName,
+		&i.Deletedat,
 	)
 	return i, err
 }
 
 const updateUserPasswordHash = `-- name: UpdateUserPasswordHash :exec
-UPDATE users SET password_hash = $2
+UPDATE users
+SET password_hash = $2
 WHERE id = $1
+  AND deletedAt IS NULL
 `
 
 type UpdateUserPasswordHashParams struct {

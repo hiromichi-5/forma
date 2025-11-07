@@ -1,26 +1,35 @@
 -- name: GetUser :one
-SELECT * FROM users
-WHERE id = $1;
+SELECT id, email, password_hash, created_at, display_name, deletedAt
+FROM users
+WHERE id = $1
+  AND deletedAt IS NULL;
 
 -- name: GetUserByEmail :one
-SELECT id, email, password_hash, created_at, display_name FROM users WHERE email=$1;
+SELECT id, email, password_hash, created_at, display_name, deletedAt
+FROM users
+WHERE email = $1
+  AND deletedAt IS NULL;
 
 -- name: CreateUser :one
 INSERT INTO users (id, email, password_hash, display_name) VALUES ($1, $2, $3, $4)
-RETURNING id, email, password_hash, created_at, display_name;
+RETURNING id, email, password_hash, created_at, display_name, deletedAt;
 
 -- name: UpdateUserDisplayName :one
-UPDATE users SET display_name = $2
+UPDATE users
+SET display_name = $2
 WHERE id = $1
-RETURNING id, email, password_hash, created_at, display_name;
+  AND deletedAt IS NULL
+RETURNING id, email, password_hash, created_at, display_name, deletedAt;
 
 -- name: DeleteUser :exec
 UPDATE users SET deletedAt = NOW()
 WHERE id = $1;
 
 -- name: UpdateUserPasswordHash :exec
-UPDATE users SET password_hash = $2
-WHERE id = $1;
+UPDATE users
+SET password_hash = $2
+WHERE id = $1
+  AND deletedAt IS NULL;
 
 -- name: ListForms :many
 SELECT form_id, title FROM forms;
