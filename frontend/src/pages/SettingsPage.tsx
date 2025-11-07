@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, User, Shield, Save, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  Settings,
+  User,
+  Shield,
+  Save,
+  RefreshCw,
+  AlertTriangle,
+  Trash2,
+} from "lucide-react";
 import { Button } from "../components/ui/Button";
 import {
   Card,
@@ -20,6 +29,7 @@ export default function SettingsPage() {
     refreshProfile,
     updateProfile,
     changePassword,
+    deleteAccount,
   } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -31,6 +41,9 @@ export default function SettingsPage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (profile?.display_name) {
@@ -108,6 +121,31 @@ export default function SettingsPage() {
       }
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "アカウントを完全に削除します。この操作は元に戻せません。続行してよろしいですか？"
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      await deleteAccount();
+      navigate("/login", { replace: true });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setDeleteError(err.message || "アカウントの削除に失敗しました");
+      } else {
+        setDeleteError("アカウントの削除に失敗しました");
+      }
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -264,6 +302,39 @@ export default function SettingsPage() {
                 <Shield className="h-4 w-4" />
               )}
               {passwordLoading ? "更新中..." : "パスワードを更新"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              アカウント削除
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-gray-600">
+              アカウントと関連データを完全に削除します。この操作は取り消せません。
+            </p>
+            {deleteError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-800">
+                {deleteError}
+              </div>
+            )}
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleDeleteAccount}
+              disabled={deleteLoading}
+              className="flex items-center gap-2"
+            >
+              {deleteLoading ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              {deleteLoading ? "削除中..." : "アカウントを削除"}
             </Button>
           </CardContent>
         </Card>
