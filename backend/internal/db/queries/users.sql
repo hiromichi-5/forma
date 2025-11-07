@@ -21,7 +21,7 @@ WHERE id = $1
   AND deletedAt IS NULL
 RETURNING id, email, password_hash, created_at, display_name, deletedAt;
 
--- name: DeleteUser :exec
+-- name: DeleteUser :execrows
 UPDATE users SET deletedAt = NOW()
 WHERE id = $1
   AND deletedAt IS NULL;

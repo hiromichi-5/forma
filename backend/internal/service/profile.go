@@ -14,7 +14,7 @@ import (
 type ProfileStore interface {
 	GetUser(ctx context.Context, id pgtype.UUID) (db.User, error)
 	UpdateUserDisplayName(ctx context.Context, arg db.UpdateUserDisplayNameParams) (db.User, error)
-	DeleteUser(ctx context.Context, id pgtype.UUID) error
+	DeleteUser(ctx context.Context, id pgtype.UUID) (int64, error)
 	UpdateUserPasswordHash(ctx context.Context, arg db.UpdateUserPasswordHashParams) error
 }
 
@@ -73,12 +73,16 @@ func (s *ProfileService) DeleteProfile(ctx context.Context, userID string) error
 		return ErrValidation
 	}
 
-	err = s.q.DeleteUser(ctx, dbUUID(uid))
+	rows, err := s.q.DeleteUser(ctx, dbUUID(uid))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrUserNotFound
 		}
 		return err
+	}
+
+	if rows == 0 {
+		return ErrUserNotFound
 	}
 
 	return nil
