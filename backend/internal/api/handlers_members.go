@@ -67,7 +67,8 @@ func (h *FormsHandler) PutV1FormsFormIdMembersUserId(c *gin.Context) {
 		c.JSON(403, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
 		return
 	}
-	if userID == "" {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
 		c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 		return
 	}
@@ -76,7 +77,7 @@ func (h *FormsHandler) PutV1FormsFormIdMembersUserId(c *gin.Context) {
 		c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 		return
 	}
-	if err := h.S.ChangeRole(c, formID, userID, req.Role); err != nil {
+	if err := h.S.ChangeRole(c, formID, userUUID.String(), req.Role); err != nil {
 		if err == service.ErrValidation {
 			c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 			return
@@ -96,11 +97,12 @@ func (h *FormsHandler) DeleteV1FormsFormIdMembersUserId(c *gin.Context) {
 		c.JSON(403, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
 		return
 	}
-	if userID == "" {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
 		c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 		return
 	}
-	if err := h.S.RemoveMember(c, formID, userID); err != nil {
+	if err := h.S.RemoveMember(c, formID, userUUID.String()); err != nil {
 		if err == service.ErrValidation {
 			c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 			return

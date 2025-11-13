@@ -634,7 +634,7 @@ paths:
         required: true
         schema: { type: string, format: uuid }
     put:
-      summary: メンバーロール更新（admin専用）
+      summary: メンバーロール変更（admin専用）
       requestBody:
         required: true
         content:
