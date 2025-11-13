@@ -87,9 +87,9 @@ func (h *FormsHandler) PutV1FormsFormIdMembersUserId(c *gin.Context) {
 	c.Status(200)
 }
 
-func (h *FormsHandler) DeleteV1FormsFormIdMembers(c *gin.Context) {
+func (h *FormsHandler) DeleteV1FormsFormIdMembersUserId(c *gin.Context) {
 	formID := c.Param("form_id")
-	userID := c.Query("user_id")
+	userID := c.Param("user_id")
 	uidStr, _ := auth.UserID(c)
 	uid, _ := uuid.Parse(uidStr)
 	if err := h.S.RequireAdmin(c, formID, uid); err != nil {

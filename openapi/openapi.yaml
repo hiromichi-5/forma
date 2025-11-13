@@ -623,41 +623,6 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-    delete:
-      summary: メンバー削除（admin専用）
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
-        - in: query
-          name: user_id
-          required: true
-          schema: { type: string, format: uuid }
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Validation error (missing user_id)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
   /v1/forms/{form_id}/members/{user_id}:
     parameters:
       - in: path
@@ -678,6 +643,32 @@ paths:
       responses:
         "200":
           description: OK
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden (admin role required)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+    delete:
+      summary: メンバー削除（admin専用）
+      responses:
+        "204":
+          description: No Content
         "400":
           description: Validation error
           content:

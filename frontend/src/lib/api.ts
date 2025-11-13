@@ -206,7 +206,7 @@ class ApiClient {
   }
 
   async removeMember(formId: string, userId: string): Promise<void> {
-    return this.request<void>(`/v1/forms/${formId}/members?user_id=${userId}`, {
+    return this.request<void>(`/v1/forms/${formId}/members/${userId}`, {
       method: "DELETE",
     });
   }
