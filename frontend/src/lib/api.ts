@@ -144,7 +144,7 @@ class ApiClient {
 
   async updateProfile(request: UpdateUserProfileRequest): Promise<UserProfile> {
     return this.request<UserProfile>("/v1/me", {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify(request),
     });
   }
@@ -196,24 +196,23 @@ class ApiClient {
 
   async changeMemberRole(
     formId: string,
+    userId: string,
     request: ChangeMemberRoleRequest
   ): Promise<void> {
-    return this.request<void>(`/v1/forms/${formId}/members`, {
-      method: "PATCH",
+    return this.request<void>(`/v1/forms/${formId}/members/${userId}`, {
+      method: "PUT",
       body: JSON.stringify(request),
     });
   }
 
   async removeMember(formId: string, userId: string): Promise<void> {
-    return this.request<void>(`/v1/forms/${formId}/members?user_id=${userId}`, {
+    return this.request<void>(`/v1/forms/${formId}/members/${userId}`, {
       method: "DELETE",
     });
   }
 
   async listInvites(formId: string): Promise<ListFormInvitesResponse> {
-    return this.request<ListFormInvitesResponse>(
-      `/v1/forms/${formId}/invites`
-    );
+    return this.request<ListFormInvitesResponse>(`/v1/forms/${formId}/invites`);
   }
 
   async createInvite(formId: string): Promise<IssueInviteResponse> {

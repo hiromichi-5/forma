@@ -85,7 +85,7 @@ func profileRouter(h *ProfileHandler) *gin.Engine {
 	})
 
 	r.GET("/v1/me", h.GetV1Me)
-	r.PUT("/v1/me", h.PutV1Me)
+	r.PATCH("/v1/me", h.PatchV1Me)
 	r.DELETE("/v1/me", h.DeleteV1Me)
 	r.PATCH("/v1/me/password", h.PatchV1MePassword)
 	return r
@@ -123,7 +123,7 @@ func TestGetV1Me_Success(t *testing.T) {
 	}
 }
 
-func TestPutV1Me_Success(t *testing.T) {
+func TestPatchV1Me_Success(t *testing.T) {
 	svc := &fakeProfileService{
 		users: map[string]db.User{
 			"test-user-id": {
@@ -136,7 +136,7 @@ func TestPutV1Me_Success(t *testing.T) {
 	r := profileRouter(h)
 
 	body, _ := json.Marshal(map[string]string{"display_name": "New Name"})
-	req := httptest.NewRequest("PUT", "/v1/me", bytes.NewReader(body))
+	req := httptest.NewRequest("PATCH", "/v1/me", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -154,7 +154,7 @@ func TestPutV1Me_Success(t *testing.T) {
 	}
 }
 
-func TestPutV1Me_EmptyDisplayName(t *testing.T) {
+func TestPatchV1Me_EmptyDisplayName(t *testing.T) {
 	svc := &fakeProfileService{
 		users: map[string]db.User{
 			"test-user-id": {
@@ -167,7 +167,7 @@ func TestPutV1Me_EmptyDisplayName(t *testing.T) {
 	r := profileRouter(h)
 
 	body, _ := json.Marshal(map[string]string{"display_name": ""})
-	req := httptest.NewRequest("PUT", "/v1/me", bytes.NewReader(body))
+	req := httptest.NewRequest("PATCH", "/v1/me", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

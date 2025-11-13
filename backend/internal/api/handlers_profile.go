@@ -64,7 +64,7 @@ func (h *ProfileHandler) GetV1Me(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-func (h *ProfileHandler) PutV1Me(c *gin.Context) {
+func (h *ProfileHandler) PatchV1Me(c *gin.Context) {
 	userID, ok := auth.UserID(c)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})

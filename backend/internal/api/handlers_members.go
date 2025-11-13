@@ -11,9 +11,8 @@ type memberAddReq struct {
 	Email string `json:"email" binding:"required,email"`
 	Role  string `json:"role" binding:"required,oneof=admin editor"`
 }
-type memberPatchReq struct {
-	UserID string `json:"user_id" binding:"required,uuid"`
-	Role   string `json:"role" binding:"required,oneof=admin editor"`
+type memberRoleUpdateReq struct {
+	Role string `json:"role" binding:"required,oneof=admin editor"`
 }
 
 func (h *FormsHandler) GetV1FormsFormIdMembers(c *gin.Context) {
@@ -59,20 +58,26 @@ func (h *FormsHandler) PostV1FormsFormIdMembers(c *gin.Context) {
 	c.Status(201)
 }
 
-func (h *FormsHandler) PatchV1FormsFormIdMembers(c *gin.Context) {
+func (h *FormsHandler) PutV1FormsFormIdMembersUserId(c *gin.Context) {
 	formID := c.Param("form_id")
+	userID := c.Param("user_id")
 	uidStr, _ := auth.UserID(c)
 	uid, _ := uuid.Parse(uidStr)
 	if err := h.S.RequireAdmin(c, formID, uid); err != nil {
 		c.JSON(403, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
 		return
 	}
-	var req memberPatchReq
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
+		return
+	}
+	var req memberRoleUpdateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 		return
 	}
-	if err := h.S.ChangeRole(c, formID, req.UserID, req.Role); err != nil {
+	if err := h.S.ChangeRole(c, formID, userUUID.String(), req.Role); err != nil {
 		if err == service.ErrValidation {
 			c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 			return
@@ -83,20 +88,21 @@ func (h *FormsHandler) PatchV1FormsFormIdMembers(c *gin.Context) {
 	c.Status(200)
 }
 
-func (h *FormsHandler) DeleteV1FormsFormIdMembers(c *gin.Context) {
+func (h *FormsHandler) DeleteV1FormsFormIdMembersUserId(c *gin.Context) {
 	formID := c.Param("form_id")
-	userID := c.Query("user_id")
+	userID := c.Param("user_id")
 	uidStr, _ := auth.UserID(c)
 	uid, _ := uuid.Parse(uidStr)
 	if err := h.S.RequireAdmin(c, formID, uid); err != nil {
 		c.JSON(403, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
 		return
 	}
-	if userID == "" {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
 		c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 		return
 	}
-	if err := h.S.RemoveMember(c, formID, userID); err != nil {
+	if err := h.S.RemoveMember(c, formID, userUUID.String()); err != nil {
 		if err == service.ErrValidation {
 			c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 			return

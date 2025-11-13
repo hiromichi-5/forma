@@ -88,9 +88,8 @@ components:
         role: { type: string, enum: [admin, editor] }
     ChangeMemberRoleRequest:
       type: object
-      required: [user_id, role]
+      required: [role]
       properties:
-        user_id: { type: string, format: uuid }
         role: { type: string, enum: [admin, editor] }
     FormInvite:
       type: object
@@ -370,7 +369,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-    put:
+    patch:
       summary: プロフィール更新
       requestBody:
         required: true
@@ -624,14 +623,18 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-
-    patch:
+  /v1/forms/{form_id}/members/{user_id}:
+    parameters:
+      - in: path
+        name: form_id
+        required: true
+        schema: { type: string }
+      - in: path
+        name: user_id
+        required: true
+        schema: { type: string, format: uuid }
+    put:
       summary: メンバーロール変更（admin専用）
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -663,20 +666,11 @@ paths:
 
     delete:
       summary: メンバー削除（admin専用）
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
-        - in: query
-          name: user_id
-          required: true
-          schema: { type: string, format: uuid }
       responses:
         "204":
           description: No Content
         "400":
-          description: Validation error (missing user_id)
+          description: Validation error
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -695,6 +689,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+
 
   /v1/forms/{form_id}/invites:
     get:
