@@ -403,7 +403,7 @@ export function KanbanPage() {
     string | null
   >(null);
 
-  const canEdit = userRole === "admin";
+  const canEdit = userRole === "admin" || userRole === "editor";
 
   const ensureFormQuestions = useCallback(
     async (formId: string) => {
