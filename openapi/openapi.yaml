@@ -555,7 +555,7 @@ paths:
 
   /v1/forms/{form_id}/members:
     get:
-      summary: メンバー一覧取得（admin専用）
+      summary: メンバー一覧取得（admin/editor）
       parameters:
         - in: path
           name: form_id
@@ -573,7 +573,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "403":
-          description: Forbidden (admin role required)
+          description: Forbidden (admin/editor role required)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -868,7 +868,7 @@ paths:
 
   /v1/forms/{form_id}/title-question:
     patch:
-      summary: タイトル用質問の更新（admin）
+      summary: タイトル用質問の更新（admin/editor）
       parameters:
         - in: path
           name: form_id
@@ -894,7 +894,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "403":
-          description: Forbidden (admin role required)
+          description: Forbidden (admin/editor role required)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
