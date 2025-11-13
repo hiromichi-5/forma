@@ -53,10 +53,9 @@ export interface AddMemberRequest {
   role: "admin" | "editor";
 }
 
-export interface ChangeMemberRoleRequest {
-  user_id: string;
+export type ChangeMemberRoleRequest = {
   role: "admin" | "editor";
-}
+};
 
 export interface FormInvite {
   code: string;

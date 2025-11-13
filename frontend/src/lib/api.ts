@@ -196,10 +196,11 @@ class ApiClient {
 
   async changeMemberRole(
     formId: string,
+    userId: string,
     request: ChangeMemberRoleRequest
   ): Promise<void> {
-    return this.request<void>(`/v1/forms/${formId}/members`, {
-      method: "PATCH",
+    return this.request<void>(`/v1/forms/${formId}/members/${userId}`, {
+      method: "PUT",
       body: JSON.stringify(request),
     });
   }

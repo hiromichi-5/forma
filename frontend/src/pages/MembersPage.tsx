@@ -235,8 +235,7 @@ export default function MembersPage() {
       prev.map((m) => (m.id === member.id ? { ...m, role: nextRole } : m))
     );
     try {
-      await apiClient.changeMemberRole(selectedFormId, {
-        user_id: member.id,
+      await apiClient.changeMemberRole(selectedFormId, member.id, {
         role: nextRole,
       });
       setInfoMessage(
