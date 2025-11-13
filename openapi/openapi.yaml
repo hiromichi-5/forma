@@ -573,7 +573,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "403":
-          description: Forbidden (editor role required)
+          description: Forbidden (admin/editor role required)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -894,7 +894,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "403":
-          description: Forbidden (editor role required)
+          description: Forbidden (admin/editor role required)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
