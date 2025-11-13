@@ -165,7 +165,7 @@ func (s *Service) ListFormQuestions(ctx context.Context, formID string, actor uu
 }
 
 func (s *Service) SetFormTitleQuestion(ctx context.Context, formID string, questionID *string, actor uuid.UUID) error {
-	if err := s.RequireAdmin(ctx, formID, actor); err != nil {
+	if err := s.RequireEditor(ctx, formID, actor); err != nil {
 		return err
 	}
 	var value pgtype.Text

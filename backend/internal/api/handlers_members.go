@@ -19,7 +19,7 @@ func (h *FormsHandler) GetV1FormsFormIdMembers(c *gin.Context) {
 	formID := c.Param("form_id")
 	uidStr, _ := auth.UserID(c)
 	uid, _ := uuid.Parse(uidStr)
-	if err := h.S.RequireAdmin(c, formID, uid); err != nil {
+	if err := h.S.RequireEditor(c, formID, uid); err != nil {
 		c.JSON(403, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
 		return
 	}
