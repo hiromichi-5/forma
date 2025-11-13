@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/db"
@@ -30,7 +31,7 @@ func (s *Service) RequireAdmin(ctx context.Context, formID string, actor uuid.UU
 		FormID: formID,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrForbidden
 		}
 		return err
@@ -47,7 +48,7 @@ func (s *Service) RequireEditor(ctx context.Context, formID string, actor uuid.U
 		FormID: formID,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrForbidden
 		}
 		return err
@@ -78,7 +79,7 @@ func (s *Service) AddMember(ctx context.Context, formID, email, role string) err
 	}
 	u, err := s.Q.GetUserByEmail(ctx, email)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrUserNotFound
 		}
 		return err
@@ -98,7 +99,7 @@ func (s *Service) ChangeRole(ctx context.Context, formID, userID, role string) e
 	if err != nil {
 		return ErrValidation
 	}
-	if role == "editor" {
+	if role != "admin" {
 		if err := s.ensureFormKeepsAdmin(ctx, formID, uid); err != nil {
 			return err
 		}
@@ -130,7 +131,7 @@ func (s *Service) ensureFormKeepsAdmin(ctx context.Context, formID string, userI
 		FormID: formID,
 	})
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		return err
