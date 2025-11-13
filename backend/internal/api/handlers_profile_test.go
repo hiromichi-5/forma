@@ -85,7 +85,7 @@ func profileRouter(h *ProfileHandler) *gin.Engine {
 	})
 
 	r.GET("/v1/me", h.GetV1Me)
-	r.PUT("/v1/me", h.PutV1Me)
+	r.PUT("/v1/me", h.PatchV1Me)
 	r.DELETE("/v1/me", h.DeleteV1Me)
 	r.PATCH("/v1/me/password", h.PatchV1MePassword)
 	return r

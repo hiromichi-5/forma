@@ -103,7 +103,7 @@ func main() {
 
 	ph := &api.ProfileHandler{Svc: service.NewProfileService(q)}
 	authz.GET("/me", ph.GetV1Me)
-	authz.PUT("/me", ph.PutV1Me)
+	authz.PATCH("/me", ph.PatchV1Me)
 	authz.DELETE("/me", ph.DeleteV1Me)
 	authz.PATCH("/me/password", ph.PatchV1MePassword)
 

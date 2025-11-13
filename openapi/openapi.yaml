@@ -370,7 +370,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-    put:
+    patch:
       summary: プロフィール更新
       requestBody:
         required: true

@@ -144,7 +144,7 @@ class ApiClient {
 
   async updateProfile(request: UpdateUserProfileRequest): Promise<UserProfile> {
     return this.request<UserProfile>("/v1/me", {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify(request),
     });
   }
@@ -211,9 +211,7 @@ class ApiClient {
   }
 
   async listInvites(formId: string): Promise<ListFormInvitesResponse> {
-    return this.request<ListFormInvitesResponse>(
-      `/v1/forms/${formId}/invites`
-    );
+    return this.request<ListFormInvitesResponse>(`/v1/forms/${formId}/invites`);
   }
 
   async createInvite(formId: string): Promise<IssueInviteResponse> {
