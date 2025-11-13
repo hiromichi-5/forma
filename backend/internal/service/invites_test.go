@@ -50,6 +50,7 @@ type stubRolesStore struct {
 	deleteFn    func(ctx context.Context, arg db.DeleteUserFormRoleParams) error
 	listMembers func(ctx context.Context, formID string) ([]db.ListFormMembersRow, error)
 	listFormsFn func(ctx context.Context, userID pgtype.UUID) ([]db.ListUserAccessibleFormsRow, error)
+	countAdmins func(ctx context.Context, formID string) (int64, error)
 }
 
 func (s *stubRolesStore) GetUserFormRole(ctx context.Context, arg db.GetUserFormRoleParams) (string, error) {
@@ -81,6 +82,13 @@ func (s *stubRolesStore) ListUserAccessibleForms(ctx context.Context, userID pgt
 		return nil, nil
 	}
 	return s.listFormsFn(ctx, userID)
+}
+
+func (s *stubRolesStore) CountFormAdmins(ctx context.Context, formID string) (int64, error) {
+	if s.countAdmins == nil {
+		return 1, nil
+	}
+	return s.countAdmins(ctx, formID)
 }
 
 func defaultStubRoles() *stubRolesStore {

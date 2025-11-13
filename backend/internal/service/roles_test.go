@@ -1,0 +1,114 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/hiromichi-5/forma/backend/internal/db"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+type rolesStoreStub struct {
+	role        string
+	adminCount  int64
+	getErr      error
+	countErr    error
+	upsertArgs  []db.UpsertUserFormRoleParams
+	deleteArgs  []db.DeleteUserFormRoleParams
+	countCalled int
+}
+
+func (s *rolesStoreStub) GetUserFormRole(ctx context.Context, arg db.GetUserFormRoleParams) (string, error) {
+	if s.getErr != nil {
+		return "", s.getErr
+	}
+	return s.role, nil
+}
+
+func (s *rolesStoreStub) UpsertUserFormRole(ctx context.Context, arg db.UpsertUserFormRoleParams) error {
+	s.upsertArgs = append(s.upsertArgs, arg)
+	return nil
+}
+
+func (s *rolesStoreStub) DeleteUserFormRole(ctx context.Context, arg db.DeleteUserFormRoleParams) error {
+	s.deleteArgs = append(s.deleteArgs, arg)
+	return nil
+}
+
+func (s *rolesStoreStub) ListFormMembers(ctx context.Context, formID string) ([]db.ListFormMembersRow, error) {
+	return nil, nil
+}
+
+func (s *rolesStoreStub) ListUserAccessibleForms(ctx context.Context, userID pgtype.UUID) ([]db.ListUserAccessibleFormsRow, error) {
+	return nil, nil
+}
+
+func (s *rolesStoreStub) CountFormAdmins(ctx context.Context, formID string) (int64, error) {
+	s.countCalled++
+	if s.countErr != nil {
+		return 0, s.countErr
+	}
+	return s.adminCount, nil
+}
+
+func TestChangeRole_PreventsDemotingLastAdmin(t *testing.T) {
+	uid := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	stub := &rolesStoreStub{role: "admin", adminCount: 1}
+	svc := &Service{Roles: stub}
+
+	err := svc.ChangeRole(context.Background(), "formA", uid.String(), "editor")
+	if !errors.Is(err, ErrValidation) {
+		t.Fatalf("want ErrValidation, got %v", err)
+	}
+	if len(stub.upsertArgs) != 0 {
+		t.Fatalf("unexpected upsert call: %+v", stub.upsertArgs)
+	}
+}
+
+func TestChangeRole_AllowsDemoteWhenAnotherAdminExists(t *testing.T) {
+	uid := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+	stub := &rolesStoreStub{role: "admin", adminCount: 2}
+	svc := &Service{Roles: stub}
+
+	if err := svc.ChangeRole(context.Background(), "formA", uid.String(), "editor"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(stub.upsertArgs) != 1 {
+		t.Fatalf("expected single upsert call, got %d", len(stub.upsertArgs))
+	}
+	if stub.upsertArgs[0].Role != "editor" {
+		t.Fatalf("unexpected role written: %s", stub.upsertArgs[0].Role)
+	}
+}
+
+func TestRemoveMember_PreventsDeletingLastAdmin(t *testing.T) {
+	uid := uuid.MustParse("00000000-0000-0000-0000-000000000003")
+	stub := &rolesStoreStub{role: "admin", adminCount: 1}
+	svc := &Service{Roles: stub}
+
+	err := svc.RemoveMember(context.Background(), "formA", uid.String())
+	if !errors.Is(err, ErrValidation) {
+		t.Fatalf("want ErrValidation, got %v", err)
+	}
+	if len(stub.deleteArgs) != 0 {
+		t.Fatalf("unexpected delete call: %+v", stub.deleteArgs)
+	}
+}
+
+func TestRemoveMember_AllowsNonAdminRemoval(t *testing.T) {
+	uid := uuid.MustParse("00000000-0000-0000-0000-000000000004")
+	stub := &rolesStoreStub{role: "editor", adminCount: 1}
+	svc := &Service{Roles: stub}
+
+	if err := svc.RemoveMember(context.Background(), "formA", uid.String()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(stub.deleteArgs) != 1 {
+		t.Fatalf("expected delete call, got %d", len(stub.deleteArgs))
+	}
+	if stub.countCalled != 0 {
+		t.Fatalf("count should not be called for non-admin, got %d", stub.countCalled)
+	}
+}
