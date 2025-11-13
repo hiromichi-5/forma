@@ -11,6 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countFormAdmins = `-- name: CountFormAdmins :one
+SELECT COUNT(*)
+FROM user_form_roles
+WHERE form_id = $1
+  AND role = 'admin'
+`
+
+func (q *Queries) CountFormAdmins(ctx context.Context, formID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countFormAdmins, formID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteUserFormRole = `-- name: DeleteUserFormRole :exec
 DELETE FROM user_form_roles WHERE user_id=$1 AND form_id=$2
 `

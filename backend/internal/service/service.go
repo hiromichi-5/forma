@@ -25,6 +25,7 @@ type rolesStore interface {
 	DeleteUserFormRole(ctx context.Context, arg db.DeleteUserFormRoleParams) error
 	ListFormMembers(ctx context.Context, formID string) ([]db.ListFormMembersRow, error)
 	ListUserAccessibleForms(ctx context.Context, userID pgtype.UUID) ([]db.ListUserAccessibleFormsRow, error)
+	CountFormAdmins(ctx context.Context, formID string) (int64, error)
 }
 
 type Service struct {
