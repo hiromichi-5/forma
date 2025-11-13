@@ -98,6 +98,11 @@ func (s *Service) ChangeRole(ctx context.Context, formID, userID, role string) e
 	if err != nil {
 		return ErrValidation
 	}
+	if role == "editor" {
+		if err := s.ensureFormKeepsAdmin(ctx, formID, uid); err != nil {
+			return err
+		}
+	}
 	return s.Roles.UpsertUserFormRole(ctx, db.UpsertUserFormRoleParams{
 		UserID: pgtype.UUID{Bytes: uid, Valid: true},
 		FormID: formID,
@@ -110,10 +115,37 @@ func (s *Service) RemoveMember(ctx context.Context, formID, userID string) error
 	if err != nil {
 		return ErrValidation
 	}
+	if err := s.ensureFormKeepsAdmin(ctx, formID, uid); err != nil {
+		return err
+	}
 	return s.Roles.DeleteUserFormRole(ctx, db.DeleteUserFormRoleParams{
 		UserID: pgtype.UUID{Bytes: uid, Valid: true},
 		FormID: formID,
 	})
+}
+
+func (s *Service) ensureFormKeepsAdmin(ctx context.Context, formID string, userID uuid.UUID) error {
+	role, err := s.Roles.GetUserFormRole(ctx, db.GetUserFormRoleParams{
+		UserID: pgtype.UUID{Bytes: userID, Valid: true},
+		FormID: formID,
+	})
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil
+		}
+		return err
+	}
+	if role != "admin" {
+		return nil
+	}
+	count, err := s.Roles.CountFormAdmins(ctx, formID)
+	if err != nil {
+		return err
+	}
+	if count <= 1 {
+		return ErrValidation
+	}
+	return nil
 }
 
 func (s *Service) ListMembers(ctx context.Context, formID string) ([]Member, error) {

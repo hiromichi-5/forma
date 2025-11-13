@@ -22,3 +22,9 @@ SELECT f.form_id, f.title
 FROM user_form_roles r JOIN forms f ON f.form_id = r.form_id
 WHERE r.user_id = $1
 ORDER BY f.title;
+
+-- name: CountFormAdmins :one
+SELECT COUNT(*)
+FROM user_form_roles
+WHERE form_id = $1
+  AND role = 'admin';
