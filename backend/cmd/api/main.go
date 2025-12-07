@@ -30,6 +30,7 @@ func NewRouter() *gin.Engine {
 	config.AllowOrigins = []string{"http://localhost:5173"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	config.AllowCredentials = true
 	r.Use(cors.New(config))
 
 	appEnv := viper.GetString("APP_ENV")
@@ -55,6 +56,10 @@ func healthz(c *gin.Context) {
 
 func main() {
 	viper.AutomaticEnv()
+	appEnv := viper.GetString("APP_ENV")
+	if appEnv == "" {
+		appEnv = "local"
+	}
 	addr := viper.GetString("HTTP_ADDR")
 	if addr == "" {
 		addr = ":8080"
@@ -93,13 +98,20 @@ func main() {
 	svc := service.NewService(q, gf)
 
 	r := NewRouter()
+	cookieCfg := api.AuthCookieConfig{
+		Name:     "forma_token",
+		Path:     "/",
+		Secure:   appEnv == "production",
+		SameSite: http.SameSiteLaxMode,
+	}
 
-	ah := &api.AuthHandler{Svc: service.NewAuthService(q), JWT: signer}
+	ah := &api.AuthHandler{Svc: service.NewAuthService(q), JWT: signer, Cookie: cookieCfg}
 	r.POST("/v1/auth/login", ah.PostV1AuthLogin)
 	r.POST("/v1/auth/signup", ah.PostV1AuthSignup)
+	r.POST("/v1/auth/logout", ah.PostV1AuthLogout)
 
 	authz := r.Group("/v1")
-	authz.Use(auth.BearerMiddleware(signer))
+	authz.Use(auth.BearerMiddleware(signer, cookieCfg.Name))
 
 	ph := &api.ProfileHandler{Svc: service.NewProfileService(q)}
 	authz.GET("/me", ph.GetV1Me)

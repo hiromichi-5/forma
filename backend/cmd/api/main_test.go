@@ -57,7 +57,7 @@ func TestLogin_Success(t *testing.T) {
 	r := NewRouter()
 	base := time.Unix(1_700_000_000, 0)
 	signer := auth.Signer{Secret: []byte("k"), TTL: time.Hour, Now: func() time.Time { return base }}
-	h := &api.AuthHandler{Svc: &fakeAuth{"a@example.com", "pass123", "u-1"}, JWT: signer}
+	h := &api.AuthHandler{Svc: &fakeAuth{"a@example.com", "pass123", "u-1"}, JWT: signer, Cookie: api.AuthCookieConfig{Name: "forma_token"}}
 	r.POST("/v1/auth/login", h.PostV1AuthLogin)
 
 	body, _ := json.Marshal(map[string]string{"email": "a@example.com", "password": "pass123"})
@@ -66,18 +66,14 @@ func TestLogin_Success(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("status: want 200 got %d body=%s", w.Code, w.Body.String())
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status: want 204 got %d body=%s", w.Code, w.Body.String())
 	}
-
-	var resp struct {
-		Token string `json:"token"`
+	cookie := findCookie(w.Result().Cookies(), "forma_token")
+	if cookie == nil {
+		t.Fatalf("cookie missing")
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil || resp.Token == "" {
-		t.Fatalf("token parse error: %v body=%s", err, w.Body.String())
-	}
-
-	claims, err := signer.Parse(resp.Token)
+	claims, err := signer.Parse(cookie.Value)
 	if err != nil || claims.Subject != "u-1" {
 		t.Fatalf("claims invalid: %v sub=%v", err, claims.Subject)
 	}
@@ -89,11 +85,12 @@ func TestWhoAmI_AuthFlow(t *testing.T) {
 	r := NewRouter()
 	base := time.Unix(1_700_000_000, 0)
 	signer := auth.Signer{Secret: []byte("k"), TTL: time.Hour, Now: func() time.Time { return base }}
-	h := &api.AuthHandler{Svc: &fakeAuth{"a@example.com", "pass123", "u-42"}, JWT: signer}
+	cookieCfg := api.AuthCookieConfig{Name: "forma_token"}
+	h := &api.AuthHandler{Svc: &fakeAuth{"a@example.com", "pass123", "u-42"}, JWT: signer, Cookie: cookieCfg}
 
 	r.POST("/v1/auth/login", h.PostV1AuthLogin)
 	authz := r.Group("/v1")
-	authz.Use(auth.BearerMiddleware(signer))
+	authz.Use(auth.BearerMiddleware(signer, cookieCfg.Name))
 	authz.GET("/whoami", func(c *gin.Context) {
 		if uid, ok := auth.UserID(c); ok {
 			c.JSON(http.StatusOK, gin.H{"user_id": uid})
@@ -114,19 +111,27 @@ func TestWhoAmI_AuthFlow(t *testing.T) {
 	req1.Header.Set("Content-Type", "application/json")
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, req1)
-	if w1.Code != http.StatusOK {
+	if w1.Code != http.StatusNoContent {
 		t.Fatalf("login failed: %d %s", w1.Code, w1.Body.String())
 	}
-	var resp struct {
-		Token string `json:"token"`
+	cookie := findCookie(w1.Result().Cookies(), "forma_token")
+	if cookie == nil {
+		t.Fatalf("cookie missing")
 	}
-	_ = json.Unmarshal(w1.Body.Bytes(), &resp)
-
 	req2 := httptest.NewRequest(http.MethodGet, "/v1/whoami", nil)
-	req2.Header.Set("Authorization", "Bearer "+resp.Token)
+	req2.AddCookie(cookie)
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, req2)
 	if w2.Code != http.StatusOK {
 		t.Fatalf("whoami status: want 200 got %d body=%s", w2.Code, w2.Body.String())
 	}
+}
+
+func findCookie(cookies []*http.Cookie, name string) *http.Cookie {
+	for _, c := range cookies {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
 }

@@ -49,6 +49,7 @@ func router(h *AuthHandler) *gin.Engine {
 	r := gin.New()
 	r.POST("/v1/auth/login", h.PostV1AuthLogin)
 	r.POST("/v1/auth/signup", h.PostV1AuthSignup)
+	r.POST("/v1/auth/logout", h.PostV1AuthLogout)
 	return r
 }
 
@@ -57,8 +58,9 @@ func TestLogin_Success(t *testing.T) {
 	s := auth.Signer{Secret: []byte("k"), TTL: time.Hour, Now: func() time.Time { return base }}
 
 	h := &AuthHandler{
-		Svc: &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"},
-		JWT: s,
+		Svc:    &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"},
+		JWT:    s,
+		Cookie: AuthCookieConfig{Name: "forma_token"},
 	}
 	r := router(h)
 
@@ -69,18 +71,18 @@ func TestLogin_Success(t *testing.T) {
 
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("want 200, got %d body=%s", w.Code, w.Body.String())
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("want 204, got %d body=%s", w.Code, w.Body.String())
 	}
 
-	var resp struct {
-		Token string `json:"token"`
+	cookie := findCookie(w.Result().Cookies(), "forma_token")
+	if cookie == nil {
+		t.Fatalf("want forma_token cookie")
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil || resp.Token == "" {
-		t.Fatalf("bad json: %v %q", err, w.Body.String())
+	if !cookie.HttpOnly {
+		t.Fatalf("cookie must be HttpOnly")
 	}
-
-	claims, err := s.Parse(resp.Token)
+	claims, err := s.Parse(cookie.Value)
 	if err != nil {
 		t.Fatalf("parse token: %v", err)
 	}
@@ -94,7 +96,7 @@ func TestLogin_Success(t *testing.T) {
 
 func TestSignup_Success(t *testing.T) {
 	s := auth.Signer{Secret: []byte("k"), TTL: time.Hour}
-	h := &AuthHandler{Svc: &fakeAuth{email: "exists@example.com"}, JWT: s}
+	h := &AuthHandler{Svc: &fakeAuth{email: "exists@example.com"}, JWT: s, Cookie: AuthCookieConfig{Name: "forma_token"}}
 	r := router(h)
 
 	body, _ := json.Marshal(map[string]string{"email": "new@example.com", "password": "password123", "display_name": "TestUser"})
@@ -102,19 +104,16 @@ func TestSignup_Success(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("want 200, got %d body=%s", w.Code, w.Body.String())
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("want 204, got %d body=%s", w.Code, w.Body.String())
 	}
-	var resp struct {
-		Token string `json:"token"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil || resp.Token == "" {
-		t.Fatalf("bad json: %v %q", err, w.Body.String())
+	if c := findCookie(w.Result().Cookies(), "forma_token"); c == nil {
+		t.Fatalf("cookie not found")
 	}
 }
 
 func TestSignup_Conflict(t *testing.T) {
-	h := &AuthHandler{Svc: &fakeAuth{email: "dup@example.com"}, JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour}}
+	h := &AuthHandler{Svc: &fakeAuth{email: "dup@example.com"}, JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour}, Cookie: AuthCookieConfig{}}
 	r := router(h)
 	body, _ := json.Marshal(map[string]string{"email": "dup@example.com", "password": "password123", "display_name": "TestUser"})
 	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
@@ -127,7 +126,7 @@ func TestSignup_Conflict(t *testing.T) {
 }
 
 func TestSignup_Validation(t *testing.T) {
-	h := &AuthHandler{Svc: &fakeAuth{}, JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour}}
+	h := &AuthHandler{Svc: &fakeAuth{}, JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour}, Cookie: AuthCookieConfig{}}
 	r := router(h)
 	// メール不正
 	body, _ := json.Marshal(map[string]string{"email": "bad", "password": "password123"})
@@ -142,8 +141,9 @@ func TestSignup_Validation(t *testing.T) {
 
 func TestLogin_InvalidCredentials(t *testing.T) {
 	h := &AuthHandler{
-		Svc: &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"},
-		JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour},
+		Svc:    &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"},
+		JWT:    auth.Signer{Secret: []byte("k"), TTL: time.Hour},
+		Cookie: AuthCookieConfig{},
 	}
 	r := router(h)
 
@@ -160,8 +160,9 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 
 func TestLogin_ValidationError(t *testing.T) {
 	h := &AuthHandler{
-		Svc: &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"},
-		JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour},
+		Svc:    &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"},
+		JWT:    auth.Signer{Secret: []byte("k"), TTL: time.Hour},
+		Cookie: AuthCookieConfig{},
 	}
 	r := router(h)
 
@@ -184,4 +185,39 @@ func TestLogin_ValidationError(t *testing.T) {
 	if w2.Code != http.StatusBadRequest {
 		t.Fatalf("want 400, got %d", w2.Code)
 	}
+}
+
+func TestLogout_ClearsCookie(t *testing.T) {
+	s := auth.Signer{Secret: []byte("k"), TTL: time.Hour}
+	h := &AuthHandler{Svc: &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"}, JWT: s, Cookie: AuthCookieConfig{Name: "forma_token"}}
+	r := router(h)
+
+	loginBody, _ := json.Marshal(map[string]string{"email": "a@example.com", "password": "pass123"})
+	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(loginBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if c := findCookie(w.Result().Cookies(), "forma_token"); c == nil {
+		t.Fatalf("cookie not issued")
+	}
+
+	logoutReq := httptest.NewRequest("POST", "/v1/auth/logout", nil)
+	logoutW := httptest.NewRecorder()
+	r.ServeHTTP(logoutW, logoutReq)
+	if logoutW.Code != http.StatusNoContent {
+		t.Fatalf("want 204, got %d", logoutW.Code)
+	}
+	logoutCookie := findCookie(logoutW.Result().Cookies(), "forma_token")
+	if logoutCookie == nil || logoutCookie.MaxAge != -1 {
+		t.Fatalf("logout cookie missing or invalid")
+	}
+}
+
+func findCookie(cookies []*http.Cookie, name string) *http.Cookie {
+	for _, c := range cookies {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
 }

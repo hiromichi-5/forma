@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hiromichi-5/forma/backend/internal/auth"
@@ -14,7 +15,16 @@ type AuthHandler struct {
 		Authenticate(ctx context.Context, email, password string) (string, error)
 		Signup(ctx context.Context, email, password, displayName string) (string, error)
 	}
-	JWT auth.Signer
+	JWT    auth.Signer
+	Cookie AuthCookieConfig
+}
+
+type AuthCookieConfig struct {
+	Name     string
+	Path     string
+	Domain   string
+	Secure   bool
+	SameSite http.SameSite
 }
 
 type loginReq struct {
@@ -42,7 +52,8 @@ func (h *AuthHandler) PostV1AuthLogin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"token": tok})
+	h.setAuthCookie(c, tok)
+	c.Status(http.StatusNoContent)
 }
 
 type signupReq struct {
@@ -76,5 +87,60 @@ func (h *AuthHandler) PostV1AuthSignup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"token": tok})
+	h.setAuthCookie(c, tok)
+	c.Status(http.StatusNoContent)
+}
+
+func (h *AuthHandler) PostV1AuthLogout(c *gin.Context) {
+	h.clearAuthCookie(c)
+	c.Status(http.StatusNoContent)
+}
+
+
+func (h *AuthHandler) cookieDefaults() (string, string, http.SameSite) {
+	name := h.Cookie.Name
+	if name == "" {
+		name = "forma_token"
+	}
+	path := h.Cookie.Path
+	if path == "" {
+		path = "/"
+	}
+	sameSite := h.Cookie.SameSite
+	if sameSite == 0 {
+		sameSite = http.SameSiteLaxMode
+	}
+	return name, path, sameSite
+}
+
+func (h *AuthHandler) setAuthCookie(c *gin.Context, token string) {
+	name, path, sameSite := h.cookieDefaults()
+	maxAge := int(h.JWT.TTL / time.Second)
+	if maxAge <= 0 {
+		maxAge = 0
+	}
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     name,
+		Value:    token,
+		Path:     path,
+		Domain:   h.Cookie.Domain,
+		Secure:   h.Cookie.Secure,
+		HttpOnly: true,
+		SameSite: sameSite,
+		MaxAge:   maxAge,
+	})
+}
+
+func (h *AuthHandler) clearAuthCookie(c *gin.Context) {
+	name, path, sameSite := h.cookieDefaults()
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     name,
+		Value:    "",
+		Path:     path,
+		Domain:   h.Cookie.Domain,
+		Secure:   h.Cookie.Secure,
+		HttpOnly: true,
+		SameSite: sameSite,
+		MaxAge:   -1,
+	})
 }

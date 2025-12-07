@@ -1,8 +1,6 @@
 import type {
   LoginRequest,
-  LoginResponse,
   SignupRequest,
-  SignupResponse,
   RegisterFormRequest,
   RegisterFormResponse,
   ListFormsResponse,
@@ -51,21 +49,6 @@ export class ApiError extends Error {
 
 class ApiClient {
   private baseUrl: string = "http://localhost:8080";
-  private token: string | null = null;
-
-  constructor() {
-    this.token = localStorage.getItem("forma_token");
-  }
-
-  setToken(token: string) {
-    this.token = token;
-    localStorage.setItem("forma_token", token);
-  }
-
-  clearToken() {
-    this.token = null;
-    localStorage.removeItem("forma_token");
-  }
 
   private async request<T>(
     endpoint: string,
@@ -81,11 +64,8 @@ class ApiClient {
       Object.assign(headers, options.headers);
     }
 
-    if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`;
-    }
-
     const config: RequestInit = {
+      credentials: "include",
       ...options,
       headers,
     };
@@ -120,15 +100,15 @@ class ApiClient {
     }
   }
 
-  async login(request: LoginRequest): Promise<LoginResponse> {
-    return this.request<LoginResponse>("/v1/auth/login", {
+  async login(request: LoginRequest): Promise<void> {
+    await this.request<void>("/v1/auth/login", {
       method: "POST",
       body: JSON.stringify(request),
     });
   }
 
-  async signup(request: SignupRequest): Promise<SignupResponse> {
-    return this.request<SignupResponse>("/v1/auth/signup", {
+  async signup(request: SignupRequest): Promise<void> {
+    await this.request<void>("/v1/auth/signup", {
       method: "POST",
       body: JSON.stringify(request),
     });
@@ -302,8 +282,10 @@ class ApiClient {
     return this.request<string>("/healthz");
   }
 
-  logout() {
-    this.clearToken();
+  async logout(): Promise<void> {
+    await this.request<void>("/v1/auth/logout", {
+      method: "POST",
+    });
   }
 }
 
