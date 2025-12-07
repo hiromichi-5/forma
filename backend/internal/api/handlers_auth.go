@@ -20,10 +20,15 @@ type AuthHandler struct {
 }
 
 type AuthCookieConfig struct {
-	Name     string
-	Path     string
-	Domain   string
-	Secure   bool
+	// Cookie name (default: "forma_token")
+	Name string
+	// Cookie path (default: "/")
+	Path string
+	// Cookie domain (empty = current host only)
+	Domain string
+	// Send cookie over HTTPS only
+	Secure bool
+	// Cookie SameSite policy (default: Lax)
 	SameSite http.SameSite
 }
 
