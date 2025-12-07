@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
+	"math"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hiromichi-5/forma/backend/internal/auth"
@@ -114,9 +114,9 @@ func (h *AuthHandler) cookieDefaults() (string, string, http.SameSite) {
 
 func (h *AuthHandler) setAuthCookie(c *gin.Context, token string) {
 	name, path, sameSite := h.cookieDefaults()
-	maxAge := int(h.JWT.TTL / time.Second)
-	if maxAge <= 0 {
-		maxAge = 0
+	maxAge := int(math.Ceil(h.JWT.TTL.Seconds()))
+	if h.JWT.TTL <= 0 {
+		maxAge = -1
 	}
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,

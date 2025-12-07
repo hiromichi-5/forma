@@ -213,6 +213,48 @@ func TestLogout_ClearsCookie(t *testing.T) {
 	}
 }
 
+func TestSetAuthCookie_RoundsUpSubSecondTTL(t *testing.T) {
+	h := &AuthHandler{
+		Svc:    &fakeAuth{},
+		JWT:    auth.Signer{Secret: []byte("k"), TTL: 500 * time.Millisecond},
+		Cookie: AuthCookieConfig{Name: "forma_token"},
+	}
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/", nil)
+
+	h.setAuthCookie(c, "tok")
+
+	cookie := findCookie(w.Result().Cookies(), "forma_token")
+	if cookie == nil {
+		t.Fatalf("cookie not found")
+	}
+	if cookie.MaxAge != 1 {
+		t.Fatalf("max-age should round up to 1, got %d", cookie.MaxAge)
+	}
+}
+
+func TestSetAuthCookie_NegativeTTLDeletesCookie(t *testing.T) {
+	h := &AuthHandler{
+		Svc:    &fakeAuth{},
+		JWT:    auth.Signer{Secret: []byte("k"), TTL: -time.Second},
+		Cookie: AuthCookieConfig{Name: "forma_token"},
+	}
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/", nil)
+
+	h.setAuthCookie(c, "tok")
+
+	cookie := findCookie(w.Result().Cookies(), "forma_token")
+	if cookie == nil {
+		t.Fatalf("cookie not found")
+	}
+	if cookie.MaxAge != -1 {
+		t.Fatalf("max-age should be -1 for negative TTL, got %d", cookie.MaxAge)
+	}
+}
+
 func findCookie(cookies []*http.Cookie, name string) *http.Cookie {
 	for _, c := range cookies {
 		if c.Name == name {

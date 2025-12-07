@@ -89,6 +89,9 @@ func main() {
 	q := db.New(pool)
 
 	signer := auth.Signer{Secret: []byte(secret), TTL: time.Hour}
+	if signer.TTL <= 0 {
+		log.Fatal("APP_JWT_TTL must be positive duration")
+	}
 
 	gf, err := gforms.NewRealFormsClient(ctx, saPath)
 	if err != nil {
