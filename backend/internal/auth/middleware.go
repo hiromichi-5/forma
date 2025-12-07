@@ -9,18 +9,22 @@ import (
 
 const CtxUserID = "userID"
 
-func BearerMiddleware(s Signer) gin.HandlerFunc {
+func BearerMiddleware(s Signer, cookieName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		h := c.GetHeader("Authorization")
-		parts := strings.SplitN(h, " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || parts[1] == "" {
+		token := bearerFromHeader(c.GetHeader("Authorization"))
+		if token == "" && cookieName != "" {
+			if cookie, err := c.Request.Cookie(cookieName); err == nil && cookie.Value != "" {
+				token = cookie.Value
+			}
+		}
+		if token == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"code":    "UNAUTHORIZED",
 				"message": "missing token",
 			})
 			return
 		}
-		claims, err := s.Parse(parts[1])
+		claims, err := s.Parse(token)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"code":    "UNAUTHORIZED",
@@ -31,6 +35,17 @@ func BearerMiddleware(s Signer) gin.HandlerFunc {
 		c.Set(CtxUserID, claims.Subject)
 		c.Next()
 	}
+}
+
+func bearerFromHeader(header string) string {
+	parts := strings.SplitN(header, " ", 2)
+	if len(parts) != 2 {
+		return ""
+	}
+	if !strings.EqualFold(parts[0], "Bearer") {
+		return ""
+	}
+	return parts[1]
 }
 
 func UserID(c *gin.Context) (string, bool) {

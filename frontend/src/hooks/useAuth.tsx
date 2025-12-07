@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
 import { apiClient } from "@/lib/api";
 import type {
@@ -18,7 +18,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
   signup: (credentials: SignupRequest) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateProfile: (request: UpdateUserProfileRequest) => Promise<UserProfile>;
   refreshProfile: () => Promise<void>;
   changePassword: (request: ChangePasswordRequest) => Promise<void>;
@@ -34,6 +34,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isProfileLoading, setIsProfileLoading] = useState(false);
 
   const isAuthenticated = !!user;
+
+  const hydrateUser = useCallback(async () => {
+    try {
+      const response = await apiClient.whoami();
+      const baseUser: User = { id: response.user_id };
+      setUser(baseUser);
+      try {
+        const profileData = await apiClient.getProfile();
+        setProfile(profileData);
+        setUser({ ...baseUser, email: profileData.email });
+      } catch (profileError) {
+        console.error("Failed to fetch profile:", profileError);
+      }
+      return true;
+    } catch (error) {
+      console.warn("Failed to hydrate user:", error);
+      setUser(null);
+      setProfile(null);
+      return false;
+    }
+  }, []);
 
   const refreshProfile = async () => {
     if (!user) return;
@@ -52,58 +73,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem("forma_token");
-      if (token) {
-        try {
-          const response = await apiClient.whoami();
-          const newUser: User = {
-            id: response.user_id,
-          };
-          setUser(newUser);
-
-          try {
-            const profileData = await apiClient.getProfile();
-            setProfile(profileData);
-            newUser.email = profileData.email;
-            setUser(newUser);
-          } catch (profileError) {
-            console.error("Failed to fetch profile:", profileError);
-          }
-        } catch {
-          localStorage.removeItem("forma_token");
-          apiClient.clearToken();
-        }
-      }
+      await hydrateUser();
       setIsLoading(false);
     };
 
     initializeAuth();
-  }, []);
+  }, [hydrateUser]);
 
   const login = async (credentials: LoginRequest) => {
-    const response = await apiClient.login(credentials);
-    apiClient.setToken(response.token);
-
-    const whoamiResponse = await apiClient.whoami();
-    const newUser: User = {
-      id: whoamiResponse.user_id,
-    };
-
-    setUser(newUser);
-    await refreshProfile();
+    await apiClient.login(credentials);
+    await hydrateUser();
   };
 
   const signup = async (credentials: SignupRequest) => {
-    const response = await apiClient.signup(credentials);
-    apiClient.setToken(response.token);
-
-    const whoamiResponse = await apiClient.whoami();
-    const newUser: User = {
-      id: whoamiResponse.user_id,
-    };
-
-    setUser(newUser);
-    await refreshProfile();
+    await apiClient.signup(credentials);
+    await hydrateUser();
   };
 
   const updateProfile = async (
@@ -116,10 +100,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return updatedProfile;
   };
 
-  const logout = () => {
-    apiClient.clearToken();
-    setUser(null);
-    setProfile(null);
+  const logout = async () => {
+    try {
+      await apiClient.logout();
+    } catch (error) {
+      console.error("Failed to logout:", error);
+    } finally {
+      setUser(null);
+      setProfile(null);
+    }
   };
 
   const changePassword = async (request: ChangePasswordRequest) => {
@@ -127,12 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteAccount = async () => {
-    try {
-      await apiClient.deleteProfile();
-      logout();
-    } catch (error) {
-      throw error;
-    }
+    await apiClient.deleteProfile();
+    await logout();
   };
 
   return (

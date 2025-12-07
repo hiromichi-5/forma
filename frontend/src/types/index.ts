@@ -5,18 +5,10 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface LoginResponse {
-  token: string;
-}
-
 export interface SignupRequest {
   email: string;
   password: string;
   display_name: string;
-}
-
-export interface SignupResponse {
-  token: string;
 }
 
 export interface RegisterFormRequest {

@@ -9,12 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// func fixed(t time.Time) func() time.Time { return func() time.Time { return t } }
-
 func routerWith(s Signer) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.GET("/p", BearerMiddleware(s), func(c *gin.Context) {
+	r.GET("/p", BearerMiddleware(s, "forma_token"), func(c *gin.Context) {
 		uid, _ := UserID(c)
 		c.String(http.StatusOK, uid)
 	})
@@ -114,5 +112,25 @@ func TestBearer_OK(t *testing.T) {
 	}
 	if w.Body.String() != "u-42" {
 		t.Fatalf("want body u-42, got %q", w.Body.String())
+	}
+}
+
+func TestBearer_CookieFallback(t *testing.T) {
+	base := time.Unix(1_700_000_000, 0)
+	s := Signer{Secret: []byte("k"), TTL: time.Hour, Now: fixed(base)}
+	tok, err := s.Issue("u-55")
+	if err != nil {
+		t.Fatalf("issue err: %v", err)
+	}
+	r := routerWith(s)
+	req := httptest.NewRequest("GET", "/p", nil)
+	req.AddCookie(&http.Cookie{Name: "forma_token", Value: tok})
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d", w.Code)
+	}
+	if w.Body.String() != "u-55" {
+		t.Fatalf("want body u-55, got %s", w.Body.String())
 	}
 }

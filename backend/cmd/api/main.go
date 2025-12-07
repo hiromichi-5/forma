@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -27,9 +28,14 @@ func NewRouter() *gin.Engine {
 	r.Use(gin.Recovery())
 
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:5173"}
+	allowedOrigins := viper.GetString("ALLOWED_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "http://localhost:5173"
+	}
+	config.AllowOrigins = strings.Split(allowedOrigins, ",")
 	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	config.AllowCredentials = true
 	r.Use(cors.New(config))
 
 	appEnv := viper.GetString("APP_ENV")
@@ -55,6 +61,10 @@ func healthz(c *gin.Context) {
 
 func main() {
 	viper.AutomaticEnv()
+	appEnv := viper.GetString("APP_ENV")
+	if appEnv == "" {
+		appEnv = "local"
+	}
 	addr := viper.GetString("HTTP_ADDR")
 	if addr == "" {
 		addr = ":8080"
@@ -84,6 +94,9 @@ func main() {
 	q := db.New(pool)
 
 	signer := auth.Signer{Secret: []byte(secret), TTL: time.Hour}
+	if signer.TTL <= 0 {
+		log.Fatal("APP_JWT_TTL must be positive duration")
+	}
 
 	gf, err := gforms.NewRealFormsClient(ctx, saPath)
 	if err != nil {
@@ -93,13 +106,20 @@ func main() {
 	svc := service.NewService(q, gf)
 
 	r := NewRouter()
+	cookieCfg := api.AuthCookieConfig{
+		Name:     "forma_token",
+		Path:     "/",
+		Secure:   appEnv == "production",
+		SameSite: http.SameSiteLaxMode,
+	}
 
-	ah := &api.AuthHandler{Svc: service.NewAuthService(q), JWT: signer}
+	ah := &api.AuthHandler{Svc: service.NewAuthService(q), JWT: signer, Cookie: cookieCfg}
 	r.POST("/v1/auth/login", ah.PostV1AuthLogin)
 	r.POST("/v1/auth/signup", ah.PostV1AuthSignup)
+	r.POST("/v1/auth/logout", ah.PostV1AuthLogout)
 
 	authz := r.Group("/v1")
-	authz.Use(auth.BearerMiddleware(signer))
+	authz.Use(auth.BearerMiddleware(signer, cookieCfg.Name))
 
 	ph := &api.ProfileHandler{Svc: service.NewProfileService(q)}
 	authz.GET("/me", ph.GetV1Me)
