@@ -9,8 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// func fixed(t time.Time) func() time.Time { return func() time.Time { return t } }
-
 func routerWith(s Signer) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
