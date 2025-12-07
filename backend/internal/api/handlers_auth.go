@@ -96,7 +96,6 @@ func (h *AuthHandler) PostV1AuthLogout(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-
 func (h *AuthHandler) cookieDefaults() (string, string, http.SameSite) {
 	name := h.Cookie.Name
 	if name == "" {
