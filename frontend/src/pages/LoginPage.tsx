@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { Label } from "../components/ui/Label";
-import { Card, CardContent, CardTitle } from "../components/ui/Card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Card, CardContent, CardTitle } from "../components/ui/card";
 import { ApiError } from "../lib/api";
 import { Loader2 } from "lucide-react";
 
-export function LoginPage() {
+export default function LoginPage() {
   const { user, login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
