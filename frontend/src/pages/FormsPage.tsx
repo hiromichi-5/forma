@@ -26,7 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../components/ui/Dialog";
-import { Label } from "../components/ui/Form";
+import { Label } from "../components/ui/label";
 import { apiClient, ApiError } from "../lib/api";
 import type { FormSummary } from "../types";
 

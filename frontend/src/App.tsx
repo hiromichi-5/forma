@@ -5,6 +5,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { AuthProvider, useRequireAuth } from "./hooks/useAuth";
+import { ThemeProvider } from "./components/theme-provider";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
@@ -14,6 +15,9 @@ import FormsPage from "./pages/FormsPage";
 import MembersPage from "./pages/MembersPage";
 import SettingsPage from "./pages/SettingsPage";
 import InviteAcceptPage from "./pages/InviteAcceptPage";
+import FormsListPage from "./pages/FormsListPage";
+import FormManagementPage from "./pages/FormManagementPage";
+import NewLoginPage from "./pages/NewLoginPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoading, shouldRedirect } = useRequireAuth();
@@ -37,6 +41,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/login-new" element={<NewLoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route
         path="/"
@@ -55,6 +60,8 @@ function AppRoutes() {
         <Route path="invites/accept" element={<InviteAcceptPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
+      <Route path="/forms-list" element={<FormsListPage />} />
+      <Route path="/forms/:id" element={<FormManagementPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -62,11 +69,13 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
-    </AuthProvider>
+    <ThemeProvider defaultTheme="light" storageKey="ui-theme">
+      <AuthProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
