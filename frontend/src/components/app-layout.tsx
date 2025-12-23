@@ -15,20 +15,14 @@ import {
   FileText,
   Users,
   RefreshCw,
-  MoreVertical
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/useAuth"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { apiClient } from "@/lib/api"
 import type { FormSummary } from "@/types"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { MembersDialog } from "./members-dialog"
 
 type AppLayoutProps = {
   children: React.ReactNode
@@ -41,6 +35,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [isFormsOpen, setIsFormsOpen] = useState(true)
   const [forms, setForms] = useState<FormSummary[]>([])
   const [loadingForms, setLoadingForms] = useState(false)
+  const [membersDialogOpen, setMembersDialogOpen] = useState(false)
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null)
   const { logout } = useAuth()
 
   const isFormsListPage = location.pathname === "/"
@@ -177,7 +173,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                           variant="ghost"
                           size="sm"
                           className={cn(
-                            "flex-1 justify-start text-sm h-8 px-2",
+                            "flex-1 justify-start text-sm h-8 px-2 min-w-0",
                             isActive && "font-medium"
                           )}
                           onClick={() => navigate(`/forms/${form.form_id}`)}
@@ -185,52 +181,40 @@ export function AppLayout({ children }: AppLayoutProps) {
                           <span className="truncate">{form.title}</span>
                         </Button>
 
-                        {/* フォーム操作メニュー */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                navigate(`/forms/${form.form_id}`)
-                              }}
-                            >
-                              <FileText className="h-4 w-4 mr-2" />
-                              フォームを開く
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={async () => {
-                                try {
-                                  await apiClient.syncForm(form.form_id)
-                                  toast.success("フォームを同期しました")
-                                } catch (error) {
-                                  toast.error("同期に失敗しました")
-                                  console.error("Failed to sync form:", error)
-                                }
-                              }}
-                            >
-                              <RefreshCw className="h-4 w-4 mr-2" />
-                              同期
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                // メンバー管理ダイアログを開く（将来実装）
-                                toast.info("メンバー管理機能は開発中です")
-                              }}
-                            >
-                              <Users className="h-4 w-4 mr-2" />
-                              メンバー管理
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {/* 操作ボタン */}
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              try {
+                                await apiClient.syncForm(form.form_id)
+                                toast.success("フォームを同期しました")
+                              } catch (error) {
+                                toast.error("同期に失敗しました")
+                                console.error("Failed to sync form:", error)
+                              }
+                            }}
+                            title="同期"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedFormId(form.form_id)
+                              setMembersDialogOpen(true)
+                            }}
+                            title="メンバー管理"
+                          >
+                            <Users className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     )
                   })
@@ -259,6 +243,15 @@ export function AppLayout({ children }: AppLayoutProps) {
       <main className="flex-1 overflow-auto">
         <div className="container mx-auto p-6">{children}</div>
       </main>
+
+      {/* メンバー管理ダイアログ */}
+      {selectedFormId && (
+        <MembersDialog
+          formId={selectedFormId}
+          open={membersDialogOpen}
+          onOpenChange={setMembersDialogOpen}
+        />
+      )}
     </div>
   )
 }

@@ -122,7 +122,7 @@ export default function FormManagementPage() {
         />
       )}
 
-      {isMembersOpen && <MembersDialog formId={formId} onClose={() => setIsMembersOpen(false)} />}
+      <MembersDialog formId={formId} open={isMembersOpen} onOpenChange={setIsMembersOpen} />
     </AppLayout>
   )
 }

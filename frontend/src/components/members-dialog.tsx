@@ -19,10 +19,11 @@ type MemberView = {
 
 type MembersDialogProps = {
   formId: string
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-export function MembersDialog({ formId, onClose }: MembersDialogProps) {
+export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps) {
   const [members, setMembers] = useState<MemberView[]>([])
   const [newMemberEmail, setNewMemberEmail] = useState("")
   const [newMemberRole, setNewMemberRole] = useState<"admin" | "editor">("editor")
@@ -96,7 +97,7 @@ export function MembersDialog({ formId, onClose }: MembersDialogProps) {
   }
 
   return (
-    <Dialog open onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>メンバー管理</DialogTitle>
