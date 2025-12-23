@@ -44,6 +44,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { logout } = useAuth();
 
   const isFormsListPage = location.pathname === "/";
+  const isSettingsPage = location.pathname === "/settings";
 
   // フォーム一覧を取得
   useEffect(() => {
@@ -206,11 +207,12 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <div className="p-2 border-t space-y-1">
           <Button
-            variant="ghost"
+            variant={isSettingsPage ? "secondary" : "ghost"}
             className={cn(
               "w-full justify-start gap-3",
               isCollapsed && "justify-center"
             )}
+            onClick={() => navigate("/settings")}
           >
             <Settings className="h-5 w-5" />
             {!isCollapsed && <span>設定</span>}

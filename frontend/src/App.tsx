@@ -10,6 +10,7 @@ import FormsListPage from "./pages/FormsListPage";
 import FormManagementPage from "./pages/FormManagementPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+import SettingsPage from "./pages/SettingsPage";
 import { useRequireAuth } from "./hooks/useAuth";
 
 type RequireAuthProps = {
@@ -52,6 +53,14 @@ function App() {
             element={
               <RequireAuth>
                 <FormManagementPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <RequireAuth>
+                <SettingsPage />
               </RequireAuth>
             }
           />
