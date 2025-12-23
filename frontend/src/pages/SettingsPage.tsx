@@ -1,398 +1,302 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import {
-  Settings,
-  User,
-  Shield,
-  Save,
-  RefreshCw,
-  AlertTriangle,
-  Trash2,
-} from "lucide-react";
-import { Button } from "../components/ui/Button";
+import { AppLayout } from "@/components/app-layout";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-} from "../components/ui/Card";
-import { Input } from "../components/ui/Input";
-import { Label } from "../components/ui/Label";
-import { useAuth } from "../hooks/useAuth";
-import { ApiError } from "../lib/api";
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { apiClient } from "@/lib/api";
+import { toast } from "sonner";
+import type { UserProfile } from "@/types";
+import { Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
-  const {
-    profile,
-    isProfileLoading,
-    refreshProfile,
-    updateProfile,
-    changePassword,
-    deleteAccount,
-  } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
   const [displayName, setDisplayName] = useState("");
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
-    if (profile?.display_name) {
-      setDisplayName(profile.display_name);
-    }
-  }, [profile]);
-
-  useEffect(() => {
-    if (!profile && !isProfileLoading) {
-      refreshProfile();
-    }
-  }, [profile, isProfileLoading, refreshProfile]);
-
-  const handleSave = async () => {
-    if (!displayName.trim()) {
-      setError("表示名を入力してください");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      await updateProfile({ display_name: displayName.trim() });
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message || "プロフィールの更新に失敗しました");
-      } else {
-        setError("プロフィールの更新に失敗しました");
+    const loadProfile = async () => {
+      try {
+        setIsLoading(true);
+        const data = await apiClient.getProfile();
+        setProfile(data);
+        setDisplayName(data.display_name);
+      } catch (error) {
+        console.error("Failed to load profile:", error);
+        toast.error("プロフィールの読み込みに失敗しました");
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    loadProfile();
+  }, []);
 
-  const resetPasswordState = () => {
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-  };
-
-  const handlePasswordUpdate = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError("未入力のフィールドがあります");
+  const handleUpdateProfile = async () => {
+    if (!displayName.trim()) {
+      toast.error("表示名を入力してください");
       return;
     }
-    if (newPassword.length < 8) {
-      setPasswordError("新しいパスワードは8文字以上で入力してください");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError("新しいパスワードと確認用パスワードが一致しません");
-      return;
-    }
-
-    setPasswordLoading(true);
-    setPasswordError(null);
-    setPasswordSuccess(false);
 
     try {
-      await changePassword({
+      setIsSavingProfile(true);
+      const updatedProfile = await apiClient.updateProfile({
+        display_name: displayName,
+      });
+      setProfile(updatedProfile);
+      toast.success("プロフィールを更新しました");
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      toast.error("プロフィールの更新に失敗しました");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("すべての項目を入力してください");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("新しいパスワードが一致しません");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error("パスワードは8文字以上で設定してください");
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      await apiClient.changePassword({
         current_password: currentPassword,
         new_password: newPassword,
       });
-      setPasswordSuccess(true);
-      resetPasswordState();
-      setTimeout(() => setPasswordSuccess(false), 3000);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setPasswordError(err.message || "パスワードの更新に失敗しました");
-      } else {
-        setPasswordError("パスワードの更新に失敗しました");
-      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("パスワードを変更しました");
+    } catch (error) {
+      console.error("Failed to change password:", error);
+      toast.error("パスワードの変更に失敗しました");
     } finally {
-      setPasswordLoading(false);
+      setIsChangingPassword(false);
     }
-  };
-
-  const startDeleteConfirmation = () => {
-    setDeleteError(null);
-    setIsDeleteConfirming(true);
-  };
-
-  const cancelDeleteConfirmation = () => {
-    if (deleteLoading) {
-      return;
-    }
-    setIsDeleteConfirming(false);
   };
 
   const handleDeleteAccount = async () => {
-    setDeleteLoading(true);
-    setDeleteError(null);
-
     try {
-      await deleteAccount();
-      navigate("/login", { replace: true });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setDeleteError(err.message || "アカウントの削除に失敗しました");
-      } else {
-        setDeleteError("アカウントの削除に失敗しました");
-      }
+      setIsDeletingAccount(true);
+      await apiClient.deleteProfile();
+      toast.success("アカウントを削除しました");
+      navigate("/login");
+    } catch (error) {
+      console.error("Failed to delete account:", error);
+      toast.error("アカウントの削除に失敗しました");
     } finally {
-      setDeleteLoading(false);
-      setIsDeleteConfirming(false);
+      setIsDeletingAccount(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <Settings className="h-8 w-8 text-blue-600" />
-          設定
-        </h1>
-      </div>
+    <AppLayout>
+      <div className="space-y-6 max-w-3xl">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">設定</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            アカウント情報・セキュリティ設定
+          </p>
+        </div>
 
-      {success && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="bg-green-50 border border-green-200 rounded-lg p-4"
-        >
-          <div className="flex items-center gap-2 text-green-800">
-            <Save className="h-5 w-5" />
-            設定が保存されました
-          </div>
-        </motion.div>
-      )}
-
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="bg-red-50 border border-red-200 rounded-lg p-4"
-        >
-          <div className="text-red-800">{error}</div>
-        </motion.div>
-      )}
-      {passwordSuccess && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="bg-green-50 border border-green-200 rounded-lg p-4"
-        >
-          <div className="flex items-center gap-2 text-green-800">
-            <Shield className="h-5 w-5" />
-            パスワードを更新しました
-          </div>
-        </motion.div>
-      )}
-
-      <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              プロフィール設定
-            </CardTitle>
+            <CardTitle>プロフィール</CardTitle>
+            <CardDescription>
+              アカウントの基本情報を変更できます
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isProfileLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
-                <span className="ml-2 text-gray-600">
-                  プロフィールを読み込み中...
-                </span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="display-name">表示名</Label>
-                  <Input
-                    id="display-name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="表示名を入力"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">メールアドレス</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={profile?.email || ""}
-                    disabled
-                  />
-                </div>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="email">メールアドレス</Label>
+              <Input
+                id="email"
+                type="email"
+                value={profile?.email || ""}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                メールアドレスは変更できません
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="displayName">表示名</Label>
+              <Input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="表示名を入力"
+              />
+            </div>
+
+            <Button
+              onClick={handleUpdateProfile}
+              disabled={
+                isSavingProfile || displayName === profile?.display_name
+              }
+            >
+              {isSavingProfile ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  保存中...
+                </>
+              ) : (
+                "保存"
+              )}
+            </Button>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              セキュリティ設定
-            </CardTitle>
+            <CardTitle>パスワード変更</CardTitle>
+            <CardDescription>
+              アカウントのパスワードを変更できます
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {passwordError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-800">
-                {passwordError}
-              </div>
-            )}
-            <div>
-              <Label htmlFor="current-password">現在のパスワード</Label>
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">現在のパスワード</Label>
               <Input
-                id="current-password"
+                id="currentPassword"
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="現在のパスワードを入力"
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="new-password">新しいパスワード</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="新しいパスワードを入力"
-                />
-              </div>
-              <div>
-                <Label htmlFor="confirm-password">
-                  新しいパスワード（確認）
-                </Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="パスワードを再入力"
-                />
-              </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">新しいパスワード</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="新しいパスワードを入力（8文字以上）"
+              />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">新しいパスワード（確認）</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="新しいパスワードを再入力"
+              />
+            </div>
+
             <Button
-              variant="secondary"
-              size="sm"
-              onClick={handlePasswordUpdate}
-              disabled={
-                passwordLoading ||
-                !currentPassword ||
-                !newPassword ||
-                !confirmPassword
-              }
-              className="flex items-center gap-2"
+              onClick={handleChangePassword}
+              disabled={isChangingPassword}
             >
-              {passwordLoading ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
+              {isChangingPassword ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  変更中...
+                </>
               ) : (
-                <Shield className="h-4 w-4" />
+                "パスワードを変更"
               )}
-              {passwordLoading ? "更新中..." : "パスワードを更新"}
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="border-red-200">
+        <Card className="border-destructive/50">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" />
-              アカウント削除
-            </CardTitle>
+            <CardTitle className="text-destructive">アカウント削除</CardTitle>
+            <CardDescription>
+              この操作は取り消すことができません
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600">
-              アカウントと関連データを削除します。この操作は取り消せません。
-            </p>
-            {deleteError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-800">
-                {deleteError}
-              </div>
-            )}
-            {isDeleteConfirming ? (
-              <div className="space-y-3">
-                <p className="text-sm text-red-700">
-                  本当にアカウントを削除しますか？
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="danger"
-                    size="sm"
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={isDeletingAccount}>
+                  {isDeletingAccount ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      削除中...
+                    </>
+                  ) : (
+                    "アカウントを削除"
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    この操作は取り消せません。アカウントとすべてのデータが完全に削除されます。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                  <AlertDialogAction
                     onClick={handleDeleteAccount}
-                    disabled={deleteLoading}
-                    className="flex items-center gap-2"
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    {deleteLoading ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                    {deleteLoading ? "削除中..." : "削除する"}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={cancelDeleteConfirmation}
-                    disabled={deleteLoading}
-                  >
-                    キャンセル
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={startDeleteConfirmation}
-                className="flex items-center gap-2"
-              >
-                <Trash2 className="h-4 w-4" />
-                アカウントを削除
-              </Button>
-            )}
+                    削除する
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
-
-        <div className="flex justify-end">
-          <Button
-            onClick={handleSave}
-            disabled={
-              loading ||
-              isProfileLoading ||
-              !displayName.trim() ||
-              displayName === profile?.display_name
-            }
-            className="flex items-center gap-2"
-          >
-            {loading ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            {loading ? "保存中..." : "設定を保存"}
-          </Button>
-        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
