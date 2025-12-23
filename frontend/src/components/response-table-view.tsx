@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import type { FormResponse, User } from "@/types/form-response"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,7 @@ import { formatDistanceToNow } from "date-fns"
 import { ja } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
-interface ResponseTableViewProps {
+type ResponseTableViewProps = {
   responses: FormResponse[]
   users: User[]
   onStatusChange: (id: string, status: FormResponse["status"]) => void
@@ -22,16 +22,27 @@ interface ResponseTableViewProps {
 
 const statusConfig = {
   new: { label: "新規", color: "bg-blue-50 text-blue-700 border-blue-200" },
-  "in-review": { label: "対応中", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
-  "needs-info": { label: "情報待ち", color: "bg-orange-50 text-orange-700 border-orange-200" },
-  completed: { label: "完了", color: "bg-green-50 text-green-700 border-green-200" },
+  in_progress: { label: "対応中", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
+  done: { label: "完了", color: "bg-green-50 text-green-700 border-green-200" },
 }
 
 const priorityConfig = {
-  low: { label: "低", color: "text-gray-600" },
-  medium: { label: "中", color: "text-blue-600" },
-  high: { label: "高", color: "text-red-600" },
+  Low: { label: "低", color: "text-gray-600" },
+  Medium: { label: "中", color: "text-blue-600" },
+  High: { label: "高", color: "text-red-600" },
 }
+
+const isStatusValue = (value: string): value is FormResponse["status"] =>
+  value === "new" || value === "in_progress" || value === "done"
+
+const isPriorityValue = (value: string): value is FormResponse["priority"] =>
+  value === "Low" || value === "Medium" || value === "High"
+
+const toPriorityValue = (value: string): FormResponse["priority"] =>
+  isPriorityValue(value) ? value : "Medium"
+
+const toStatusValue = (value: string): FormResponse["status"] =>
+  isStatusValue(value) ? value : "new"
 
 export function ResponseTableView({
   responses,
@@ -58,9 +69,8 @@ export function ResponseTableView({
         </TableHeader>
         <TableBody>
           {responses.map((response) => (
-            <>
+            <Fragment key={response.id}>
               <TableRow
-                key={response.id}
                 className="cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => setExpandedRow(expandedRow === response.id ? null : response.id)}
               >
@@ -73,7 +83,7 @@ export function ResponseTableView({
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Select
                     value={response.status}
-                    onValueChange={(value) => onStatusChange(response.id, value as FormResponse["status"])}
+                    onValueChange={(value) => onStatusChange(response.id, toStatusValue(value))}
                   >
                     <SelectTrigger className="w-[130px] h-8">
                       <Badge variant="outline" className={cn("border", statusConfig[response.status].color)}>
@@ -82,9 +92,8 @@ export function ResponseTableView({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="new">新規</SelectItem>
-                      <SelectItem value="in-review">対応中</SelectItem>
-                      <SelectItem value="needs-info">情報待ち</SelectItem>
-                      <SelectItem value="completed">完了</SelectItem>
+                      <SelectItem value="in_progress">対応中</SelectItem>
+                      <SelectItem value="done">完了</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
@@ -109,7 +118,7 @@ export function ResponseTableView({
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Select
                     value={response.priority}
-                    onValueChange={(value) => onPriorityChange(response.id, value as FormResponse["priority"])}
+                    onValueChange={(value) => onPriorityChange(response.id, toPriorityValue(value))}
                   >
                     <SelectTrigger className="w-[90px] h-8">
                       <span className={cn("font-medium", priorityConfig[response.priority].color)}>
@@ -117,9 +126,9 @@ export function ResponseTableView({
                       </span>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">低</SelectItem>
-                      <SelectItem value="medium">中</SelectItem>
-                      <SelectItem value="high">高</SelectItem>
+                      <SelectItem value="Low">低</SelectItem>
+                      <SelectItem value="Medium">中</SelectItem>
+                      <SelectItem value="High">高</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
@@ -149,7 +158,7 @@ export function ResponseTableView({
                   </TableCell>
                 </TableRow>
               )}
-            </>
+            </Fragment>
           ))}
         </TableBody>
       </Table>

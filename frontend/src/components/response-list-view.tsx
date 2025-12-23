@@ -8,7 +8,7 @@ import { MessageSquare, UserIcon, Calendar } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { ja } from "date-fns/locale"
 
-interface ResponseListViewProps {
+type ResponseListViewProps = {
   responses: FormResponse[]
   users: User[]
   onSelectResponse: (response: FormResponse) => void

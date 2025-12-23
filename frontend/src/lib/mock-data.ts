@@ -1,93 +1,12 @@
-import type { FormResponse, ChatMessage, User } from "@/types/form-response"
+import type { ChatMessage } from "@/types/form-response"
 
-export const mockUsers: User[] = [
-  { id: "1", name: "田中 太郎", email: "tanaka@example.com" },
-  { id: "2", name: "佐藤 花子", email: "sato@example.com" },
-  { id: "3", name: "鈴木 一郎", email: "suzuki@example.com" },
-]
-
-export const mockFormResponses: FormResponse[] = [
-  {
-    id: "resp-1",
-    formId: "form-001",
-    formTitle: "新規お問い合わせフォーム",
-    respondentEmail: "customer1@example.com",
-    respondentName: "山田 次郎",
-    submittedAt: new Date("2024-01-15T10:30:00"),
-    status: "new",
-    assignedTo: null,
-    priority: "high",
-    responses: {
-      q1: "製品Aについて",
-      q2: "価格とスペックの詳細を知りたいです",
-      q3: "法人",
-    },
-  },
-  {
-    id: "resp-2",
-    formId: "form-001",
-    formTitle: "新規お問い合わせフォーム",
-    respondentEmail: "customer2@example.com",
-    respondentName: "伊藤 美咲",
-    submittedAt: new Date("2024-01-14T14:20:00"),
-    status: "in-review",
-    assignedTo: "1",
-    priority: "medium",
-    responses: {
-      q1: "製品Bについて",
-      q2: "導入事例を教えてください",
-      q3: "個人",
-    },
-  },
-  {
-    id: "resp-3",
-    formId: "form-002",
-    formTitle: "サポートリクエスト",
-    respondentEmail: "customer3@example.com",
-    respondentName: "高橋 健太",
-    submittedAt: new Date("2024-01-13T09:15:00"),
-    status: "needs-info",
-    assignedTo: "2",
-    priority: "high",
-    responses: {
-      q1: "ログインできない",
-      q2: "パスワードをリセットしても解決しません",
-      q3: "緊急",
-    },
-  },
-  {
-    id: "resp-4",
-    formId: "form-001",
-    formTitle: "新規お問い合わせフォーム",
-    respondentEmail: "customer4@example.com",
-    respondentName: "中村 直美",
-    submittedAt: new Date("2024-01-12T16:45:00"),
-    status: "completed",
-    assignedTo: "1",
-    priority: "low",
-    responses: {
-      q1: "製品Cについて",
-      q2: "資料請求",
-      q3: "法人",
-    },
-  },
-  {
-    id: "resp-5",
-    formId: "form-002",
-    formTitle: "サポートリクエスト",
-    respondentEmail: "customer5@example.com",
-    respondentName: "小林 誠",
-    submittedAt: new Date("2024-01-16T11:00:00"),
-    status: "new",
-    assignedTo: null,
-    priority: "medium",
-    responses: {
-      q1: "機能追加の要望",
-      q2: "エクスポート機能が欲しい",
-      q3: "通常",
-    },
-  },
-]
+export const mockTicketRespondents: Record<string, { name: string; email: string }> = {
+  "mock-ticket-1": { name: "山田 次郎", email: "customer1@example.com" },
+  "mock-ticket-2": { name: "伊藤 美咲", email: "customer2@example.com" },
+  "mock-ticket-3": { name: "高橋 健太", email: "customer3@example.com" },
+  "mock-ticket-4": { name: "中村 直美", email: "customer4@example.com" },
+  "mock-ticket-5": { name: "小林 誠", email: "customer5@example.com" },
+}
 
 export const mockChatMessages: ChatMessage[] = [
   {

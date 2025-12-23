@@ -10,7 +10,7 @@ import { formatDistanceToNow } from "date-fns"
 import { ja } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
-interface ResponseKanbanViewNewProps {
+type ResponseKanbanViewNewProps = {
   responses: FormResponse[]
   users: User[]
   onStatusChange: (id: string, status: FormResponse["status"]) => void
@@ -21,26 +21,32 @@ interface ResponseKanbanViewNewProps {
 
 const statusConfig = {
   new: { label: "新規", color: "bg-blue-50" },
-  "in-review": { label: "対応中", color: "bg-yellow-50" },
-  "needs-info": { label: "情報待ち", color: "bg-orange-50" },
-  completed: { label: "完了", color: "bg-green-50" },
+  in_progress: { label: "対応中", color: "bg-yellow-50" },
+  done: { label: "完了", color: "bg-green-50" },
 }
 
 const priorityConfig = {
-  low: { label: "低", color: "text-gray-600" },
-  medium: { label: "中", color: "text-blue-600" },
-  high: { label: "高", color: "text-red-600" },
+  Low: { label: "低", color: "text-gray-600" },
+  Medium: { label: "中", color: "text-blue-600" },
+  High: { label: "高", color: "text-red-600" },
 }
+
+const isPriorityValue = (value: string): value is FormResponse["priority"] =>
+  value === "Low" || value === "Medium" || value === "High"
+
+const toPriorityValue = (value: string): FormResponse["priority"] =>
+  isPriorityValue(value) ? value : "Medium"
 
 export function ResponseKanbanViewNew({
   responses,
   users,
-  onStatusChange,
+  onStatusChange: _onStatusChange,
   onAssignChange,
   onPriorityChange,
   onOpenChat,
 }: ResponseKanbanViewNewProps) {
-  const columns: Array<FormResponse["status"]> = ["new", "in-review", "needs-info", "completed"]
+  const columns: Array<FormResponse["status"]> = ["new", "in_progress", "done"]
+  void _onStatusChange
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -66,7 +72,7 @@ export function ResponseKanbanViewNew({
                       </div>
                       <Select
                         value={response.priority}
-                        onValueChange={(value) => onPriorityChange(response.id, value as FormResponse["priority"])}
+                        onValueChange={(value) => onPriorityChange(response.id, toPriorityValue(value))}
                       >
                         <SelectTrigger className="w-[70px] h-7 text-xs">
                           <span className={cn("font-medium", priorityConfig[response.priority].color)}>
@@ -74,9 +80,9 @@ export function ResponseKanbanViewNew({
                           </span>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="low">低</SelectItem>
-                          <SelectItem value="medium">中</SelectItem>
-                          <SelectItem value="high">高</SelectItem>
+                          <SelectItem value="Low">低</SelectItem>
+                          <SelectItem value="Medium">中</SelectItem>
+                          <SelectItem value="High">高</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

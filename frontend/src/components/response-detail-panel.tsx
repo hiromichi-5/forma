@@ -10,7 +10,7 @@ import { X, Calendar, Mail, UserIcon, MessageSquare, AlertCircle } from "lucide-
 import { formatDistanceToNow } from "date-fns"
 import { ja } from "date-fns/locale"
 
-interface ResponseDetailPanelProps {
+type ResponseDetailPanelProps = {
   response: FormResponse
   users: User[]
   onClose: () => void
@@ -93,19 +93,13 @@ export function ResponseDetailPanel({
                       新規
                     </div>
                   </SelectItem>
-                  <SelectItem value="in-review">
+                  <SelectItem value="in_progress">
                     <div className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full bg-yellow-500`} />
                       対応中
                     </div>
                   </SelectItem>
-                  <SelectItem value="needs-info">
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full bg-orange-500`} />
-                      情報待ち
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="completed">
+                  <SelectItem value="done">
                     <div className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full bg-green-500`} />
                       完了
@@ -149,9 +143,9 @@ export function ResponseDetailPanel({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">低</SelectItem>
-                  <SelectItem value="medium">中</SelectItem>
-                  <SelectItem value="high">高</SelectItem>
+                  <SelectItem value="Low">低</SelectItem>
+                  <SelectItem value="Medium">中</SelectItem>
+                  <SelectItem value="High">高</SelectItem>
                 </SelectContent>
               </Select>
             </div>

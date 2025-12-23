@@ -3,15 +3,16 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LayoutList, LayoutGrid, Search, Users, ArrowLeft } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import type { FormResponse } from "@/types/form-response"
 
-interface FormManagementHeaderProps {
+type FormManagementHeaderProps = {
   formTitle: string
   viewMode: "list" | "kanban"
   onViewModeChange: (mode: "list" | "kanban") => void
   searchQuery: string
   onSearchChange: (query: string) => void
-  statusFilter: string
-  onStatusFilterChange: (status: string) => void
+  statusFilter: "all" | FormResponse["status"]
+  onStatusFilterChange: (status: "all" | FormResponse["status"]) => void
   onMembersClick: () => void
 }
 
@@ -30,7 +31,7 @@ export function FormManagementHeader({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/forms-list")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
@@ -60,9 +61,8 @@ export function FormManagementHeader({
           <SelectContent>
             <SelectItem value="all">すべて</SelectItem>
             <SelectItem value="new">新規</SelectItem>
-            <SelectItem value="in-review">対応中</SelectItem>
-            <SelectItem value="needs-info">情報待ち</SelectItem>
-            <SelectItem value="completed">完了</SelectItem>
+            <SelectItem value="in_progress">対応中</SelectItem>
+            <SelectItem value="done">完了</SelectItem>
           </SelectContent>
         </Select>
 

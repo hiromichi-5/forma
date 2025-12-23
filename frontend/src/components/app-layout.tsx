@@ -5,8 +5,9 @@ import { useNavigate, useLocation } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { LayoutGrid, LogOut, Settings, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/useAuth"
 
-interface AppLayoutProps {
+type AppLayoutProps = {
   children: React.ReactNode
 }
 
@@ -14,8 +15,14 @@ export function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const { logout } = useAuth()
 
-  const isFormsListPage = location.pathname === "/forms-list"
+  const isFormsListPage = location.pathname === "/"
+
+  const handleLogout = async () => {
+    await logout()
+    navigate("/login")
+  }
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
@@ -40,7 +47,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <Button
             variant={isFormsListPage ? "secondary" : "ghost"}
             className={cn("w-full justify-start gap-3", isCollapsed && "justify-center")}
-            onClick={() => navigate("/forms-list")}
+            onClick={() => navigate("/")}
           >
             <LayoutGrid className="h-5 w-5" />
             {!isCollapsed && <span>フォーム一覧</span>}
@@ -55,7 +62,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <Button
             variant="ghost"
             className={cn("w-full justify-start gap-3", isCollapsed && "justify-center")}
-            onClick={() => navigate("/login-new")}
+            onClick={handleLogout}
           >
             <LogOut className="h-5 w-5" />
             {!isCollapsed && <span>ログアウト</span>}

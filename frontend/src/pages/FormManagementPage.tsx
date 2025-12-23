@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useParams } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { Navigate, useParams } from "react-router-dom"
 import { AppLayout } from "@/components/app-layout"
 import { FormManagementHeader } from "@/components/form-management-header"
 import { ResponseTableView } from "@/components/response-table-view"
@@ -7,21 +7,23 @@ import { ResponseKanbanViewNew } from "@/components/response-kanban-view-new"
 import { ChatInterface } from "@/components/chat-interface"
 import { MembersDialog } from "@/components/members-dialog"
 import { useFormResponses } from "@/hooks/use-form-responses"
-import { mockUsers } from "@/lib/mock-data"
+import { apiClient } from "@/lib/api"
 import type { FormResponse } from "@/types/form-response"
+import type { Member } from "@/types"
 
 export default function FormManagementPage() {
   const params = useParams()
-  const formId = params.id as string
-  const { responses, updateResponseStatus, assignResponse, updatePriority } = useFormResponses()
+  const formId = params.id
+  const { responses, updateResponseStatus, assignResponse, updatePriority } = useFormResponses(formId ?? null)
+  const [members, setMembers] = useState<Member[]>([])
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | FormResponse["status"]>("all")
   const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
 
-  const formResponses = responses.filter((r) => r.formId === formId)
+  const formResponses = responses
 
   const filteredResponses = formResponses.filter((response) => {
     const matchesSearch =
@@ -38,6 +40,34 @@ export default function FormManagementPage() {
   const handleOpenChat = (response: FormResponse) => {
     setSelectedResponse(response)
     setIsChatOpen(true)
+  }
+
+  useEffect(() => {
+    if (!formId) return
+    let isActive = true
+
+    const loadMembers = async () => {
+      try {
+        // 外部API(バックエンド)との同期のための処理
+        const response = await apiClient.getMembers(formId)
+        if (!isActive) return
+        setMembers(response.members)
+      } catch (error) {
+        if (!isActive) return
+        console.error("Failed to load members:", error)
+      }
+    }
+
+    // 外部API(バックエンド)との同期のための処理
+    loadMembers()
+
+    return () => {
+      isActive = false
+    }
+  }, [formId])
+
+  if (!formId) {
+    return <Navigate to="/" replace />
   }
 
   return (
@@ -57,7 +87,11 @@ export default function FormManagementPage() {
         {viewMode === "list" ? (
           <ResponseTableView
             responses={filteredResponses}
-            users={mockUsers}
+            users={members.map((member) => ({
+              id: member.id,
+              name: member.display_name,
+              email: member.email,
+            }))}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
@@ -66,7 +100,11 @@ export default function FormManagementPage() {
         ) : (
           <ResponseKanbanViewNew
             responses={filteredResponses}
-            users={mockUsers}
+            users={members.map((member) => ({
+              id: member.id,
+              name: member.display_name,
+              email: member.email,
+            }))}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}

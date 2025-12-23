@@ -1,23 +1,23 @@
-export interface FormResponse {
+export type FormResponse = {
   id: string
   formId: string
   formTitle: string
   respondentEmail: string
   respondentName: string
   submittedAt: Date
-  status: "new" | "in-review" | "needs-info" | "completed"
+  status: "new" | "in_progress" | "done"
   assignedTo: string | null
   responses: Record<string, string>
-  priority: "low" | "medium" | "high"
+  priority: "High" | "Medium" | "Low"
 }
 
-export interface FormQuestion {
+export type FormQuestion = {
   questionId: string
   question: string
   answer: string
 }
 
-export interface ChatMessage {
+export type ChatMessage = {
   id: string
   responseId: string
   senderId: string
@@ -28,7 +28,7 @@ export interface ChatMessage {
   isRead: boolean
 }
 
-export interface User {
+export type User = {
   id: string
   name: string
   email: string
