@@ -61,30 +61,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     loadForms();
   }, []);
 
-  const getBreadcrumbs = () => {
-    const pathSegments = location.pathname.split("/").filter(Boolean);
-    const breadcrumbs = [{ label: "ホーム", path: "/" }];
-
-    if (pathSegments.length > 0) {
-      if (pathSegments[0] === "forms" && pathSegments[1]) {
-        const formId = pathSegments[1];
-        const form = forms.find((f) => f.form_id === formId);
-        breadcrumbs.push({
-          label: form?.title || "フォーム管理",
-          path: `/forms/${formId}`,
-        });
-      }
-    }
-
-    return breadcrumbs;
-  };
-
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
-
-  const breadcrumbs = getBreadcrumbs();
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
@@ -96,12 +76,13 @@ export function AppLayout({ children }: AppLayoutProps) {
       >
         <div className="p-4 border-b flex items-center justify-between">
           {!isCollapsed && (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-                <LayoutGrid className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="font-bold text-lg">フォーム管理</span>
-            </div>
+            <Link
+              to="/"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
+              <img src="/favicon.svg" alt="forma Logo" className="w-6 h-6" />
+              <span className="font-bold text-xl tracking-tight">forma</span>
+            </Link>
           )}
           <Button
             variant="ghost"
@@ -118,28 +99,6 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
 
         <nav className="flex-1 p-2 overflow-y-auto">
-          {!isCollapsed && breadcrumbs.length > 1 && (
-            <div className="mb-4 px-2 py-1 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1 flex-wrap">
-                {breadcrumbs.map((crumb, index) => (
-                  <div key={crumb.path} className="flex items-center gap-1">
-                    {index > 0 && <span>/</span>}
-                    <Link
-                      to={crumb.path}
-                      className={cn(
-                        "hover:text-foreground transition-colors",
-                        index === breadcrumbs.length - 1 &&
-                          "text-foreground font-medium"
-                      )}
-                    >
-                      {crumb.label}
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <Button
             variant={isFormsListPage ? "secondary" : "ghost"}
             className={cn(
