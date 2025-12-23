@@ -10,7 +10,7 @@ import { formatDistanceToNow } from "date-fns"
 import { ja } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
-type ResponseKanbanViewNewProps = {
+type ResponseKanbanViewProps = {
   responses: FormResponse[]
   users: User[]
   onStatusChange: (id: string, status: FormResponse["status"]) => void
@@ -37,14 +37,14 @@ const isPriorityValue = (value: string): value is FormResponse["priority"] =>
 const toPriorityValue = (value: string): FormResponse["priority"] =>
   isPriorityValue(value) ? value : "Medium"
 
-export function ResponseKanbanViewNew({
+export function ResponseKanbanView({
   responses,
   users,
   onStatusChange: _onStatusChange,
   onAssignChange,
   onPriorityChange,
   onOpenChat,
-}: ResponseKanbanViewNewProps) {
+}: ResponseKanbanViewProps) {
   const columns: Array<FormResponse["status"]> = ["new", "in_progress", "done"]
   void _onStatusChange
 

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, FileText } from "lucide-react"
+import { Search, FileText } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { apiClient } from "@/lib/api"
 import type { FormSummary, TicketSummary } from "@/types"
+import { RegisterFormDialog } from "@/components/register-form-dialog"
 
 type FormListItem = {
   id: string
@@ -58,10 +58,28 @@ export default function FormsListPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
 
+  const loadForms = async () => {
+    setIsLoading(true)
+    setErrorMessage("")
+    try {
+      // 外部API(バックエンド)との同期のための処理
+      const [formsResponse, ticketsResponse] = await Promise.all([
+        apiClient.getForms(),
+        apiClient.getTickets(),
+      ])
+      setForms(buildFormList(formsResponse.forms, ticketsResponse.tickets))
+    } catch (error) {
+      console.error("Failed to load forms:", error)
+      setErrorMessage("フォーム一覧の取得に失敗しました")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     let isActive = true
 
-    const loadForms = async () => {
+    const loadFormsWithGuard = async () => {
       setIsLoading(true)
       setErrorMessage("")
       try {
@@ -84,7 +102,7 @@ export default function FormsListPage() {
     }
 
     // 外部API(バックエンド)との同期のための処理
-    loadForms()
+    loadFormsWithGuard()
 
     return () => {
       isActive = false
@@ -104,10 +122,7 @@ export default function FormsListPage() {
             <h1 className="text-2xl font-bold text-foreground">フォーム一覧</h1>
             <p className="text-sm text-muted-foreground mt-1">管理しているGoogleフォームの一覧</p>
           </div>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            フォーム連携
-          </Button>
+          <RegisterFormDialog onRegistered={loadForms} />
         </div>
 
         <div className="relative">

@@ -3,7 +3,7 @@ import { Navigate, useParams } from "react-router-dom"
 import { AppLayout } from "@/components/app-layout"
 import { FormManagementHeader } from "@/components/form-management-header"
 import { ResponseTableView } from "@/components/response-table-view"
-import { ResponseKanbanViewNew } from "@/components/response-kanban-view-new"
+import { ResponseKanbanView } from "@/components/response-kanban-view"
 import { ChatInterface } from "@/components/chat-interface"
 import { MembersDialog } from "@/components/members-dialog"
 import { useFormResponses } from "@/hooks/use-form-responses"
@@ -98,7 +98,7 @@ export default function FormManagementPage() {
             onOpenChat={handleOpenChat}
           />
         ) : (
-          <ResponseKanbanViewNew
+          <ResponseKanbanView
             responses={filteredResponses}
             users={members.map((member) => ({
               id: member.id,
