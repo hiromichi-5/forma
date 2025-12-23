@@ -4,3 +4,4 @@
 secrets/*
 .DS_Store
 internal-docs
+.gocache
