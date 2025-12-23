@@ -1,3 +1,4 @@
+import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -12,7 +13,7 @@ import SignupPage from "./pages/SignupPage";
 import { useRequireAuth } from "./hooks/useAuth";
 
 type RequireAuthProps = {
-  children: JSX.Element;
+  children: React.ReactNode;
 };
 
 function RequireAuth({ children }: RequireAuthProps) {

@@ -1,11 +1,34 @@
 import type React from "react"
 
-import { useState } from "react"
-import { useNavigate, useLocation } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, useLocation, Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { LayoutGrid, LogOut, Settings, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  LayoutGrid,
+  LogOut,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Home,
+  FileText,
+  Users,
+  RefreshCw,
+  MoreVertical
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/useAuth"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { apiClient } from "@/lib/api"
+import type { FormSummary } from "@/types"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { toast } from "sonner"
 
 type AppLayoutProps = {
   children: React.ReactNode
@@ -15,14 +38,54 @@ export function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isFormsOpen, setIsFormsOpen] = useState(true)
+  const [forms, setForms] = useState<FormSummary[]>([])
+  const [loadingForms, setLoadingForms] = useState(false)
   const { logout } = useAuth()
 
   const isFormsListPage = location.pathname === "/"
+
+  // フォーム一覧を取得
+  useEffect(() => {
+    const loadForms = async () => {
+      try {
+        setLoadingForms(true)
+        const response = await apiClient.getForms()
+        setForms(response.forms)
+      } catch (error) {
+        console.error("Failed to load forms:", error)
+      } finally {
+        setLoadingForms(false)
+      }
+    }
+    loadForms()
+  }, [])
+
+  // パンくずリストを生成
+  const getBreadcrumbs = () => {
+    const pathSegments = location.pathname.split("/").filter(Boolean)
+    const breadcrumbs = [{ label: "ホーム", path: "/" }]
+
+    if (pathSegments.length > 0) {
+      if (pathSegments[0] === "forms" && pathSegments[1]) {
+        const formId = pathSegments[1]
+        const form = forms.find((f) => f.form_id === formId)
+        breadcrumbs.push({
+          label: form?.title || "フォーム管理",
+          path: `/forms/${formId}`,
+        })
+      }
+    }
+
+    return breadcrumbs
+  }
 
   const handleLogout = async () => {
     await logout()
     navigate("/login")
   }
+
+  const breadcrumbs = getBreadcrumbs()
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
@@ -43,15 +106,138 @@ export function AppLayout({ children }: AppLayoutProps) {
           </Button>
         </div>
 
-        <nav className="flex-1 p-2">
+        <nav className="flex-1 p-2 overflow-y-auto">
+          {/* パンくずリスト */}
+          {!isCollapsed && breadcrumbs.length > 1 && (
+            <div className="mb-4 px-2 py-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1 flex-wrap">
+                {breadcrumbs.map((crumb, index) => (
+                  <div key={crumb.path} className="flex items-center gap-1">
+                    {index > 0 && <span>/</span>}
+                    <Link
+                      to={crumb.path}
+                      className={cn(
+                        "hover:text-foreground transition-colors",
+                        index === breadcrumbs.length - 1 && "text-foreground font-medium"
+                      )}
+                    >
+                      {crumb.label}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ホームボタン */}
           <Button
             variant={isFormsListPage ? "secondary" : "ghost"}
-            className={cn("w-full justify-start gap-3", isCollapsed && "justify-center")}
+            className={cn("w-full justify-start gap-3 mb-2", isCollapsed && "justify-center")}
             onClick={() => navigate("/")}
           >
-            <LayoutGrid className="h-5 w-5" />
-            {!isCollapsed && <span>フォーム一覧</span>}
+            <Home className="h-5 w-5" />
+            {!isCollapsed && <span>ホーム</span>}
           </Button>
+
+          {/* フォームリスト */}
+          {!isCollapsed && (
+            <Collapsible open={isFormsOpen} onOpenChange={setIsFormsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span className="text-sm font-medium">フォーム</span>
+                  </div>
+                  {isFormsOpen ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-1">
+                {loadingForms ? (
+                  <div className="px-2 py-1 text-xs text-muted-foreground">読み込み中...</div>
+                ) : forms.length === 0 ? (
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    フォームがありません
+                  </div>
+                ) : (
+                  forms.map((form) => {
+                    const isActive = location.pathname === `/forms/${form.form_id}`
+                    return (
+                      <div
+                        key={form.form_id}
+                        className={cn(
+                          "group flex items-center gap-1 rounded-md transition-colors",
+                          isActive && "bg-secondary"
+                        )}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "flex-1 justify-start text-sm h-8 px-2",
+                            isActive && "font-medium"
+                          )}
+                          onClick={() => navigate(`/forms/${form.form_id}`)}
+                        >
+                          <span className="truncate">{form.title}</span>
+                        </Button>
+
+                        {/* フォーム操作メニュー */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                navigate(`/forms/${form.form_id}`)
+                              }}
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              フォームを開く
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                try {
+                                  await apiClient.syncForm(form.form_id)
+                                  toast.success("フォームを同期しました")
+                                } catch (error) {
+                                  toast.error("同期に失敗しました")
+                                  console.error("Failed to sync form:", error)
+                                }
+                              }}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              同期
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                // メンバー管理ダイアログを開く（将来実装）
+                                toast.info("メンバー管理機能は開発中です")
+                              }}
+                            >
+                              <Users className="h-4 w-4 mr-2" />
+                              メンバー管理
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )
+                  })
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </nav>
 
         <div className="p-2 border-t space-y-1">
