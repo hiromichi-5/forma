@@ -7,16 +7,34 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteFormQuestion = `-- name: DeleteFormQuestion :exec
+DELETE FROM form_questions
+WHERE form_id = $1
+  AND question_id = $2
+`
+
+type DeleteFormQuestionParams struct {
+	FormID     pgtype.UUID `json:"form_id"`
+	QuestionID string      `json:"question_id"`
+}
+
+func (q *Queries) DeleteFormQuestion(ctx context.Context, arg DeleteFormQuestionParams) error {
+	_, err := q.db.Exec(ctx, deleteFormQuestion, arg.FormID, arg.QuestionID)
+	return err
+}
+
 const listFormQuestions = `-- name: ListFormQuestions :many
-SELECT form_id, question_id, title, question_type, options, created_at, updated_at
+SELECT form_id, question_id, title, question_type, options, created_at
 FROM form_questions
 WHERE form_id = $1
 ORDER BY title
 `
 
-func (q *Queries) ListFormQuestions(ctx context.Context, formID string) ([]FormQuestion, error) {
+func (q *Queries) ListFormQuestions(ctx context.Context, formID pgtype.UUID) ([]FormQuestion, error) {
 	rows, err := q.db.Query(ctx, listFormQuestions, formID)
 	if err != nil {
 		return nil, err
@@ -32,7 +50,6 @@ func (q *Queries) ListFormQuestions(ctx context.Context, formID string) ([]FormQ
 			&i.QuestionType,
 			&i.Options,
 			&i.CreatedAt,
-			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -50,16 +67,15 @@ VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (form_id, question_id) DO UPDATE
 SET title = EXCLUDED.title,
     question_type = EXCLUDED.question_type,
-    options = EXCLUDED.options,
-    updated_at = NOW()
+    options = EXCLUDED.options
 `
 
 type UpsertFormQuestionParams struct {
-	FormID       string `json:"form_id"`
-	QuestionID   string `json:"question_id"`
-	Title        string `json:"title"`
-	QuestionType string `json:"question_type"`
-	Options      []byte `json:"options"`
+	FormID       pgtype.UUID `json:"form_id"`
+	QuestionID   string      `json:"question_id"`
+	Title        string      `json:"title"`
+	QuestionType string      `json:"question_type"`
+	Options      []byte      `json:"options"`
 }
 
 func (q *Queries) UpsertFormQuestion(ctx context.Context, arg UpsertFormQuestionParams) error {

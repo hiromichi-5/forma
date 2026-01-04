@@ -12,127 +12,127 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, email, password_hash, display_name) VALUES ($1, $2, $3, $4)
-RETURNING id, email, password_hash, created_at, display_name, deletedAt
+INSERT INTO users (id, email, password_hash, display_name, verified_at)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, email, password_hash, created_at, display_name, verified_at
 `
 
 type CreateUserParams struct {
-	ID           pgtype.UUID `json:"id"`
-	Email        string      `json:"email"`
-	PasswordHash string      `json:"password_hash"`
-	DisplayName  string      `json:"display_name"`
+	ID           pgtype.UUID        `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"password_hash"`
+	DisplayName  string             `json:"display_name"`
+	VerifiedAt   pgtype.Timestamptz `json:"verified_at"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+type CreateUserRow struct {
+	ID           pgtype.UUID        `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"password_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	DisplayName  string             `json:"display_name"`
+	VerifiedAt   pgtype.Timestamptz `json:"verified_at"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser,
 		arg.ID,
 		arg.Email,
 		arg.PasswordHash,
 		arg.DisplayName,
+		arg.VerifiedAt,
 	)
-	var i User
+	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.DisplayName,
-		&i.Deletedat,
-	)
-	return i, err
-}
-
-const deleteUser = `-- name: DeleteUser :execrows
-UPDATE users SET deletedAt = NOW()
-WHERE id = $1
-  AND deletedAt IS NULL
-`
-
-func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteUser, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const getUser = `-- name: GetUser :one
-SELECT id, email, password_hash, created_at, display_name, deletedAt
-FROM users
-WHERE id = $1
-  AND deletedAt IS NULL
-`
-
-func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
-	row := q.db.QueryRow(ctx, getUser, id)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.PasswordHash,
-		&i.CreatedAt,
-		&i.DisplayName,
-		&i.Deletedat,
+		&i.VerifiedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, created_at, display_name, deletedAt
+SELECT id, email, password_hash, created_at, display_name, verified_at
 FROM users
 WHERE email = $1
-  AND deletedAt IS NULL
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+type GetUserByEmailRow struct {
+	ID           pgtype.UUID        `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"password_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	DisplayName  string             `json:"display_name"`
+	VerifiedAt   pgtype.Timestamptz `json:"verified_at"`
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
-	var i User
+	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.DisplayName,
-		&i.Deletedat,
+		&i.VerifiedAt,
 	)
 	return i, err
 }
 
-const listForms = `-- name: ListForms :many
-SELECT form_id, title FROM forms
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, email, password_hash, created_at, display_name, verified_at
+FROM users
+WHERE id = $1
 `
 
-type ListFormsRow struct {
-	FormID string `json:"form_id"`
-	Title  string `json:"title"`
+type GetUserByIDRow struct {
+	ID           pgtype.UUID        `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"password_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	DisplayName  string             `json:"display_name"`
+	VerifiedAt   pgtype.Timestamptz `json:"verified_at"`
 }
 
-func (q *Queries) ListForms(ctx context.Context) ([]ListFormsRow, error) {
-	rows, err := q.db.Query(ctx, listForms)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListFormsRow
-	for rows.Next() {
-		var i ListFormsRow
-		if err := rows.Scan(&i.FormID, &i.Title); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
+	var i GetUserByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.DisplayName,
+		&i.VerifiedAt,
+	)
+	return i, err
+}
+
+const setUserVerifiedAt = `-- name: SetUserVerifiedAt :exec
+UPDATE users
+SET verified_at = $2
+WHERE id = $1
+`
+
+type SetUserVerifiedAtParams struct {
+	ID         pgtype.UUID        `json:"id"`
+	VerifiedAt pgtype.Timestamptz `json:"verified_at"`
+}
+
+func (q *Queries) SetUserVerifiedAt(ctx context.Context, arg SetUserVerifiedAtParams) error {
+	_, err := q.db.Exec(ctx, setUserVerifiedAt, arg.ID, arg.VerifiedAt)
+	return err
 }
 
 const updateUserDisplayName = `-- name: UpdateUserDisplayName :one
 UPDATE users
 SET display_name = $2
 WHERE id = $1
-  AND deletedAt IS NULL
-RETURNING id, email, password_hash, created_at, display_name, deletedAt
+RETURNING id, email, password_hash, created_at, display_name, verified_at
 `
 
 type UpdateUserDisplayNameParams struct {
@@ -140,16 +140,25 @@ type UpdateUserDisplayNameParams struct {
 	DisplayName string      `json:"display_name"`
 }
 
-func (q *Queries) UpdateUserDisplayName(ctx context.Context, arg UpdateUserDisplayNameParams) (User, error) {
+type UpdateUserDisplayNameRow struct {
+	ID           pgtype.UUID        `json:"id"`
+	Email        string             `json:"email"`
+	PasswordHash string             `json:"password_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	DisplayName  string             `json:"display_name"`
+	VerifiedAt   pgtype.Timestamptz `json:"verified_at"`
+}
+
+func (q *Queries) UpdateUserDisplayName(ctx context.Context, arg UpdateUserDisplayNameParams) (UpdateUserDisplayNameRow, error) {
 	row := q.db.QueryRow(ctx, updateUserDisplayName, arg.ID, arg.DisplayName)
-	var i User
+	var i UpdateUserDisplayNameRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.DisplayName,
-		&i.Deletedat,
+		&i.VerifiedAt,
 	)
 	return i, err
 }
@@ -158,7 +167,6 @@ const updateUserPasswordHash = `-- name: UpdateUserPasswordHash :exec
 UPDATE users
 SET password_hash = $2
 WHERE id = $1
-  AND deletedAt IS NULL
 `
 
 type UpdateUserPasswordHashParams struct {
@@ -168,29 +176,5 @@ type UpdateUserPasswordHashParams struct {
 
 func (q *Queries) UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error {
 	_, err := q.db.Exec(ctx, updateUserPasswordHash, arg.ID, arg.PasswordHash)
-	return err
-}
-
-const upsertForm = `-- name: UpsertForm :exec
-INSERT INTO forms (form_id, title, description, polling_sec)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (form_id) DO UPDATE
-SET title = EXCLUDED.title, description = EXCLUDED.description, polling_sec = EXCLUDED.polling_sec
-`
-
-type UpsertFormParams struct {
-	FormID      string      `json:"form_id"`
-	Title       string      `json:"title"`
-	Description pgtype.Text `json:"description"`
-	PollingSec  pgtype.Int4 `json:"polling_sec"`
-}
-
-func (q *Queries) UpsertForm(ctx context.Context, arg UpsertFormParams) error {
-	_, err := q.db.Exec(ctx, upsertForm,
-		arg.FormID,
-		arg.Title,
-		arg.Description,
-		arg.PollingSec,
-	)
 	return err
 }

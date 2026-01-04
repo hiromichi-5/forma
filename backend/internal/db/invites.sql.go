@@ -11,79 +11,141 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const acceptFormInvite = `-- name: AcceptFormInvite :one
+UPDATE form_invites
+SET accepted_at = NOW()
+WHERE id = $1
+  AND accepted_at IS NULL
+RETURNING id, form_id, email, role, invited_by, accepted_at, expires_at, created_at
+`
+
+func (q *Queries) AcceptFormInvite(ctx context.Context, id pgtype.UUID) (FormInvite, error) {
+	row := q.db.QueryRow(ctx, acceptFormInvite, id)
+	var i FormInvite
+	err := row.Scan(
+		&i.ID,
+		&i.FormID,
+		&i.Email,
+		&i.Role,
+		&i.InvitedBy,
+		&i.AcceptedAt,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createFormInvite = `-- name: CreateFormInvite :one
-INSERT INTO form_invites (code, form_id, role, expires_at, created_by)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING code, form_id, role, expires_at, created_by, created_at, revoked
+INSERT INTO form_invites (id, form_id, email, role, invited_by, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, form_id, email, role, invited_by, accepted_at, expires_at, created_at
 `
 
 type CreateFormInviteParams struct {
-	Code      string             `json:"code"`
-	FormID    string             `json:"form_id"`
-	Role      string             `json:"role"`
+	ID        pgtype.UUID        `json:"id"`
+	FormID    pgtype.UUID        `json:"form_id"`
+	Email     string             `json:"email"`
+	Role      FormRole           `json:"role"`
+	InvitedBy pgtype.UUID        `json:"invited_by"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
-	CreatedBy pgtype.UUID        `json:"created_by"`
 }
 
 func (q *Queries) CreateFormInvite(ctx context.Context, arg CreateFormInviteParams) (FormInvite, error) {
 	row := q.db.QueryRow(ctx, createFormInvite,
-		arg.Code,
+		arg.ID,
 		arg.FormID,
+		arg.Email,
 		arg.Role,
+		arg.InvitedBy,
 		arg.ExpiresAt,
-		arg.CreatedBy,
 	)
 	var i FormInvite
 	err := row.Scan(
-		&i.Code,
+		&i.ID,
 		&i.FormID,
+		&i.Email,
 		&i.Role,
+		&i.InvitedBy,
+		&i.AcceptedAt,
 		&i.ExpiresAt,
-		&i.CreatedBy,
 		&i.CreatedAt,
-		&i.Revoked,
+	)
+	return i, err
+}
+
+const deleteFormInvite = `-- name: DeleteFormInvite :exec
+DELETE FROM form_invites
+WHERE id = $1
+`
+
+func (q *Queries) DeleteFormInvite(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteFormInvite, id)
+	return err
+}
+
+const getFormInviteByEmail = `-- name: GetFormInviteByEmail :one
+SELECT id, form_id, email, role, invited_by, accepted_at, expires_at, created_at
+FROM form_invites
+WHERE form_id = $1
+  AND email = $2
+  AND accepted_at IS NULL
+`
+
+type GetFormInviteByEmailParams struct {
+	FormID pgtype.UUID `json:"form_id"`
+	Email  string      `json:"email"`
+}
+
+func (q *Queries) GetFormInviteByEmail(ctx context.Context, arg GetFormInviteByEmailParams) (FormInvite, error) {
+	row := q.db.QueryRow(ctx, getFormInviteByEmail, arg.FormID, arg.Email)
+	var i FormInvite
+	err := row.Scan(
+		&i.ID,
+		&i.FormID,
+		&i.Email,
+		&i.Role,
+		&i.InvitedBy,
+		&i.AcceptedAt,
+		&i.ExpiresAt,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getFormInviteForUpdate = `-- name: GetFormInviteForUpdate :one
-SELECT code, form_id, role, expires_at, created_by, created_at, revoked
+SELECT id, form_id, email, role, invited_by, accepted_at, expires_at, created_at
 FROM form_invites
-WHERE code = $1
+WHERE id = $1
 FOR UPDATE
 `
 
-func (q *Queries) GetFormInviteForUpdate(ctx context.Context, code string) (FormInvite, error) {
-	row := q.db.QueryRow(ctx, getFormInviteForUpdate, code)
+func (q *Queries) GetFormInviteForUpdate(ctx context.Context, id pgtype.UUID) (FormInvite, error) {
+	row := q.db.QueryRow(ctx, getFormInviteForUpdate, id)
 	var i FormInvite
 	err := row.Scan(
-		&i.Code,
+		&i.ID,
 		&i.FormID,
+		&i.Email,
 		&i.Role,
+		&i.InvitedBy,
+		&i.AcceptedAt,
 		&i.ExpiresAt,
-		&i.CreatedBy,
 		&i.CreatedAt,
-		&i.Revoked,
 	)
 	return i, err
 }
 
 const listActiveFormInvites = `-- name: ListActiveFormInvites :many
-SELECT code, form_id, role, expires_at, created_by, created_at, revoked
+SELECT id, form_id, email, role, invited_by, accepted_at, expires_at, created_at
 FROM form_invites
 WHERE form_id = $1
-  AND revoked = FALSE
-  AND expires_at > $2
+  AND accepted_at IS NULL
+  AND expires_at > NOW()
 ORDER BY created_at DESC
 `
 
-type ListActiveFormInvitesParams struct {
-	FormID    string             `json:"form_id"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
-}
-
-func (q *Queries) ListActiveFormInvites(ctx context.Context, arg ListActiveFormInvitesParams) ([]FormInvite, error) {
-	rows, err := q.db.Query(ctx, listActiveFormInvites, arg.FormID, arg.ExpiresAt)
+func (q *Queries) ListActiveFormInvites(ctx context.Context, formID pgtype.UUID) ([]FormInvite, error) {
+	rows, err := q.db.Query(ctx, listActiveFormInvites, formID)
 	if err != nil {
 		return nil, err
 	}
@@ -92,13 +154,14 @@ func (q *Queries) ListActiveFormInvites(ctx context.Context, arg ListActiveFormI
 	for rows.Next() {
 		var i FormInvite
 		if err := rows.Scan(
-			&i.Code,
+			&i.ID,
 			&i.FormID,
+			&i.Email,
 			&i.Role,
+			&i.InvitedBy,
+			&i.AcceptedAt,
 			&i.ExpiresAt,
-			&i.CreatedBy,
 			&i.CreatedAt,
-			&i.Revoked,
 		); err != nil {
 			return nil, err
 		}
@@ -108,32 +171,4 @@ func (q *Queries) ListActiveFormInvites(ctx context.Context, arg ListActiveFormI
 		return nil, err
 	}
 	return items, nil
-}
-
-const revokeFormInvite = `-- name: RevokeFormInvite :one
-UPDATE form_invites
-SET revoked = TRUE
-WHERE form_id = $1
-  AND code = $2
-RETURNING code, form_id, role, expires_at, created_by, created_at, revoked
-`
-
-type RevokeFormInviteParams struct {
-	FormID string `json:"form_id"`
-	Code   string `json:"code"`
-}
-
-func (q *Queries) RevokeFormInvite(ctx context.Context, arg RevokeFormInviteParams) (FormInvite, error) {
-	row := q.db.QueryRow(ctx, revokeFormInvite, arg.FormID, arg.Code)
-	var i FormInvite
-	err := row.Scan(
-		&i.Code,
-		&i.FormID,
-		&i.Role,
-		&i.ExpiresAt,
-		&i.CreatedBy,
-		&i.CreatedAt,
-		&i.Revoked,
-	)
-	return i, err
 }

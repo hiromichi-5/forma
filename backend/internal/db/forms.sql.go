@@ -11,29 +11,131 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getFormTitleQuestion = `-- name: GetFormTitleQuestion :one
-SELECT title_question_id FROM forms WHERE form_id = $1
+const createForm = `-- name: CreateForm :one
+INSERT INTO forms (id, form_id, title, description, title_question_id, email_collection_type, synced_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, form_id, title, description, title_question_id, email_collection_type, synced_at, created_at
 `
 
-func (q *Queries) GetFormTitleQuestion(ctx context.Context, formID string) (pgtype.Text, error) {
-	row := q.db.QueryRow(ctx, getFormTitleQuestion, formID)
-	var title_question_id pgtype.Text
-	err := row.Scan(&title_question_id)
-	return title_question_id, err
+type CreateFormParams struct {
+	ID                  pgtype.UUID        `json:"id"`
+	FormID              string             `json:"form_id"`
+	Title               string             `json:"title"`
+	Description         pgtype.Text        `json:"description"`
+	TitleQuestionID     pgtype.Text        `json:"title_question_id"`
+	EmailCollectionType pgtype.Text        `json:"email_collection_type"`
+	SyncedAt            pgtype.Timestamptz `json:"synced_at"`
+}
+
+func (q *Queries) CreateForm(ctx context.Context, arg CreateFormParams) (Form, error) {
+	row := q.db.QueryRow(ctx, createForm,
+		arg.ID,
+		arg.FormID,
+		arg.Title,
+		arg.Description,
+		arg.TitleQuestionID,
+		arg.EmailCollectionType,
+		arg.SyncedAt,
+	)
+	var i Form
+	err := row.Scan(
+		&i.ID,
+		&i.FormID,
+		&i.Title,
+		&i.Description,
+		&i.TitleQuestionID,
+		&i.EmailCollectionType,
+		&i.SyncedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getFormByID = `-- name: GetFormByID :one
+SELECT id, form_id, title, description, title_question_id, email_collection_type, synced_at, created_at
+FROM forms
+WHERE id = $1
+`
+
+func (q *Queries) GetFormByID(ctx context.Context, id pgtype.UUID) (Form, error) {
+	row := q.db.QueryRow(ctx, getFormByID, id)
+	var i Form
+	err := row.Scan(
+		&i.ID,
+		&i.FormID,
+		&i.Title,
+		&i.Description,
+		&i.TitleQuestionID,
+		&i.EmailCollectionType,
+		&i.SyncedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const listForms = `-- name: ListForms :many
+SELECT id, form_id, title, description, title_question_id, email_collection_type, synced_at, created_at
+FROM forms
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListForms(ctx context.Context) ([]Form, error) {
+	rows, err := q.db.Query(ctx, listForms)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Form
+	for rows.Next() {
+		var i Form
+		if err := rows.Scan(
+			&i.ID,
+			&i.FormID,
+			&i.Title,
+			&i.Description,
+			&i.TitleQuestionID,
+			&i.EmailCollectionType,
+			&i.SyncedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateFormSyncedAt = `-- name: UpdateFormSyncedAt :exec
+UPDATE forms
+SET synced_at = $2
+WHERE id = $1
+`
+
+type UpdateFormSyncedAtParams struct {
+	ID       pgtype.UUID        `json:"id"`
+	SyncedAt pgtype.Timestamptz `json:"synced_at"`
+}
+
+func (q *Queries) UpdateFormSyncedAt(ctx context.Context, arg UpdateFormSyncedAtParams) error {
+	_, err := q.db.Exec(ctx, updateFormSyncedAt, arg.ID, arg.SyncedAt)
+	return err
 }
 
 const updateFormTitleQuestion = `-- name: UpdateFormTitleQuestion :exec
 UPDATE forms
 SET title_question_id = $2
-WHERE form_id = $1
+WHERE id = $1
 `
 
 type UpdateFormTitleQuestionParams struct {
-	FormID          string      `json:"form_id"`
+	ID              pgtype.UUID `json:"id"`
 	TitleQuestionID pgtype.Text `json:"title_question_id"`
 }
 
 func (q *Queries) UpdateFormTitleQuestion(ctx context.Context, arg UpdateFormTitleQuestionParams) error {
-	_, err := q.db.Exec(ctx, updateFormTitleQuestion, arg.FormID, arg.TitleQuestionID)
+	_, err := q.db.Exec(ctx, updateFormTitleQuestion, arg.ID, arg.TitleQuestionID)
 	return err
 }

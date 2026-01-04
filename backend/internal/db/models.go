@@ -5,71 +5,192 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type FormRole string
+
+const (
+	FormRoleAdmin  FormRole = "admin"
+	FormRoleEditor FormRole = "editor"
+)
+
+func (e *FormRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = FormRole(s)
+	case string:
+		*e = FormRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for FormRole: %T", src)
+	}
+	return nil
+}
+
+type NullFormRole struct {
+	FormRole FormRole `json:"form_role"`
+	Valid    bool     `json:"valid"` // Valid is true if FormRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullFormRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.FormRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.FormRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullFormRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.FormRole), nil
+}
+
+type TicketPriority string
+
+const (
+	TicketPriorityHigh   TicketPriority = "high"
+	TicketPriorityMedium TicketPriority = "medium"
+	TicketPriorityLow    TicketPriority = "low"
+)
+
+func (e *TicketPriority) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TicketPriority(s)
+	case string:
+		*e = TicketPriority(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TicketPriority: %T", src)
+	}
+	return nil
+}
+
+type NullTicketPriority struct {
+	TicketPriority TicketPriority `json:"ticket_priority"`
+	Valid          bool           `json:"valid"` // Valid is true if TicketPriority is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTicketPriority) Scan(value interface{}) error {
+	if value == nil {
+		ns.TicketPriority, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TicketPriority.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTicketPriority) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TicketPriority), nil
+}
+
+type EmailVerificationToken struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Token     string             `json:"token"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Form struct {
-	FormID          string             `json:"form_id"`
-	Title           string             `json:"title"`
-	ConnectedAt     pgtype.Timestamptz `json:"connected_at"`
-	Description     pgtype.Text        `json:"description"`
-	PollingSec      pgtype.Int4        `json:"polling_sec"`
-	SyncCursor      pgtype.Timestamptz `json:"sync_cursor"`
-	Enabled         bool               `json:"enabled"`
-	TitleQuestionID pgtype.Text        `json:"title_question_id"`
+	ID                  pgtype.UUID        `json:"id"`
+	FormID              string             `json:"form_id"`
+	Title               string             `json:"title"`
+	Description         pgtype.Text        `json:"description"`
+	TitleQuestionID     pgtype.Text        `json:"title_question_id"`
+	EmailCollectionType pgtype.Text        `json:"email_collection_type"`
+	SyncedAt            pgtype.Timestamptz `json:"synced_at"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 }
 
 type FormInvite struct {
-	Code      string             `json:"code"`
-	FormID    string             `json:"form_id"`
-	Role      string             `json:"role"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
-	CreatedBy pgtype.UUID        `json:"created_by"`
+	ID         pgtype.UUID        `json:"id"`
+	FormID     pgtype.UUID        `json:"form_id"`
+	Email      string             `json:"email"`
+	Role       FormRole           `json:"role"`
+	InvitedBy  pgtype.UUID        `json:"invited_by"`
+	AcceptedAt pgtype.Timestamptz `json:"accepted_at"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type FormMember struct {
+	UserID    pgtype.UUID        `json:"user_id"`
+	FormID    pgtype.UUID        `json:"form_id"`
+	Role      FormRole           `json:"role"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	Revoked   bool               `json:"revoked"`
 }
 
 type FormQuestion struct {
-	FormID       string             `json:"form_id"`
+	FormID       pgtype.UUID        `json:"form_id"`
 	QuestionID   string             `json:"question_id"`
 	Title        string             `json:"title"`
 	QuestionType string             `json:"question_type"`
 	Options      []byte             `json:"options"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
-type Response struct {
-	ResponseID    string             `json:"response_id"`
-	FormID        string             `json:"form_id"`
-	SubmittedAt   pgtype.Timestamptz `json:"submitted_at"`
-	Payload       []byte             `json:"payload"`
-	SchemaVersion int32              `json:"schema_version"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+type FormStatus struct {
+	ID           pgtype.UUID        `json:"id"`
+	FormID       pgtype.UUID        `json:"form_id"`
+	Name         string             `json:"name"`
+	Color        pgtype.Text        `json:"color"`
+	DisplayOrder int32              `json:"display_order"`
+	IsDefault    bool               `json:"is_default"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+type PasswordResetToken struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Token     string             `json:"token"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Ticket struct {
-	ID         pgtype.UUID        `json:"id"`
-	FormID     string             `json:"form_id"`
-	ResponseID string             `json:"response_id"`
-	Status     string             `json:"status"`
-	AssigneeID pgtype.UUID        `json:"assignee_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
-	Priority   string             `json:"priority"`
+	ID              pgtype.UUID        `json:"id"`
+	FormID          pgtype.UUID        `json:"form_id"`
+	ResponseID      string             `json:"response_id"`
+	RespondentEmail pgtype.Text        `json:"respondent_email"`
+	Answers         []byte             `json:"answers"`
+	StatusID        pgtype.UUID        `json:"status_id"`
+	AssigneeID      pgtype.UUID        `json:"assignee_id"`
+	Priority        string             `json:"priority"`
+	SubmittedAt     pgtype.Timestamptz `json:"submitted_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+type TicketHistory struct {
+	ID            pgtype.UUID        `json:"id"`
+	TicketID      pgtype.UUID        `json:"ticket_id"`
+	ChangedBy     pgtype.UUID        `json:"changed_by"`
+	ChangedByName string             `json:"changed_by_name"`
+	FieldName     string             `json:"field_name"`
+	OldValue      pgtype.Text        `json:"old_value"`
+	NewValue      pgtype.Text        `json:"new_value"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type User struct {
 	ID           pgtype.UUID        `json:"id"`
 	Email        string             `json:"email"`
 	PasswordHash string             `json:"password_hash"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	DisplayName  string             `json:"display_name"`
-	Deletedat    pgtype.Timestamptz `json:"deletedat"`
-}
-
-type UserFormRole struct {
-	UserID pgtype.UUID `json:"user_id"`
-	FormID string      `json:"form_id"`
-	Role   string      `json:"role"`
+	VerifiedAt   pgtype.Timestamptz `json:"verified_at"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }

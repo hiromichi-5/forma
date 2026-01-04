@@ -1,29 +1,31 @@
--- name: CreateTicket :one
-INSERT INTO tickets (id, form_id, response_id, status, assignee_id)
-VALUES ($1,$2,$3,'new',NULL)
-RETURNING id, form_id, response_id, status, assignee_id, priority, created_at, updated_at;
+-- name: CreateTicket :execrows
+INSERT INTO tickets (id, form_id, response_id, respondent_email, answers, status_id, assignee_id, priority, submitted_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+ON CONFLICT (form_id, response_id) DO NOTHING;
 
 -- name: ListTickets :many
 SELECT t.id,
        t.form_id,
        t.response_id,
-       t.status,
+       t.respondent_email,
+       t.answers,
+       t.status_id,
        t.assignee_id,
        t.priority,
+       t.submitted_at,
        t.created_at,
-       t.updated_at,
        f.title AS form_title,
        f.title_question_id,
-       r.submitted_at,
-       r.payload,
+       s.name AS status_name,
+       s.color AS status_color,
        a.display_name AS assignee_display_name,
        a.email AS assignee_email
 FROM tickets t
-JOIN forms f ON f.form_id = t.form_id
-JOIN responses r ON r.response_id = t.response_id
-LEFT JOIN users a ON a.id = t.assignee_id AND a.deletedAt IS NULL
-WHERE ($1::text IS NULL OR t.form_id = $1)
-  AND ($2::text = '' OR $2::text IS NULL OR t.status = $2::ticket_status)
+JOIN forms f ON f.id = t.form_id
+JOIN form_statuses s ON s.id = t.status_id
+LEFT JOIN users a ON a.id = t.assignee_id
+WHERE ($1::uuid IS NULL OR t.form_id = $1)
+  AND ($2::uuid IS NULL OR t.status_id = $2)
 ORDER BY t.created_at DESC
 LIMIT 200;
 
@@ -31,32 +33,39 @@ LIMIT 200;
 SELECT t.id,
        t.form_id,
        t.response_id,
-       t.status,
+       t.respondent_email,
+       t.answers,
+       t.status_id,
        t.assignee_id,
        t.priority,
+       t.submitted_at,
        t.created_at,
-       t.updated_at,
        f.title AS form_title,
        f.title_question_id,
-       r.submitted_at,
-       r.payload,
+       s.name AS status_name,
+       s.color AS status_color,
        a.display_name AS assignee_display_name,
        a.email AS assignee_email
 FROM tickets t
-JOIN forms f ON f.form_id = t.form_id
-JOIN responses r ON r.response_id = t.response_id
-LEFT JOIN users a ON a.id = t.assignee_id AND a.deletedAt IS NULL
+JOIN forms f ON f.id = t.form_id
+JOIN form_statuses s ON s.id = t.status_id
+LEFT JOIN users a ON a.id = t.assignee_id
 WHERE t.id = $1;
 
--- name: UpdateTicket :one
+-- name: UpdateTicketStatus :one
 UPDATE tickets
-SET status = COALESCE(sqlc.narg(status)::ticket_status, status),
-    assignee_id = CASE
-        WHEN sqlc.arg(clear_assignee)::bool THEN NULL
-        WHEN sqlc.narg(assignee_id)::uuid IS NOT NULL THEN sqlc.narg(assignee_id)::uuid
-        ELSE assignee_id
-    END,
-    priority = COALESCE(sqlc.narg(priority)::ticket_priority, priority),
-    updated_at = NOW()
-WHERE id = sqlc.arg(id)
-RETURNING id, form_id, response_id, status, assignee_id, priority, created_at, updated_at;
+SET status_id = $2
+WHERE id = $1
+RETURNING id, form_id, response_id, respondent_email, answers, status_id, assignee_id, priority, submitted_at, created_at;
+
+-- name: UpdateTicketAssignee :one
+UPDATE tickets
+SET assignee_id = $2
+WHERE id = $1
+RETURNING id, form_id, response_id, respondent_email, answers, status_id, assignee_id, priority, submitted_at, created_at;
+
+-- name: UpdateTicketPriority :one
+UPDATE tickets
+SET priority = $2
+WHERE id = $1
+RETURNING id, form_id, response_id, respondent_email, answers, status_id, assignee_id, priority, submitted_at, created_at;

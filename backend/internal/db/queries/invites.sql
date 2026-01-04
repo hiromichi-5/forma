@@ -1,25 +1,36 @@
 -- name: CreateFormInvite :one
-INSERT INTO form_invites (code, form_id, role, expires_at, created_by)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING code, form_id, role, expires_at, created_by, created_at, revoked;
+INSERT INTO form_invites (id, form_id, email, role, invited_by, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, form_id, email, role, invited_by, accepted_at, expires_at, created_at;
 
 -- name: ListActiveFormInvites :many
-SELECT code, form_id, role, expires_at, created_by, created_at, revoked
+SELECT id, form_id, email, role, invited_by, accepted_at, expires_at, created_at
 FROM form_invites
 WHERE form_id = $1
-  AND revoked = FALSE
-  AND expires_at > $2
+  AND accepted_at IS NULL
+  AND expires_at > NOW()
 ORDER BY created_at DESC;
 
--- name: GetFormInviteForUpdate :one
-SELECT code, form_id, role, expires_at, created_by, created_at, revoked
+-- name: GetFormInviteByEmail :one
+SELECT id, form_id, email, role, invited_by, accepted_at, expires_at, created_at
 FROM form_invites
-WHERE code = $1
+WHERE form_id = $1
+  AND email = $2
+  AND accepted_at IS NULL;
+
+-- name: GetFormInviteForUpdate :one
+SELECT id, form_id, email, role, invited_by, accepted_at, expires_at, created_at
+FROM form_invites
+WHERE id = $1
 FOR UPDATE;
 
--- name: RevokeFormInvite :one
+-- name: AcceptFormInvite :one
 UPDATE form_invites
-SET revoked = TRUE
-WHERE form_id = $1
-  AND code = $2
-RETURNING code, form_id, role, expires_at, created_by, created_at, revoked;
+SET accepted_at = NOW()
+WHERE id = $1
+  AND accepted_at IS NULL
+RETURNING id, form_id, email, role, invited_by, accepted_at, expires_at, created_at;
+
+-- name: DeleteFormInvite :exec
+DELETE FROM form_invites
+WHERE id = $1;
