@@ -131,6 +131,8 @@ func main() {
 	})
 
 	fh := &api.FormsHandler{S: svc}
+	mh := &api.MembersHandler{Svc: svc}
+	ih := &api.InvitesHandler{Svc: svc}
 	authz.POST("/forms", fh.PostV1Forms)
 	authz.GET("/forms", fh.GetV1Forms)
 	authz.GET("/forms/:form_id", func(c *gin.Context) {
@@ -142,23 +144,19 @@ func main() {
 	authz.POST("/forms/:form_id/sync", func(c *gin.Context) {
 		fh.PostV1FormsFormIdSync(c, c.Param("form_id"))
 	})
-	authz.GET("/forms/:form_id/members", fh.GetV1FormsFormIdMembers)
-	authz.POST("/forms/:form_id/members", fh.PostV1FormsFormIdMembers)
-	authz.PUT("/forms/:form_id/members/:user_id", fh.PutV1FormsFormIdMembersUserId)
-	authz.DELETE("/forms/:form_id/members/:user_id", fh.DeleteV1FormsFormIdMembersUserId)
-	authz.GET("/forms/:form_id/invites", func(c *gin.Context) {
-		fh.GetV1FormsFormIdInvites(c, c.Param("form_id"))
-	})
-	authz.POST("/forms/:form_id/invites", func(c *gin.Context) {
-		fh.PostV1FormsFormIdInvites(c, c.Param("form_id"))
-	})
-	authz.DELETE("/forms/:form_id/invites/:code", func(c *gin.Context) {
-		fh.DeleteV1FormsFormIdInvitesCode(c, c.Param("form_id"), c.Param("code"))
-	})
+	authz.GET("/forms/:form_id/members", mh.GetV1FormsFormIdMembers)
+	authz.POST("/forms/:form_id/members", mh.PostV1FormsFormIdMembers)
+	authz.PUT("/forms/:form_id/members/:user_id", mh.PutV1FormsFormIdMembersUserId)
+	authz.DELETE("/forms/:form_id/members/:user_id", mh.DeleteV1FormsFormIdMembersUserId)
+	authz.GET("/forms/:form_id/invites", ih.GetV1FormsFormIdInvites)
+	authz.POST("/forms/:form_id/invites", ih.PostV1FormsFormIdInvites)
+	authz.DELETE("/forms/:form_id/invites/:invite_id", ih.DeleteV1FormsFormIdInvitesInviteId)
 	authz.GET("/forms/:form_id/questions", func(c *gin.Context) {
 		fh.GetV1FormsFormIdQuestions(c, c.Param("form_id"))
 	})
-	authz.POST("/invites/accept", fh.PostV1InvitesAccept)
+	authz.POST("/invites/:invite_id/accept", func(c *gin.Context) {
+		ih.PostV1InvitesInviteIdAccept(c, c.Param("invite_id"))
+	})
 
 	authz.GET("/responses", fh.GetV1Responses)
 

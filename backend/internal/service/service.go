@@ -29,11 +29,16 @@ type rolesStore interface {
 	CountFormAdmins(ctx context.Context, formID pgtype.UUID) (int64, error)
 }
 
+type usersStore interface {
+	GetUserByID(ctx context.Context, id pgtype.UUID) (db.GetUserByIDRow, error)
+}
+
 type Service struct {
 	Q       *db.Queries
 	GF      google.FormsClient
 	Invites invitesStore
 	Roles   rolesStore
+	Users   usersStore
 
 	now          func() time.Time
 	generateCode func() (string, error)
@@ -45,6 +50,7 @@ func NewService(q *db.Queries, gf google.FormsClient) *Service {
 		GF:           gf,
 		Invites:      q,
 		Roles:        q,
+		Users:        q,
 		now:          time.Now,
 		generateCode: defaultInviteCode,
 	}
