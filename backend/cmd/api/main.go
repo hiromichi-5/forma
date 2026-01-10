@@ -158,8 +158,6 @@ func main() {
 		ih.PostV1InvitesInviteIdAccept(c, c.Param("invite_id"))
 	})
 
-	authz.GET("/responses", fh.GetV1Responses)
-
 	authz.GET("/tickets", fh.GetV1Tickets)
 	authz.GET("/tickets/:ticket_id", func(c *gin.Context) {
 		fh.GetV1TicketsTicketId(c, c.Param("ticket_id"))

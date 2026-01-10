@@ -80,6 +80,27 @@ func (q *Queries) GetDefaultFormStatus(ctx context.Context, formID pgtype.UUID) 
 	return i, err
 }
 
+const getFormStatusByID = `-- name: GetFormStatusByID :one
+SELECT id, form_id, name, color, display_order, is_default, created_at
+FROM form_statuses
+WHERE id = $1
+`
+
+func (q *Queries) GetFormStatusByID(ctx context.Context, id pgtype.UUID) (FormStatus, error) {
+	row := q.db.QueryRow(ctx, getFormStatusByID, id)
+	var i FormStatus
+	err := row.Scan(
+		&i.ID,
+		&i.FormID,
+		&i.Name,
+		&i.Color,
+		&i.DisplayOrder,
+		&i.IsDefault,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listFormStatuses = `-- name: ListFormStatuses :many
 SELECT id, form_id, name, color, display_order, is_default, created_at
 FROM form_statuses

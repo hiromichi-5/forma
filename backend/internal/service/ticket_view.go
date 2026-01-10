@@ -12,6 +12,12 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/db"
 )
 
+type TicketStatus struct {
+	ID    uuid.UUID `json:"id"`
+	Name  string    `json:"name"`
+	Color *string   `json:"color"`
+}
+
 type TicketAssignee struct {
 	ID          uuid.UUID `json:"id"`
 	DisplayName string    `json:"display_name"`
@@ -23,13 +29,14 @@ type TicketSummary struct {
 	FormID          string          `json:"form_id"`
 	FormTitle       string          `json:"form_title"`
 	ResponseID      string          `json:"response_id"`
-	Status          string          `json:"status"`
+	RespondentEmail *string         `json:"respondent_email"`
+	Status          TicketStatus    `json:"status"`
 	Priority        string          `json:"priority"`
-	TitleQuestionID string          `json:"title_question_id,omitempty"`
+	TitleQuestionID *string         `json:"title_question_id"`
 	Title           string          `json:"title"`
 	Assignee        *TicketAssignee `json:"assignee,omitempty"`
 	SubmittedAt     time.Time       `json:"submitted_at"`
-	UpdatedAt       time.Time       `json:"updated_at"`
+	CreatedAt       time.Time       `json:"created_at"`
 }
 
 type TicketAnswer struct {
@@ -97,12 +104,20 @@ func parseResponseAnswers(payload []byte) (map[string][]string, error) {
 	if len(payload) == 0 {
 		return map[string][]string{}, nil
 	}
-	var sr storedResponse
-	if err := json.Unmarshal(payload, &sr); err != nil {
+	var wrapper storedResponse
+	if err := json.Unmarshal(payload, &wrapper); err == nil && wrapper.Answers != nil {
+		return extractAnswers(wrapper.Answers), nil
+	}
+	var raw map[string]storedAnswer
+	if err := json.Unmarshal(payload, &raw); err != nil {
 		return nil, err
 	}
-	results := make(map[string][]string, len(sr.Answers))
-	for key, ans := range sr.Answers {
+	return extractAnswers(raw), nil
+}
+
+func extractAnswers(raw map[string]storedAnswer) map[string][]string {
+	results := make(map[string][]string, len(raw))
+	for key, ans := range raw {
 		values := extractAnswerValues(ans)
 		if len(values) == 0 {
 			results[key] = []string{}
@@ -110,7 +125,7 @@ func parseResponseAnswers(payload []byte) (map[string][]string, error) {
 		}
 		results[key] = values
 	}
-	return results, nil
+	return results
 }
 
 func extractAnswerValues(ans storedAnswer) []string {
@@ -133,18 +148,27 @@ func buildTicketSummary(row db.ListTicketsRow, answers map[string][]string, ques
 		titleQuestionID = questions.defaultTitleID
 	}
 	title := deriveTitle(titleQuestionID, answers, questions, row.FormTitle, row.ResponseID)
+	status := TicketStatus{
+		ID:    uuid.UUID(row.StatusID.Bytes),
+		Name:  row.StatusName,
+		Color: ticketTextPtr(row.StatusColor),
+	}
 	summary := TicketSummary{
 		ID:              uuid.UUID(row.ID.Bytes),
-		FormID:          row.FormID,
+		FormID:          uuid.UUID(row.FormID.Bytes).String(),
 		FormTitle:       row.FormTitle,
 		ResponseID:      row.ResponseID,
-		Status:          row.Status,
+		RespondentEmail: ticketTextPtr(row.RespondentEmail),
+		Status:          status,
 		Priority:        row.Priority,
-		TitleQuestionID: titleQuestionID,
+		TitleQuestionID: stringPtr(titleQuestionID),
 		Title:           title,
 		Assignee:        buildAssignee(row.AssigneeID, row.AssigneeDisplayName.String, row.AssigneeEmail),
 		SubmittedAt:     timeFromTimestamptz(row.SubmittedAt),
-		UpdatedAt:       timeFromTimestamptz(row.UpdatedAt),
+		CreatedAt:       timeFromTimestamptz(row.CreatedAt),
+	}
+	if summary.TitleQuestionID != nil && *summary.TitleQuestionID == "" {
+		summary.TitleQuestionID = nil
 	}
 	return summary
 }
@@ -257,4 +281,20 @@ func timeFromTimestamptz(ts pgtype.Timestamptz) time.Time {
 		return time.Time{}
 	}
 	return ts.Time
+}
+
+func ticketTextPtr(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	value := t.String
+	return &value
+}
+
+func stringPtr(v string) *string {
+	if strings.TrimSpace(v) == "" {
+		return nil
+	}
+	value := v
+	return &value
 }

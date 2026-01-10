@@ -15,6 +15,11 @@ FROM form_statuses
 WHERE form_id = $1
   AND is_default = TRUE;
 
+-- name: GetFormStatusByID :one
+SELECT id, form_id, name, color, display_order, is_default, created_at
+FROM form_statuses
+WHERE id = $1;
+
 -- name: SetDefaultFormStatus :one
 WITH cleared AS (
   UPDATE form_statuses
