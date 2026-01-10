@@ -17,16 +17,31 @@ export interface RegisterFormRequest {
 }
 
 export interface RegisterFormResponse {
-  form_id: string;
+  id: string;
 }
 
 export interface FormSummary {
-  form_id: string;
+  id: string;
   title: string;
+  synced_at?: string | null;
 }
 
 export interface ListFormsResponse {
   forms: FormSummary[];
+}
+
+export interface Form {
+  id: string;
+  title: string;
+  description?: string | null;
+  title_question_id?: string | null;
+  email_collection_type?: string | null;
+  synced_at?: string | null;
+  created_at: string;
+}
+
+export interface UpdateFormRequest {
+  title_question_id?: string | null;
 }
 
 export interface Member {
@@ -49,14 +64,23 @@ export type ChangeMemberRoleRequest = {
   role: "admin" | "editor";
 };
 
-export interface FormInvite {
-  code: string;
-  form_id: string;
-  role: "editor";
+export interface CreateInviteRequest {
+  email: string;
+  role: "admin" | "editor";
+}
+
+export interface CreateInviteResponse {
+  invite_id: string;
   expires_at: string;
-  created_by: string;
+}
+
+export interface FormInvite {
+  id: string;
+  email: string;
+  role: "admin" | "editor";
+  invited_by: string;
+  expires_at: string;
   created_at: string;
-  revoked: boolean;
 }
 
 export interface ListFormInvitesResponse {
@@ -73,8 +97,8 @@ export interface IssueInviteResponse {
 
 export interface SyncResponse {
   synced: number;
-  newTickets: number;
-  last: string;
+  new_tickets: number;
+  last?: string | null;
 }
 
 export interface FormQuestion {
@@ -87,6 +111,31 @@ export interface FormQuestion {
 
 export interface ListFormQuestionsResponse {
   questions: FormQuestion[];
+}
+
+export interface FormStatus {
+  id: string;
+  name: string;
+  color?: string | null;
+  display_order: number;
+  is_default: boolean;
+}
+
+export interface ListFormStatusesResponse {
+  statuses: FormStatus[];
+}
+
+export interface CreateFormStatusRequest {
+  name: string;
+  color?: string | null;
+  display_order: number;
+  is_default?: boolean;
+}
+
+export interface UpdateFormStatusRequest {
+  name?: string;
+  color?: string | null;
+  display_order?: number;
 }
 
 export interface Response {
@@ -102,7 +151,13 @@ export interface ListResponsesResponse {
   responses: Response[];
 }
 
-export type TicketStatus = "new" | "in_progress" | "done";
+export type TicketPriority = "high" | "medium" | "low";
+
+export interface TicketStatus {
+  id: string;
+  name: string;
+  color?: string | null;
+}
 
 export interface TicketAssignee {
   id: string;
@@ -110,20 +165,19 @@ export interface TicketAssignee {
   email: string;
 }
 
-export type TicketPriority = "High" | "Medium" | "Low";
-
 export interface TicketSummary {
   id: string;
   form_id: string;
   form_title: string;
   response_id: string;
+  respondent_email?: string | null;
   status: TicketStatus;
   priority: TicketPriority;
   title_question_id?: string | null;
   title: string;
   assignee?: TicketAssignee | null;
   submitted_at: string;
-  updated_at: string;
+  created_at: string;
 }
 
 export interface ListTicketsResponse {
@@ -143,9 +197,24 @@ export interface TicketDetail extends TicketSummary {
 }
 
 export interface UpdateTicketRequest {
-  status?: TicketStatus;
+  status_id?: string;
   assignee_id?: string | null;
   priority?: TicketPriority;
+}
+
+export interface TicketHistory {
+  id: string;
+  ticket_id: string;
+  changed_by?: string | null;
+  changed_by_name: string;
+  field_name: string;
+  old_value?: string | null;
+  new_value?: string | null;
+  created_at: string;
+}
+
+export interface ListTicketHistoriesResponse {
+  histories: TicketHistory[];
 }
 
 export interface ErrorResponse {
