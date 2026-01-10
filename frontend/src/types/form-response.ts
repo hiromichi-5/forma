@@ -5,10 +5,12 @@ export type FormResponse = {
   respondentEmail: string
   respondentName: string
   submittedAt: Date
-  status: "new" | "in_progress" | "done"
+  status: string
+  statusName: string
+  statusColor?: string | null
   assignedTo: string | null
   responses: Record<string, string>
-  priority: "High" | "Medium" | "Low"
+  priority: "high" | "medium" | "low"
 }
 
 export type FormQuestion = {

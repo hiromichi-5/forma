@@ -4,22 +4,28 @@ import type {
   RegisterFormRequest,
   RegisterFormResponse,
   ListFormsResponse,
+  Form,
+  UpdateFormRequest,
   ListMembersResponse,
   AddMemberRequest,
   ChangeMemberRoleRequest,
   ListFormInvitesResponse,
-  AcceptInviteRequest,
-  IssueInviteResponse,
+  CreateInviteRequest,
+  CreateInviteResponse,
   SyncResponse,
   ListResponsesResponse,
   ListTicketsResponse,
   ListFormQuestionsResponse,
+  ListFormStatusesResponse,
+  FormStatus,
+  CreateFormStatusRequest,
+  UpdateFormStatusRequest,
   TicketDetail,
   UpdateTicketRequest,
+  ListTicketHistoriesResponse,
   UserProfile,
   UpdateUserProfileRequest,
   ErrorResponse,
-  TicketStatus,
   ChangePasswordRequest,
 } from "../types";
 
@@ -155,6 +161,17 @@ class ApiClient {
     });
   }
 
+  async getForm(formId: string): Promise<Form> {
+    return this.request<Form>(`/v1/forms/${formId}`);
+  }
+
+  async updateForm(formId: string, request: UpdateFormRequest): Promise<void> {
+    await this.request<void>(`/v1/forms/${formId}`, {
+      method: "PATCH",
+      body: JSON.stringify(request),
+    });
+  }
+
   async checkFormHealth(
     formId: string
   ): Promise<{ form_id: string; title: string }> {
@@ -195,22 +212,22 @@ class ApiClient {
     return this.request<ListFormInvitesResponse>(`/v1/forms/${formId}/invites`);
   }
 
-  async createInvite(formId: string): Promise<IssueInviteResponse> {
-    return this.request<IssueInviteResponse>(`/v1/forms/${formId}/invites`, {
+  async createInvite(formId: string, request: CreateInviteRequest): Promise<CreateInviteResponse> {
+    return this.request<CreateInviteResponse>(`/v1/forms/${formId}/invites`, {
       method: "POST",
+      body: JSON.stringify(request),
     });
   }
 
-  async revokeInvite(formId: string, code: string): Promise<void> {
-    return this.request<void>(`/v1/forms/${formId}/invites/${code}`, {
+  async revokeInvite(formId: string, inviteId: string): Promise<void> {
+    return this.request<void>(`/v1/forms/${formId}/invites/${inviteId}`, {
       method: "DELETE",
     });
   }
 
-  async acceptInvite(request: AcceptInviteRequest): Promise<void> {
-    return this.request<void>(`/v1/invites/accept`, {
+  async acceptInvite(inviteId: string): Promise<void> {
+    return this.request<void>(`/v1/invites/${inviteId}/accept`, {
       method: "POST",
-      body: JSON.stringify(request),
     });
   }
 
@@ -240,6 +257,38 @@ class ApiClient {
     );
   }
 
+  async getFormStatuses(formId: string): Promise<ListFormStatusesResponse> {
+    return this.request<ListFormStatusesResponse>(
+      `/v1/forms/${formId}/statuses`
+    );
+  }
+
+  async createFormStatus(formId: string, request: CreateFormStatusRequest): Promise<FormStatus> {
+    return this.request<FormStatus>(`/v1/forms/${formId}/statuses`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async updateFormStatus(formId: string, statusId: string, request: UpdateFormStatusRequest): Promise<FormStatus> {
+    return this.request<FormStatus>(`/v1/forms/${formId}/statuses/${statusId}`, {
+      method: "PATCH",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async deleteFormStatus(formId: string, statusId: string): Promise<void> {
+    await this.request<void>(`/v1/forms/${formId}/statuses/${statusId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async setDefaultFormStatus(formId: string, statusId: string): Promise<FormStatus> {
+    return this.request<FormStatus>(`/v1/forms/${formId}/statuses/${statusId}/default`, {
+      method: "POST",
+    });
+  }
+
   async updateFormTitleQuestion(
     formId: string,
     questionId: string | null
@@ -252,11 +301,11 @@ class ApiClient {
 
   async getTickets(
     formId?: string,
-    status?: TicketStatus
+    statusId?: string
   ): Promise<ListTicketsResponse> {
     const params = new URLSearchParams();
-    if (formId) params.append("form_id", formId);
-    if (status) params.append("status", status);
+    if (formId) params.append("form", formId);
+    if (statusId) params.append("status_id", statusId);
 
     const query = params.toString();
     const endpoint = `/v1/tickets${query ? `?${query}` : ""}`;
@@ -276,6 +325,10 @@ class ApiClient {
       method: "PATCH",
       body: JSON.stringify(request),
     });
+  }
+
+  async getTicketHistories(ticketId: string): Promise<ListTicketHistoriesResponse> {
+    return this.request<ListTicketHistoriesResponse>(`/v1/tickets/${ticketId}/histories`);
   }
 
   async healthz(): Promise<string> {

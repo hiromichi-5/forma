@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
-  LayoutGrid,
   LogOut,
   Settings,
   ChevronLeft,
@@ -142,10 +141,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                 ) : (
                   forms.map((form) => {
                     const isActive =
-                      location.pathname === `/forms/${form.form_id}`;
+                      location.pathname === `/forms/${form.id}`;
                     return (
                       <div
-                        key={form.form_id}
+                        key={form.id}
                         className={cn(
                           "group flex items-center gap-1 rounded-md transition-colors",
                           isActive && "bg-secondary"
@@ -158,7 +157,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                             "flex-1 justify-start text-sm h-8 pl-6 pr-2 min-w-0",
                             isActive && "font-medium"
                           )}
-                          onClick={() => navigate(`/forms/${form.form_id}`)}
+                          onClick={() => navigate(`/forms/${form.id}`)}
                         >
                           <span className="truncate">{form.title}</span>
                         </Button>
@@ -171,7 +170,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                             onClick={async (e) => {
                               e.stopPropagation();
                               try {
-                                await apiClient.syncForm(form.form_id);
+                                await apiClient.syncForm(form.id);
                                 toast.success("フォームを同期しました");
                               } catch (error) {
                                 toast.error("同期に失敗しました");
@@ -188,7 +187,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                             className="h-7 w-7"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedFormId(form.form_id);
+                              setSelectedFormId(form.id);
                               setMembersDialogOpen(true);
                             }}
                             title="メンバー管理"
