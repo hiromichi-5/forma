@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hiromichi-5/forma/backend/internal/db"
 	"github.com/hiromichi-5/forma/backend/internal/service"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type fakeProfileService struct {
@@ -91,12 +93,24 @@ func profileRouter(h *ProfileHandler) *gin.Engine {
 	return r
 }
 
+func profileRouterUnauthorized(h *ProfileHandler) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.GET("/v1/me", h.GetV1Me)
+	r.PATCH("/v1/me", h.PatchV1Me)
+	r.DELETE("/v1/me", h.DeleteV1Me)
+	r.PATCH("/v1/me/password", h.PatchV1MePassword)
+	return r
+}
+
 func TestGetV1Me_Success(t *testing.T) {
+	now := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 	svc := &fakeProfileService{
 		users: map[string]db.User{
 			"test-user-id": {
 				Email:       "test@example.com",
 				DisplayName: "Test User",
+				VerifiedAt:  pgtype.Timestamptz{Time: now, Valid: true},
 			},
 		},
 	}
@@ -121,14 +135,19 @@ func TestGetV1Me_Success(t *testing.T) {
 	if resp.DisplayName != "Test User" {
 		t.Fatalf("want display name 'Test User', got %s", resp.DisplayName)
 	}
+	if resp.VerifiedAt == nil {
+		t.Fatalf("verified_at should not be nil")
+	}
 }
 
 func TestPatchV1Me_Success(t *testing.T) {
+	now := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 	svc := &fakeProfileService{
 		users: map[string]db.User{
 			"test-user-id": {
 				Email:       "test@example.com",
 				DisplayName: "Old Name",
+				VerifiedAt:  pgtype.Timestamptz{Time: now, Valid: true},
 			},
 		},
 	}
@@ -151,6 +170,9 @@ func TestPatchV1Me_Success(t *testing.T) {
 	}
 	if resp.DisplayName != "New Name" {
 		t.Fatalf("want display name 'New Name', got %s", resp.DisplayName)
+	}
+	if resp.VerifiedAt == nil {
+		t.Fatalf("verified_at should not be nil")
 	}
 }
 
@@ -177,6 +199,56 @@ func TestPatchV1Me_EmptyDisplayName(t *testing.T) {
 	}
 }
 
+func TestGetV1Me_Unauthorized(t *testing.T) {
+	h := &ProfileHandler{Svc: &fakeProfileService{}}
+	r := profileRouterUnauthorized(h)
+	req := httptest.NewRequest("GET", "/v1/me", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401, got %d", w.Code)
+	}
+}
+
+func TestPatchV1Me_Unauthorized(t *testing.T) {
+	h := &ProfileHandler{Svc: &fakeProfileService{}}
+	r := profileRouterUnauthorized(h)
+	body, _ := json.Marshal(map[string]string{"display_name": "New Name"})
+	req := httptest.NewRequest("PATCH", "/v1/me", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401, got %d", w.Code)
+	}
+}
+
+func TestDeleteV1Me_Unauthorized(t *testing.T) {
+	h := &ProfileHandler{Svc: &fakeProfileService{}}
+	r := profileRouterUnauthorized(h)
+	req := httptest.NewRequest("DELETE", "/v1/me", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401, got %d", w.Code)
+	}
+}
+
+func TestPatchV1MePassword_Unauthorized(t *testing.T) {
+	h := &ProfileHandler{Svc: &fakeProfileService{}}
+	r := profileRouterUnauthorized(h)
+	body, _ := json.Marshal(map[string]string{
+		"current_password": "oldpassword",
+		"new_password":     "newpassword",
+	})
+	req := httptest.NewRequest("PATCH", "/v1/me/password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401, got %d", w.Code)
+	}
+}
 func TestDeleteV1Me_Success(t *testing.T) {
 	svc := &fakeProfileService{
 		users: map[string]db.User{

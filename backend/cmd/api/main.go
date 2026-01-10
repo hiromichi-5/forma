@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -69,10 +68,6 @@ func main() {
 	if addr == "" {
 		addr = ":8080"
 	}
-	secret := viper.GetString("APP_SECRET")
-	if secret == "" {
-		log.Fatal("APP_SECRET required")
-	}
 	pgDSN := viper.GetString("PG_DSN")
 	if pgDSN == "" {
 		log.Fatal("PG_DSN required")
@@ -93,11 +88,6 @@ func main() {
 	defer pool.Close()
 	q := db.New(pool)
 
-	signer := auth.Signer{Secret: []byte(secret), TTL: time.Hour}
-	if signer.TTL <= 0 {
-		log.Fatal("APP_JWT_TTL must be positive duration")
-	}
-
 	gf, err := gforms.NewRealFormsClient(ctx, saPath)
 	if err != nil {
 		log.Fatalf("forms client: %v", err)
@@ -113,13 +103,17 @@ func main() {
 		SameSite: http.SameSiteLaxMode,
 	}
 
-	ah := &api.AuthHandler{Svc: service.NewAuthService(q), JWT: signer, Cookie: cookieCfg}
+	ah := &api.AuthHandler{Svc: service.NewAuthService(q), Cookie: cookieCfg}
 	r.POST("/v1/auth/login", ah.PostV1AuthLogin)
 	r.POST("/v1/auth/signup", ah.PostV1AuthSignup)
 	r.POST("/v1/auth/logout", ah.PostV1AuthLogout)
+	r.POST("/v1/auth/verify-email", ah.PostV1AuthVerifyEmail)
+	r.POST("/v1/auth/verify-email/resend", ah.PostV1AuthVerifyEmailResend)
+	r.POST("/v1/auth/password-reset", ah.PostV1AuthPasswordReset)
+	r.POST("/v1/auth/password-reset/confirm", ah.PostV1AuthPasswordResetConfirm)
 
 	authz := r.Group("/v1")
-	authz.Use(auth.BearerMiddleware(signer, cookieCfg.Name))
+	authz.Use(auth.SessionMiddleware(q, cookieCfg.Name))
 
 	ph := &api.ProfileHandler{Svc: service.NewProfileService(q)}
 	authz.GET("/me", ph.GetV1Me)
@@ -136,36 +130,49 @@ func main() {
 	})
 
 	fh := &api.FormsHandler{S: svc}
+	mh := &api.MembersHandler{Svc: svc}
+	ih := &api.InvitesHandler{Svc: svc}
+	sh := &api.StatusesHandler{Svc: svc}
+	th := &api.TicketHistoriesHandler{Svc: svc}
 	authz.POST("/forms", fh.PostV1Forms)
 	authz.GET("/forms", fh.GetV1Forms)
-	authz.GET("/forms/:form_id/health", func(c *gin.Context) {
-		fh.GetV1FormsFormIdHealth(c, c.Param("form_id"))
+	authz.GET("/forms/:form_id", func(c *gin.Context) {
+		fh.GetV1FormsId(c, c.Param("form_id"))
+	})
+	authz.PATCH("/forms/:form_id", func(c *gin.Context) {
+		fh.PatchV1FormsId(c, c.Param("form_id"))
 	})
 	authz.POST("/forms/:form_id/sync", func(c *gin.Context) {
 		fh.PostV1FormsFormIdSync(c, c.Param("form_id"))
 	})
-	authz.GET("/forms/:form_id/members", fh.GetV1FormsFormIdMembers)
-	authz.POST("/forms/:form_id/members", fh.PostV1FormsFormIdMembers)
-	authz.PUT("/forms/:form_id/members/:user_id", fh.PutV1FormsFormIdMembersUserId)
-	authz.DELETE("/forms/:form_id/members/:user_id", fh.DeleteV1FormsFormIdMembersUserId)
-	authz.GET("/forms/:form_id/invites", func(c *gin.Context) {
-		fh.GetV1FormsFormIdInvites(c, c.Param("form_id"))
+	authz.GET("/forms/:form_id/members", mh.GetV1FormsFormIdMembers)
+	authz.POST("/forms/:form_id/members", mh.PostV1FormsFormIdMembers)
+	authz.PUT("/forms/:form_id/members/:user_id", mh.PutV1FormsFormIdMembersUserId)
+	authz.DELETE("/forms/:form_id/members/:user_id", mh.DeleteV1FormsFormIdMembersUserId)
+	authz.GET("/forms/:form_id/invites", ih.GetV1FormsFormIdInvites)
+	authz.POST("/forms/:form_id/invites", ih.PostV1FormsFormIdInvites)
+	authz.DELETE("/forms/:form_id/invites/:invite_id", ih.DeleteV1FormsFormIdInvitesInviteId)
+	authz.GET("/forms/:form_id/statuses", func(c *gin.Context) {
+		sh.GetV1FormsIdStatuses(c, c.Param("form_id"))
 	})
-	authz.POST("/forms/:form_id/invites", func(c *gin.Context) {
-		fh.PostV1FormsFormIdInvites(c, c.Param("form_id"))
+	authz.POST("/forms/:form_id/statuses", func(c *gin.Context) {
+		sh.PostV1FormsIdStatuses(c, c.Param("form_id"))
 	})
-	authz.DELETE("/forms/:form_id/invites/:code", func(c *gin.Context) {
-		fh.DeleteV1FormsFormIdInvitesCode(c, c.Param("form_id"), c.Param("code"))
+	authz.PATCH("/forms/:form_id/statuses/:status_id", func(c *gin.Context) {
+		sh.PatchV1FormsIdStatusesStatusId(c, c.Param("form_id"), c.Param("status_id"))
+	})
+	authz.POST("/forms/:form_id/statuses/:status_id/default", func(c *gin.Context) {
+		sh.PostV1FormsIdStatusesStatusIdDefault(c, c.Param("form_id"), c.Param("status_id"))
+	})
+	authz.DELETE("/forms/:form_id/statuses/:status_id", func(c *gin.Context) {
+		sh.DeleteV1FormsIdStatusesStatusId(c, c.Param("form_id"), c.Param("status_id"))
 	})
 	authz.GET("/forms/:form_id/questions", func(c *gin.Context) {
 		fh.GetV1FormsFormIdQuestions(c, c.Param("form_id"))
 	})
-	authz.PATCH("/forms/:form_id/title-question", func(c *gin.Context) {
-		fh.PatchV1FormsFormIdTitleQuestion(c, c.Param("form_id"))
+	authz.POST("/invites/:invite_id/accept", func(c *gin.Context) {
+		ih.PostV1InvitesInviteIdAccept(c, c.Param("invite_id"))
 	})
-	authz.POST("/invites/accept", fh.PostV1InvitesAccept)
-
-	authz.GET("/responses", fh.GetV1Responses)
 
 	authz.GET("/tickets", fh.GetV1Tickets)
 	authz.GET("/tickets/:ticket_id", func(c *gin.Context) {
@@ -173,6 +180,9 @@ func main() {
 	})
 	authz.PATCH("/tickets/:ticket_id", func(c *gin.Context) {
 		fh.PatchV1TicketsTicketId(c, c.Param("ticket_id"))
+	})
+	authz.GET("/tickets/:ticket_id/histories", func(c *gin.Context) {
+		th.GetV1TicketsTicketIdHistories(c, c.Param("ticket_id"))
 	})
 
 	if err := r.Run(addr); err != nil {

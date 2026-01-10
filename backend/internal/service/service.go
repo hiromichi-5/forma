@@ -14,18 +14,23 @@ import (
 
 type invitesStore interface {
 	CreateFormInvite(ctx context.Context, arg db.CreateFormInviteParams) (db.FormInvite, error)
-	ListActiveFormInvites(ctx context.Context, arg db.ListActiveFormInvitesParams) ([]db.FormInvite, error)
-	GetFormInviteForUpdate(ctx context.Context, code string) (db.FormInvite, error)
-	RevokeFormInvite(ctx context.Context, arg db.RevokeFormInviteParams) (db.FormInvite, error)
+	ListActiveFormInvites(ctx context.Context, formID pgtype.UUID) ([]db.FormInvite, error)
+	GetFormInviteForUpdate(ctx context.Context, id pgtype.UUID) (db.FormInvite, error)
+	AcceptFormInvite(ctx context.Context, id pgtype.UUID) (db.FormInvite, error)
+	DeleteFormInvite(ctx context.Context, id pgtype.UUID) error
 }
 
 type rolesStore interface {
-	GetUserFormRole(ctx context.Context, arg db.GetUserFormRoleParams) (string, error)
-	UpsertUserFormRole(ctx context.Context, arg db.UpsertUserFormRoleParams) error
-	DeleteUserFormRole(ctx context.Context, arg db.DeleteUserFormRoleParams) error
-	ListFormMembers(ctx context.Context, formID string) ([]db.ListFormMembersRow, error)
+	GetFormMemberRole(ctx context.Context, arg db.GetFormMemberRoleParams) (db.FormRole, error)
+	UpsertFormMember(ctx context.Context, arg db.UpsertFormMemberParams) error
+	DeleteFormMember(ctx context.Context, arg db.DeleteFormMemberParams) error
+	ListFormMembers(ctx context.Context, formID pgtype.UUID) ([]db.ListFormMembersRow, error)
 	ListUserAccessibleForms(ctx context.Context, userID pgtype.UUID) ([]db.ListUserAccessibleFormsRow, error)
-	CountFormAdmins(ctx context.Context, formID string) (int64, error)
+	CountFormAdmins(ctx context.Context, formID pgtype.UUID) (int64, error)
+}
+
+type usersStore interface {
+	GetUserByID(ctx context.Context, id pgtype.UUID) (db.GetUserByIDRow, error)
 }
 
 type Service struct {
@@ -33,6 +38,7 @@ type Service struct {
 	GF      google.FormsClient
 	Invites invitesStore
 	Roles   rolesStore
+	Users   usersStore
 
 	now          func() time.Time
 	generateCode func() (string, error)
@@ -44,6 +50,7 @@ func NewService(q *db.Queries, gf google.FormsClient) *Service {
 		GF:           gf,
 		Invites:      q,
 		Roles:        q,
+		Users:        q,
 		now:          time.Now,
 		generateCode: defaultInviteCode,
 	}
@@ -68,11 +75,4 @@ func (s *Service) nowTime() time.Time {
 		return s.now()
 	}
 	return time.Now()
-}
-
-func (s *Service) newInviteCode() (string, error) {
-	if s.generateCode != nil {
-		return s.generateCode()
-	}
-	return defaultInviteCode()
 }

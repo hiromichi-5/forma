@@ -14,27 +14,34 @@ import (
 )
 
 type fakeProfileStore struct {
-	users map[string]db.User
+	users map[string]db.GetUserByIDRow
 }
 
-func (f *fakeProfileStore) GetUser(_ context.Context, id pgtype.UUID) (db.User, error) {
+func (f *fakeProfileStore) GetUserByID(_ context.Context, id pgtype.UUID) (db.GetUserByIDRow, error) {
 	uid := uuid.UUID(id.Bytes).String()
 	u, ok := f.users[uid]
 	if !ok {
-		return db.User{}, pgx.ErrNoRows
+		return db.GetUserByIDRow{}, pgx.ErrNoRows
 	}
 	return u, nil
 }
 
-func (f *fakeProfileStore) UpdateUserDisplayName(_ context.Context, arg db.UpdateUserDisplayNameParams) (db.User, error) {
+func (f *fakeProfileStore) UpdateUserDisplayName(_ context.Context, arg db.UpdateUserDisplayNameParams) (db.UpdateUserDisplayNameRow, error) {
 	uid := uuid.UUID(arg.ID.Bytes).String()
 	u, ok := f.users[uid]
 	if !ok {
-		return db.User{}, pgx.ErrNoRows
+		return db.UpdateUserDisplayNameRow{}, pgx.ErrNoRows
 	}
 	u.DisplayName = arg.DisplayName
 	f.users[uid] = u
-	return u, nil
+	return db.UpdateUserDisplayNameRow{
+		ID:           u.ID,
+		Email:        u.Email,
+		PasswordHash: u.PasswordHash,
+		CreatedAt:    u.CreatedAt,
+		DisplayName:  u.DisplayName,
+		VerifiedAt:   u.VerifiedAt,
+	}, nil
 }
 
 func (f *fakeProfileStore) DeleteUser(_ context.Context, id pgtype.UUID) (int64, error) {
@@ -59,7 +66,7 @@ func (f *fakeProfileStore) UpdateUserPasswordHash(_ context.Context, arg db.Upda
 
 func fakeProfileStoreWith(userID, email, displayName string) *fakeProfileStore {
 	return &fakeProfileStore{
-		users: map[string]db.User{
+		users: map[string]db.GetUserByIDRow{
 			userID: {
 				ID: pgtype.UUID{
 					Bytes: uuid.MustParse(userID),
@@ -103,7 +110,7 @@ func TestGetProfile_Success(t *testing.T) {
 }
 
 func TestGetProfile_NotFound(t *testing.T) {
-	store := &fakeProfileStore{users: map[string]db.User{}}
+	store := &fakeProfileStore{users: map[string]db.GetUserByIDRow{}}
 	s := NewProfileService(store)
 
 	_, err := s.GetProfile(context.Background(), "00000000-0000-0000-0000-000000000001")
@@ -227,7 +234,7 @@ func TestChangePassword_ValidationErrors(t *testing.T) {
 }
 
 func TestChangePassword_UserNotFound(t *testing.T) {
-	store := &fakeProfileStore{users: map[string]db.User{}}
+	store := &fakeProfileStore{users: map[string]db.GetUserByIDRow{}}
 	s := NewProfileService(store)
 
 	err := s.ChangePassword(context.Background(), "00000000-0000-0000-0000-000000000001", "password", "newpassword")

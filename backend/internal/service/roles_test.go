@@ -11,33 +11,33 @@ import (
 )
 
 type rolesStoreStub struct {
-	role        string
+	role        db.FormRole
 	adminCount  int64
 	getErr      error
 	countErr    error
-	upsertArgs  []db.UpsertUserFormRoleParams
-	deleteArgs  []db.DeleteUserFormRoleParams
+	upsertArgs  []db.UpsertFormMemberParams
+	deleteArgs  []db.DeleteFormMemberParams
 	countCalled int
 }
 
-func (s *rolesStoreStub) GetUserFormRole(ctx context.Context, arg db.GetUserFormRoleParams) (string, error) {
+func (s *rolesStoreStub) GetFormMemberRole(ctx context.Context, arg db.GetFormMemberRoleParams) (db.FormRole, error) {
 	if s.getErr != nil {
 		return "", s.getErr
 	}
 	return s.role, nil
 }
 
-func (s *rolesStoreStub) UpsertUserFormRole(ctx context.Context, arg db.UpsertUserFormRoleParams) error {
+func (s *rolesStoreStub) UpsertFormMember(ctx context.Context, arg db.UpsertFormMemberParams) error {
 	s.upsertArgs = append(s.upsertArgs, arg)
 	return nil
 }
 
-func (s *rolesStoreStub) DeleteUserFormRole(ctx context.Context, arg db.DeleteUserFormRoleParams) error {
+func (s *rolesStoreStub) DeleteFormMember(ctx context.Context, arg db.DeleteFormMemberParams) error {
 	s.deleteArgs = append(s.deleteArgs, arg)
 	return nil
 }
 
-func (s *rolesStoreStub) ListFormMembers(ctx context.Context, formID string) ([]db.ListFormMembersRow, error) {
+func (s *rolesStoreStub) ListFormMembers(ctx context.Context, formID pgtype.UUID) ([]db.ListFormMembersRow, error) {
 	return nil, nil
 }
 
@@ -45,7 +45,7 @@ func (s *rolesStoreStub) ListUserAccessibleForms(ctx context.Context, userID pgt
 	return nil, nil
 }
 
-func (s *rolesStoreStub) CountFormAdmins(ctx context.Context, formID string) (int64, error) {
+func (s *rolesStoreStub) CountFormAdmins(ctx context.Context, formID pgtype.UUID) (int64, error) {
 	s.countCalled++
 	if s.countErr != nil {
 		return 0, s.countErr
@@ -55,10 +55,11 @@ func (s *rolesStoreStub) CountFormAdmins(ctx context.Context, formID string) (in
 
 func TestChangeRole_PreventsDemotingLastAdmin(t *testing.T) {
 	uid := uuid.MustParse("00000000-0000-0000-0000-000000000001")
-	stub := &rolesStoreStub{role: "admin", adminCount: 1}
+	formID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
+	stub := &rolesStoreStub{role: db.FormRoleAdmin, adminCount: 1}
 	svc := &Service{Roles: stub}
 
-	err := svc.ChangeRole(context.Background(), "formA", uid.String(), "editor")
+	err := svc.ChangeRole(context.Background(), formID.String(), uid.String(), "editor")
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("want ErrValidation, got %v", err)
 	}
@@ -69,26 +70,28 @@ func TestChangeRole_PreventsDemotingLastAdmin(t *testing.T) {
 
 func TestChangeRole_AllowsDemoteWhenAnotherAdminExists(t *testing.T) {
 	uid := uuid.MustParse("00000000-0000-0000-0000-000000000002")
-	stub := &rolesStoreStub{role: "admin", adminCount: 2}
+	formID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
+	stub := &rolesStoreStub{role: db.FormRoleAdmin, adminCount: 2}
 	svc := &Service{Roles: stub}
 
-	if err := svc.ChangeRole(context.Background(), "formA", uid.String(), "editor"); err != nil {
+	if err := svc.ChangeRole(context.Background(), formID.String(), uid.String(), "editor"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(stub.upsertArgs) != 1 {
 		t.Fatalf("expected single upsert call, got %d", len(stub.upsertArgs))
 	}
-	if stub.upsertArgs[0].Role != "editor" {
+	if stub.upsertArgs[0].Role != db.FormRoleEditor {
 		t.Fatalf("unexpected role written: %s", stub.upsertArgs[0].Role)
 	}
 }
 
 func TestRemoveMember_PreventsDeletingLastAdmin(t *testing.T) {
 	uid := uuid.MustParse("00000000-0000-0000-0000-000000000003")
-	stub := &rolesStoreStub{role: "admin", adminCount: 1}
+	formID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
+	stub := &rolesStoreStub{role: db.FormRoleAdmin, adminCount: 1}
 	svc := &Service{Roles: stub}
 
-	err := svc.RemoveMember(context.Background(), "formA", uid.String())
+	err := svc.RemoveMember(context.Background(), formID.String(), uid.String())
 	if !errors.Is(err, ErrValidation) {
 		t.Fatalf("want ErrValidation, got %v", err)
 	}
@@ -99,10 +102,11 @@ func TestRemoveMember_PreventsDeletingLastAdmin(t *testing.T) {
 
 func TestRemoveMember_AllowsNonAdminRemoval(t *testing.T) {
 	uid := uuid.MustParse("00000000-0000-0000-0000-000000000004")
-	stub := &rolesStoreStub{role: "editor", adminCount: 1}
+	formID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
+	stub := &rolesStoreStub{role: db.FormRoleEditor, adminCount: 1}
 	svc := &Service{Roles: stub}
 
-	if err := svc.RemoveMember(context.Background(), "formA", uid.String()); err != nil {
+	if err := svc.RemoveMember(context.Background(), formID.String(), uid.String()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(stub.deleteArgs) != 1 {

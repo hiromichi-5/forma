@@ -1,40 +1,47 @@
 package api
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/auth"
 	"github.com/hiromichi-5/forma/backend/internal/db"
 	"github.com/hiromichi-5/forma/backend/internal/service"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-type inviteIssueResponse struct {
-	Code string `json:"code"`
-}
-
-type inviteAcceptRequest struct {
-	Code string `json:"code" binding:"required"`
-}
-
-func toAPIInvite(inv db.FormInvite) (FormInvite, bool) {
-	if !inv.CreatedAt.Valid || !inv.ExpiresAt.Valid || !inv.CreatedBy.Valid {
-		return FormInvite{}, false
+type InvitesHandler struct {
+	Svc interface {
+		CreateInvite(ctx context.Context, formID, email, role string, actor uuid.UUID) (db.FormInvite, error)
+		ListInvites(ctx context.Context, formID string, actor uuid.UUID) ([]db.FormInvite, error)
+		DeleteInvite(ctx context.Context, formID, inviteID string, actor uuid.UUID) error
+		AcceptInvite(ctx context.Context, inviteID string, actor uuid.UUID) error
 	}
-	return FormInvite{
-		Code:      inv.Code,
-		FormId:    inv.FormID,
-		Role:      FormInviteRole(inv.Role),
-		Revoked:   inv.Revoked,
-		ExpiresAt: inv.ExpiresAt.Time,
-		CreatedAt: inv.CreatedAt.Time,
-		CreatedBy: openapi_types.UUID(inv.CreatedBy.Bytes),
-	}, true
 }
 
-func (h *FormsHandler) PostV1FormsFormIdInvites(c *gin.Context, formID string) {
+type createInviteReq struct {
+	Email string `json:"email" binding:"required,email"`
+	Role  string `json:"role" binding:"required,oneof=admin editor"`
+}
+
+type createInviteResp struct {
+	InviteID  string `json:"invite_id"`
+	ExpiresAt string `json:"expires_at"`
+}
+
+type inviteResp struct {
+	ID        string `json:"id"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	InvitedBy string `json:"invited_by"`
+	ExpiresAt string `json:"expires_at"`
+	CreatedAt string `json:"created_at"`
+}
+
+func (h *InvitesHandler) PostV1FormsFormIdInvites(c *gin.Context) {
+	formID := c.Param("form_id")
 	uidStr, ok := auth.UserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
@@ -46,58 +53,83 @@ func (h *FormsHandler) PostV1FormsFormIdInvites(c *gin.Context, formID string) {
 		return
 	}
 
-	invite, err := h.S.CreateInvite(c, formID, actor)
+	var req createInviteReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
+		return
+	}
+
+	invite, err := h.Svc.CreateInvite(c, formID, req.Email, req.Role, actor)
 	if err != nil {
 		switch err {
-		case service.ErrForbidden:
-			c.JSON(http.StatusForbidden, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
-		case service.ErrCodeGeneration:
+		case service.ErrForbidden, service.ErrFormsNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
+		case service.ErrValidation:
+			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
+		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
+		}
+		return
+	}
+	if !invite.ExpiresAt.Valid {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, createInviteResp{
+		InviteID:  uuid.UUID(invite.ID.Bytes).String(),
+		ExpiresAt: invite.ExpiresAt.Time.UTC().Format(time.RFC3339),
+	})
+}
+
+func (h *InvitesHandler) GetV1FormsFormIdInvites(c *gin.Context) {
+	formID := c.Param("form_id")
+	uidStr, ok := auth.UserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
+		return
+	}
+	actor, err := uuid.Parse(uidStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
+		return
+	}
+
+	invites, err := h.Svc.ListInvites(c, formID, actor)
+	if err != nil {
+		switch err {
+		case service.ErrForbidden, service.ErrFormsNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
+		case service.ErrValidation:
+			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
 		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, inviteIssueResponse{Code: invite.Code})
-}
-
-func (h *FormsHandler) GetV1FormsFormIdInvites(c *gin.Context, formID string) {
-	uidStr, ok := auth.UserID(c)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
-		return
-	}
-	actor, err := uuid.Parse(uidStr)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
-		return
-	}
-
-	invites, err := h.S.ListInvites(c, formID, actor)
-	if err != nil {
-		if err == service.ErrForbidden {
-			c.JSON(http.StatusForbidden, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
-		return
-	}
-
-	out := make([]FormInvite, 0, len(invites))
+	out := make([]inviteResp, 0, len(invites))
 	for _, inv := range invites {
-		apiInv, ok := toAPIInvite(inv)
-		if !ok {
+		if !inv.ExpiresAt.Valid || !inv.CreatedAt.Valid {
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
 			return
 		}
-		out = append(out, apiInv)
+		out = append(out, inviteResp{
+			ID:        uuid.UUID(inv.ID.Bytes).String(),
+			Email:     inv.Email,
+			Role:      string(inv.Role),
+			InvitedBy: uuid.UUID(inv.InvitedBy.Bytes).String(),
+			ExpiresAt: inv.ExpiresAt.Time.UTC().Format(time.RFC3339),
+			CreatedAt: inv.CreatedAt.Time.UTC().Format(time.RFC3339),
+		})
 	}
 
-	c.JSON(http.StatusOK, ListFormInvitesResponse{Invites: out})
+	c.JSON(http.StatusOK, gin.H{"invites": out})
 }
 
-func (h *FormsHandler) DeleteV1FormsFormIdInvitesCode(c *gin.Context, formID, code string) {
+func (h *InvitesHandler) DeleteV1FormsFormIdInvitesInviteId(c *gin.Context) {
+	formID := c.Param("form_id")
+	inviteID := c.Param("invite_id")
 	uidStr, ok := auth.UserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
@@ -109,13 +141,12 @@ func (h *FormsHandler) DeleteV1FormsFormIdInvitesCode(c *gin.Context, formID, co
 		return
 	}
 
-	_, err = h.S.RevokeInvite(c, formID, code, actor)
-	if err != nil {
+	if err := h.Svc.DeleteInvite(c, formID, inviteID, actor); err != nil {
 		switch err {
-		case service.ErrForbidden:
-			c.JSON(http.StatusForbidden, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
-		case service.ErrInviteNotFound:
-			c.JSON(http.StatusNotFound, gin.H{"code": "INVITE_NOT_FOUND"})
+		case service.ErrForbidden, service.ErrInviteNotFound, service.ErrFormsNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
+		case service.ErrValidation:
+			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
 		}
@@ -125,7 +156,7 @@ func (h *FormsHandler) DeleteV1FormsFormIdInvitesCode(c *gin.Context, formID, co
 	c.Status(http.StatusNoContent)
 }
 
-func (h *FormsHandler) PostV1InvitesAccept(c *gin.Context) {
+func (h *InvitesHandler) PostV1InvitesInviteIdAccept(c *gin.Context, inviteID string) {
 	uidStr, ok := auth.UserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
@@ -137,21 +168,11 @@ func (h *FormsHandler) PostV1InvitesAccept(c *gin.Context) {
 		return
 	}
 
-	var req inviteAcceptRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
-		return
-	}
-
-	err = h.S.AcceptInvite(c, req.Code, actor)
+	err = h.Svc.AcceptInvite(c, inviteID, actor)
 	if err != nil {
 		switch err {
-		case service.ErrInviteNotFound:
-			c.JSON(http.StatusNotFound, gin.H{"code": "INVITE_NOT_FOUND"})
-		case service.ErrInviteExpired, service.ErrInviteRevoked:
-			c.JSON(http.StatusGone, gin.H{"code": "INVITE_EXPIRED"})
-		case service.ErrAlreadyMember:
-			c.JSON(http.StatusConflict, gin.H{"code": "ALREADY_MEMBER"})
+		case service.ErrInviteNotFound, service.ErrInviteExpired, service.ErrForbidden, service.ErrUserNotFound, service.ErrFormsNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
 		case service.ErrValidation:
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:

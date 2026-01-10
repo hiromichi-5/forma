@@ -3,60 +3,56 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/api/forms/v1"
 
 	"github.com/hiromichi-5/forma/backend/internal/db"
 )
 
-func (s *Service) roleFor(ctx context.Context, formID string, actor uuid.UUID) (string, error) {
-	r, err := s.Q.GetUserFormRole(ctx, db.GetUserFormRoleParams{
-		UserID: pgtype.UUID{Bytes: actor, Valid: true},
-		FormID: formID,
-	})
-	if err != nil {
-		return "", ErrForbidden
-	}
-	return r, nil
-}
-
 func (s *Service) SyncFormOnce(ctx context.Context, formID string, actor uuid.UUID) (synced int, newTickets int, last time.Time, err error) {
-	role, err := s.roleFor(ctx, formID, actor)
-	if err != nil || (role != "admin" && role != "editor") {
-		return 0, 0, time.Time{}, ErrForbidden
-	}
-
-	if err := s.refreshFormQuestions(ctx, formID); err != nil {
+	if err := s.RequireEditor(ctx, formID, actor); err != nil {
 		return 0, 0, time.Time{}, err
 	}
 
-	// カーソル決定 - 既存のsync_cursorを取得、なければ7日前を使用
-	var cursor time.Time
-	syncCursor, err := s.Q.GetFormSyncCursor(ctx, formID)
-	if err != nil || !syncCursor.Valid {
-		cursor = time.Now().Add(-7 * 24 * time.Hour)
-	} else {
-		cursor = syncCursor.Time
+	formUUID, err := uuid.Parse(formID)
+	if err != nil {
+		return 0, 0, time.Time{}, ErrValidation
 	}
 
-	formattedCursor := cursor.UTC().Format(time.RFC3339)
-	// Validate the formatted timestamp to ensure it matches RFC3339
-	if _, err := time.Parse(time.RFC3339, formattedCursor); err != nil {
-		return 0, 0, time.Time{}, ErrForbidden
+	form, err := s.Q.GetFormByID(ctx, dbUUID(formUUID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, 0, time.Time{}, ErrFormsNotFound
+		}
+		return 0, 0, time.Time{}, err
 	}
-	filter := "timestamp >= " + formattedCursor
+
+	if err := s.refreshFormQuestions(ctx, form.ID, form.FormID); err != nil {
+		return 0, 0, time.Time{}, err
+	}
+
+	filter := ""
+	if form.SyncedAt.Valid {
+		formatted := form.SyncedAt.Time.UTC().Format(time.RFC3339)
+		if _, err := time.Parse(time.RFC3339, formatted); err != nil {
+			return 0, 0, time.Time{}, ErrValidation
+		}
+		filter = "timestamp >= " + formatted
+	}
+
 	var all []*forms.FormResponse
 	token := ""
 	for {
-		page, e := s.GF.ListResponses(ctx, formID, filter, token)
+		page, e := s.GF.ListResponses(ctx, form.FormID, filter, token)
 		if e != nil {
-			err = e
-			return
+			return 0, 0, time.Time{}, e
 		}
 		if page.Responses != nil {
 			all = append(all, page.Responses...)
@@ -67,28 +63,31 @@ func (s *Service) SyncFormOnce(ctx context.Context, formID string, actor uuid.UU
 		token = page.NextPageToken
 	}
 
-	// submittedTime昇順で処理
 	type pair struct {
 		submitted time.Time
 		r         *forms.FormResponse
 	}
 	ps := make([]pair, 0, len(all))
 	for _, r := range all {
-		if r.CreateTime == "" && r.LastSubmittedTime == "" {
+		if r == nil || (r.CreateTime == "" && r.LastSubmittedTime == "") {
 			continue
 		}
-		// submitted_atはLastSubmittedTime優先
 		ts := r.LastSubmittedTime
 		if ts == "" {
 			ts = r.CreateTime
 		}
-		t, e := time.Parse(time.RFC3339, ts)
+		tm, e := time.Parse(time.RFC3339, ts)
 		if e != nil {
 			continue
 		}
-		ps = append(ps, pair{submitted: t, r: r})
+		ps = append(ps, pair{submitted: tm, r: r})
 	}
 	sort.Slice(ps, func(i, j int) bool { return ps[i].submitted.Before(ps[j].submitted) })
+
+	defaultStatus, err := s.Q.GetDefaultFormStatus(ctx, form.ID)
+	if err != nil {
+		return 0, 0, time.Time{}, err
+	}
 
 	var maxSubmitted time.Time
 	for _, p := range ps {
@@ -96,59 +95,53 @@ func (s *Service) SyncFormOnce(ctx context.Context, formID string, actor uuid.UU
 			maxSubmitted = p.submitted
 		}
 
-		// 代表キー: responseId
 		rid := p.r.ResponseId
 		if rid == "" {
 			continue
 		}
 
-		// payloadはそのまま保持
-		payloadData := map[string]any{"answers": p.r.Answers}
-		payloadBytes, err := json.Marshal(payloadData)
+		answersBytes, err := json.Marshal(p.r.Answers)
 		if err != nil {
 			continue
 		}
 
-		// responses挿入（重複は無視）
-		rowsAffected, e := s.Q.InsertResponse(ctx, db.InsertResponseParams{
-			ResponseID:    rid,
-			FormID:        formID,
-			SubmittedAt:   pgtype.Timestamptz{Time: p.submitted, Valid: true},
-			Payload:       payloadBytes,
-			SchemaVersion: 1,
+		respondent := pgtype.Text{Valid: false}
+		if p.r.RespondentEmail != "" {
+			respondent = pgtype.Text{String: p.r.RespondentEmail, Valid: true}
+		}
+
+		rowsAffected, e := s.Q.CreateTicket(ctx, db.CreateTicketParams{
+			ID:              dbUUID(uuid.New()),
+			FormID:          form.ID,
+			ResponseID:      rid,
+			RespondentEmail: respondent,
+			Answers:         answersBytes,
+			StatusID:        defaultStatus.ID,
+			AssigneeID:      pgtype.UUID{Valid: false},
+			Priority:        "medium",
+			SubmittedAt:     pgtype.Timestamptz{Time: p.submitted, Valid: true},
 		})
 		if e != nil {
 			continue
 		}
-
-		// 新規挿入された場合のみ
 		if rowsAffected > 0 {
 			synced++
-			// 新規のみチケット作成
-			ticketID := uuid.New()
-			_, e = s.Q.CreateTicket(ctx, db.CreateTicketParams{
-				ID:         pgtype.UUID{Bytes: ticketID, Valid: true},
-				FormID:     formID,
-				ResponseID: rid,
-			})
-			if e == nil {
-				newTickets++
-			}
+			newTickets++
 		}
 	}
 
 	if !maxSubmitted.IsZero() {
-		_ = s.Q.UpdateSyncCursor(ctx, db.UpdateSyncCursorParams{
-			FormID:     formID,
-			SyncCursor: pgtype.Timestamptz{Time: maxSubmitted, Valid: true},
+		_ = s.Q.UpdateFormSyncedAt(ctx, db.UpdateFormSyncedAtParams{
+			ID:       form.ID,
+			SyncedAt: pgtype.Timestamptz{Time: maxSubmitted, Valid: true},
 		})
 	}
 
 	return synced, newTickets, maxSubmitted, nil
 }
 
-func (s *Service) refreshFormQuestions(ctx context.Context, formID string) error {
-	form, err := s.GF.GetForm(ctx, formID)
+func (s *Service) refreshFormQuestions(ctx context.Context, formID pgtype.UUID, googleFormID string) error {
+	form, err := s.GF.GetForm(ctx, googleFormID)
 	if err != nil {
 		lower := strings.ToLower(err.Error())
 		if strings.Contains(lower, "403") {
@@ -163,170 +156,73 @@ func (s *Service) refreshFormQuestions(ctx context.Context, formID string) error
 		return ErrFormsNotFound
 	}
 
-	var defaultCandidate string
-	var firstQuestion string
-
 	for _, item := range form.Items {
 		if item == nil {
 			continue
 		}
 		questions := extractQuestions(item)
 		for _, q := range questions {
-			if q.Question == nil {
+			if q == nil {
 				continue
 			}
 
-			qid := q.Question.QuestionId
+			qid := q.QuestionId
 			if qid == "" {
 				continue
 			}
 
-			title := q.Title
+			title := item.Title
 			if title == "" {
 				title = qid
 			}
 
-			optBytes := marshalQuestionOptions(q.Question)
+			optBytes := marshalQuestionOptions(q)
 
 			if err := s.Q.UpsertFormQuestion(ctx, db.UpsertFormQuestionParams{
 				FormID:       formID,
 				QuestionID:   qid,
 				Title:        title,
-				QuestionType: detectQuestionType(q.Question),
+				QuestionType: detectQuestionType(q),
 				Options:      optBytes,
 			}); err != nil {
 				return err
 			}
-
-			if firstQuestion == "" {
-				firstQuestion = qid
-			}
-			if defaultCandidate == "" && isGoodTitleQuestion(q.Question) {
-				defaultCandidate = qid
-			}
 		}
 	}
 
-	if defaultCandidate == "" {
-		defaultCandidate = firstQuestion
-	}
-
-	if defaultCandidate == "" {
-		return nil
-	}
-
-	current, err := s.Q.GetFormTitleQuestion(ctx, formID)
-	if err != nil {
-		return err
-	}
-	if current.Valid && current.String != "" {
-		return nil
-	}
-
-	return s.Q.UpdateFormTitleQuestion(ctx, db.UpdateFormTitleQuestionParams{
-		FormID: formID,
-		TitleQuestionID: pgtype.Text{
-			String: defaultCandidate,
-			Valid:  true,
-		},
-	})
+	return nil
 }
 
-type questionWithTitle struct {
-	Title    string
-	Question *forms.Question
-}
-
-func extractQuestions(item *forms.Item) []questionWithTitle {
-	var out []questionWithTitle
+func extractQuestions(item *forms.Item) []*forms.Question {
+	if item == nil {
+		return nil
+	}
 	if item.QuestionItem != nil && item.QuestionItem.Question != nil {
-		title := item.Title
-		if title == "" {
-			title = item.QuestionItem.Question.QuestionId
-		}
-		out = append(out, questionWithTitle{Title: title, Question: item.QuestionItem.Question})
+		return []*forms.Question{item.QuestionItem.Question}
 	}
-
-	if item.QuestionGroupItem != nil {
-		for _, q := range item.QuestionGroupItem.Questions {
-			if q == nil {
-				continue
-			}
-			title := item.Title
-			if title == "" {
-				title = q.QuestionId
-			}
-			out = append(out, questionWithTitle{Title: title, Question: q})
-		}
+	if item.QuestionGroupItem != nil && len(item.QuestionGroupItem.Questions) > 0 {
+		return item.QuestionGroupItem.Questions
 	}
-
-	return out
-}
-
-func detectQuestionType(q *forms.Question) string {
-	if q == nil {
-		return "unknown"
-	}
-	switch {
-	case q.TextQuestion != nil:
-		if q.TextQuestion.Paragraph {
-			return "paragraph"
-		}
-		return "text"
-	case q.ChoiceQuestion != nil:
-		if q.ChoiceQuestion.Type != "" {
-			return strings.ToLower(q.ChoiceQuestion.Type)
-		}
-		return "choice"
-	case q.ScaleQuestion != nil:
-		return "scale"
-	case q.RatingQuestion != nil:
-		return "rating"
-	case q.FileUploadQuestion != nil:
-		return "file_upload"
-	case q.RowQuestion != nil:
-		return "row"
-	case q.TimeQuestion != nil:
-		return "time"
-	case q.DateQuestion != nil:
-		return "date"
-	default:
-		return "unknown"
-	}
+	return nil
 }
 
 func marshalQuestionOptions(q *forms.Question) []byte {
-	if q == nil {
+	if q == nil || q.ChoiceQuestion == nil {
 		return nil
 	}
-	payload := map[string]any{}
-	if cq := q.ChoiceQuestion; cq != nil {
-		values := make([]string, 0, len(cq.Options))
-		for _, opt := range cq.Options {
-			if opt != nil && opt.Value != "" {
-				values = append(values, opt.Value)
-			}
+	choices := make([]string, 0, len(q.ChoiceQuestion.Options))
+	for _, opt := range q.ChoiceQuestion.Options {
+		if opt == nil {
+			continue
 		}
-		if len(values) > 0 {
-			payload["choices"] = values
-		}
-		if cq.Shuffle {
-			payload["shuffle"] = true
+		if strings.TrimSpace(opt.Value) != "" {
+			choices = append(choices, opt.Value)
 		}
 	}
-	if sq := q.ScaleQuestion; sq != nil {
-		payload["low"] = sq.Low
-		payload["high"] = sq.High
-		if sq.LowLabel != "" {
-			payload["low_label"] = sq.LowLabel
-		}
-		if sq.HighLabel != "" {
-			payload["high_label"] = sq.HighLabel
-		}
-	}
-	if len(payload) == 0 {
+	if len(choices) == 0 {
 		return nil
 	}
+	payload := map[string]any{"choices": choices}
 	b, err := json.Marshal(payload)
 	if err != nil {
 		return nil
@@ -334,15 +230,45 @@ func marshalQuestionOptions(q *forms.Question) []byte {
 	return b
 }
 
-func isGoodTitleQuestion(q *forms.Question) bool {
+func detectQuestionType(q *forms.Question) string {
 	if q == nil {
-		return false
+		return "unknown"
 	}
 	if q.TextQuestion != nil {
-		return true
+		if q.TextQuestion.Paragraph {
+			return "paragraph"
+		}
+		return "text"
 	}
 	if q.ChoiceQuestion != nil {
-		return true
+		switch strings.ToUpper(q.ChoiceQuestion.Type) {
+		case "RADIO":
+			return "radio"
+		case "CHECKBOX":
+			return "checkbox"
+		case "DROP_DOWN":
+			return "drop_down"
+		default:
+			return "choice"
+		}
 	}
-	return false
+	if q.ScaleQuestion != nil {
+		return "scale"
+	}
+	if q.DateQuestion != nil {
+		return "date"
+	}
+	if q.TimeQuestion != nil {
+		return "time"
+	}
+	if q.FileUploadQuestion != nil {
+		return "file"
+	}
+	if q.RowQuestion != nil {
+		return "row"
+	}
+	if q.RatingQuestion != nil {
+		return "rating"
+	}
+	return "unknown"
 }

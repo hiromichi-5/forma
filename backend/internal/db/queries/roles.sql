@@ -1,30 +1,36 @@
--- name: GetUserFormRole :one
-SELECT role FROM user_form_roles WHERE user_id = $1 AND form_id = $2;
+-- name: GetFormMemberRole :one
+SELECT role
+FROM form_members
+WHERE user_id = $1
+  AND form_id = $2;
 
--- name: UpsertUserFormRole :exec
-INSERT INTO user_form_roles(user_id, form_id, role)
-VALUES ($1,$2,$3)
-ON CONFLICT (user_id, form_id) DO UPDATE SET role = EXCLUDED.role;
+-- name: UpsertFormMember :exec
+INSERT INTO form_members (user_id, form_id, role)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, form_id) DO UPDATE
+SET role = EXCLUDED.role;
 
--- name: DeleteUserFormRole :exec
-DELETE FROM user_form_roles WHERE user_id=$1 AND form_id=$2;
+-- name: DeleteFormMember :exec
+DELETE FROM form_members
+WHERE user_id = $1
+  AND form_id = $2;
 
 -- name: ListFormMembers :many
-SELECT u.id, u.email, u.display_name, u.created_at, r.role
-FROM user_form_roles r
-JOIN users u ON u.id = r.user_id
-AND u.deletedAt IS NULL
-WHERE r.form_id = $1
+SELECT u.id, u.email, u.display_name, u.created_at, m.role
+FROM form_members m
+JOIN users u ON u.id = m.user_id
+WHERE m.form_id = $1
 ORDER BY u.email;
 
 -- name: ListUserAccessibleForms :many
-SELECT f.form_id, f.title
-FROM user_form_roles r JOIN forms f ON f.form_id = r.form_id
-WHERE r.user_id = $1
+SELECT f.id, f.form_id, f.title, f.synced_at
+FROM form_members m
+JOIN forms f ON f.id = m.form_id
+WHERE m.user_id = $1
 ORDER BY f.title;
 
 -- name: CountFormAdmins :one
 SELECT COUNT(*)
-FROM user_form_roles
+FROM form_members
 WHERE form_id = $1
   AND role = 'admin';

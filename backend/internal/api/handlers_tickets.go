@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -12,54 +13,66 @@ import (
 )
 
 func (h *FormsHandler) GetV1Tickets(c *gin.Context) {
-	formID := c.Query("form_id")
-	status := c.Query("status")
+	formID := c.Query("form")
+	statusID := c.Query("status_id")
 
-	uidStr, _ := auth.UserID(c)
-	uid, _ := uuid.Parse(uidStr)
-	if uid == uuid.Nil {
-		c.JSON(401, gin.H{"code": "UNAUTHORIZED"})
+	uidStr, ok := auth.UserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
+		return
+	}
+	uid, err := uuid.Parse(uidStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
 		return
 	}
 
-	ts, err := h.S.ListTickets(c, formID, status, uid)
+	ts, err := h.S.ListTickets(c, formID, statusID, uid)
 	if err != nil {
-		if err == service.ErrForbidden {
-			c.JSON(403, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
-		} else {
-			c.JSON(500, gin.H{"code": "INTERNAL"})
+		switch err {
+		case service.ErrForbidden, service.ErrFormsNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
+		case service.ErrValidation:
+			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
 		}
 		return
 	}
-	c.JSON(200, gin.H{"tickets": ts})
+	c.JSON(http.StatusOK, gin.H{"tickets": ts})
 }
 
 func (h *FormsHandler) GetV1TicketsTicketId(c *gin.Context, ticketID string) {
-	uidStr, _ := auth.UserID(c)
-	uid, _ := uuid.Parse(uidStr)
-	if uid == uuid.Nil {
-		c.JSON(401, gin.H{"code": "UNAUTHORIZED"})
+	uidStr, ok := auth.UserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
+		return
+	}
+	uid, err := uuid.Parse(uidStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
 		return
 	}
 
 	t, err := h.S.GetTicket(c, ticketID, uid)
 	if err != nil {
-		if err == service.ErrValidation {
-			c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
-		} else if err == service.ErrForbidden {
-			c.JSON(403, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
-		} else {
-			c.JSON(404, gin.H{"code": "NOT_FOUND"})
+		switch err {
+		case service.ErrValidation:
+			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
+		case service.ErrForbidden:
+			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
 		}
 		return
 	}
-	c.JSON(200, t)
+	c.JSON(http.StatusOK, t)
 }
 
 type patchTicketReq struct {
-	Status   *string             `json:"status" binding:"omitempty,oneof=new in_progress done"`
+	StatusID *string             `json:"status_id"`
 	Assignee nullableUUIDPayload `json:"assignee_id"`
-	Priority *string             `json:"priority" binding:"omitempty,oneof=High Medium Low"`
+	Priority *string             `json:"priority" binding:"omitempty,oneof=high medium low"`
 }
 
 type nullableUUIDPayload struct {
@@ -96,16 +109,20 @@ func (n nullableUUIDPayload) IsNull() bool { return n.set && n.null }
 func (n nullableUUIDPayload) UUID() uuid.UUID { return n.value }
 
 func (h *FormsHandler) PatchV1TicketsTicketId(c *gin.Context, ticketID string) {
-	uidStr, _ := auth.UserID(c)
-	uid, _ := uuid.Parse(uidStr)
-	if uid == uuid.Nil {
-		c.JSON(401, gin.H{"code": "UNAUTHORIZED"})
+	uidStr, ok := auth.UserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
+		return
+	}
+	uid, err := uuid.Parse(uidStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
 		return
 	}
 
 	var req patchTicketReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
+		c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		return
 	}
 	var assigneeID *uuid.UUID
@@ -119,16 +136,17 @@ func (h *FormsHandler) PatchV1TicketsTicketId(c *gin.Context, ticketID string) {
 		}
 	}
 
-	t, err := h.S.UpdateTicket(c, ticketID, req.Status, assigneeID, clearAssignee, req.Priority, uid)
+	t, err := h.S.UpdateTicket(c, ticketID, req.StatusID, assigneeID, clearAssignee, req.Priority, uid)
 	if err != nil {
-		if err == service.ErrValidation {
-			c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
-		} else if err == service.ErrForbidden {
-			c.JSON(403, gin.H{"code": "FORBIDDEN", "message": "insufficient role"})
-		} else {
-			c.JSON(500, gin.H{"code": "INTERNAL"})
+		switch err {
+		case service.ErrValidation:
+			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
+		case service.ErrForbidden:
+			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
 		}
 		return
 	}
-	c.JSON(200, t)
+	c.JSON(http.StatusOK, t)
 }

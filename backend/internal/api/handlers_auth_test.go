@@ -7,41 +7,56 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hiromichi-5/forma/backend/internal/auth"
+	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/service"
 )
 
-type fakeAuth struct {
-	email string
-	pass  string
-	uid   string
-	err   error
+type fakeAuthService struct {
+	loginSessionID string
+	loginErr       error
+	signupID       string
+	signupErr      error
+	logoutErr      error
+	verifyErr      error
+	resendErr      error
+	resetErr       error
+	confirmErr     error
 }
 
-func (f *fakeAuth) Authenticate(_ context.Context, e, p string) (string, error) {
-	if f.err != nil {
-		return "", f.err
+func (f *fakeAuthService) Authenticate(_ context.Context, _, _ string) (string, error) {
+	if f.loginErr != nil {
+		return "", f.loginErr
 	}
-	if e == f.email && p == f.pass {
-		return f.uid, nil
-	}
-	return "", service.ErrInvalidCredentials
+	return f.loginSessionID, nil
 }
 
-func (f *fakeAuth) Signup(_ context.Context, e, p, displayName string) (string, error) {
-	if f.err != nil {
-		return "", f.err
+func (f *fakeAuthService) Signup(_ context.Context, _, _, _ string) (string, error) {
+	if f.signupErr != nil {
+		return "", f.signupErr
 	}
-	if e == "" || p == "" || displayName == "" {
-		return "", service.ErrValidation
-	}
-	if e == f.email {
-		return "", service.ErrConflict
-	}
-	return "new-user-id", nil
+	return f.signupID, nil
+}
+
+func (f *fakeAuthService) Logout(_ context.Context, _ string) error {
+	return f.logoutErr
+}
+
+func (f *fakeAuthService) VerifyEmail(_ context.Context, _ string) error {
+	return f.verifyErr
+}
+
+func (f *fakeAuthService) ResendEmailVerification(_ context.Context, _ string) error {
+	return f.resendErr
+}
+
+func (f *fakeAuthService) RequestPasswordReset(_ context.Context, _ string) error {
+	return f.resetErr
+}
+
+func (f *fakeAuthService) ConfirmPasswordReset(_ context.Context, _, _ string) error {
+	return f.confirmErr
 }
 
 func router(h *AuthHandler) *gin.Engine {
@@ -50,16 +65,17 @@ func router(h *AuthHandler) *gin.Engine {
 	r.POST("/v1/auth/login", h.PostV1AuthLogin)
 	r.POST("/v1/auth/signup", h.PostV1AuthSignup)
 	r.POST("/v1/auth/logout", h.PostV1AuthLogout)
+	r.POST("/v1/auth/verify-email", h.PostV1AuthVerifyEmail)
+	r.POST("/v1/auth/verify-email/resend", h.PostV1AuthVerifyEmailResend)
+	r.POST("/v1/auth/password-reset", h.PostV1AuthPasswordReset)
+	r.POST("/v1/auth/password-reset/confirm", h.PostV1AuthPasswordResetConfirm)
 	return r
 }
 
 func TestLogin_Success(t *testing.T) {
-	base := time.Unix(1_700_000_000, 0)
-	s := auth.Signer{Secret: []byte("k"), TTL: time.Hour, Now: func() time.Time { return base }}
-
+	sid := uuid.New().String()
 	h := &AuthHandler{
-		Svc:    &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"},
-		JWT:    s,
+		Svc:    &fakeAuthService{loginSessionID: sid},
 		Cookie: AuthCookieConfig{Name: "forma_token"},
 	}
 	r := router(h)
@@ -71,82 +87,39 @@ func TestLogin_Success(t *testing.T) {
 
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("want 204, got %d body=%s", w.Code, w.Body.String())
+	if w.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d body=%s", w.Code, w.Body.String())
 	}
-
 	cookie := findCookie(w.Result().Cookies(), "forma_token")
 	if cookie == nil {
 		t.Fatalf("want forma_token cookie")
 	}
-	if !cookie.HttpOnly {
-		t.Fatalf("cookie must be HttpOnly")
+	var resp map[string]string
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
 	}
-	claims, err := s.Parse(cookie.Value)
-	if err != nil {
-		t.Fatalf("parse token: %v", err)
-	}
-	if claims.Subject != "u-1" {
-		t.Fatalf("want sub u-1, got %s", claims.Subject)
-	}
-	if claims.IssuedAt.Time != base || claims.ExpiresAt.Time != base.Add(time.Hour) {
-		t.Fatalf("claims time mismatch")
+	if resp["session_id"] != sid {
+		t.Fatalf("want session_id %s, got %s", sid, resp["session_id"])
 	}
 }
 
-func TestSignup_Success(t *testing.T) {
-	s := auth.Signer{Secret: []byte("k"), TTL: time.Hour}
-	h := &AuthHandler{Svc: &fakeAuth{email: "exists@example.com"}, JWT: s, Cookie: AuthCookieConfig{Name: "forma_token"}}
+func TestLogin_EmailNotVerified(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuthService{loginErr: service.ErrEmailNotVerified}}
 	r := router(h)
-
-	body, _ := json.Marshal(map[string]string{"email": "new@example.com", "password": "password123", "display_name": "TestUser"})
-	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
+	body, _ := json.Marshal(map[string]string{"email": "a@example.com", "password": "pass123"})
+	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("want 204, got %d body=%s", w.Code, w.Body.String())
-	}
-	if c := findCookie(w.Result().Cookies(), "forma_token"); c == nil {
-		t.Fatalf("cookie not found")
-	}
-}
 
-func TestSignup_Conflict(t *testing.T) {
-	h := &AuthHandler{Svc: &fakeAuth{email: "dup@example.com"}, JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour}, Cookie: AuthCookieConfig{}}
-	r := router(h)
-	body, _ := json.Marshal(map[string]string{"email": "dup@example.com", "password": "password123", "display_name": "TestUser"})
-	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusConflict {
-		t.Fatalf("want 409, got %d body=%s", w.Code, w.Body.String())
-	}
-}
-
-func TestSignup_Validation(t *testing.T) {
-	h := &AuthHandler{Svc: &fakeAuth{}, JWT: auth.Signer{Secret: []byte("k"), TTL: time.Hour}, Cookie: AuthCookieConfig{}}
-	r := router(h)
-	// メール不正
-	body, _ := json.Marshal(map[string]string{"email": "bad", "password": "password123"})
-	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("want 400, got %d", w.Code)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("want 403, got %d", w.Code)
 	}
 }
 
 func TestLogin_InvalidCredentials(t *testing.T) {
-	h := &AuthHandler{
-		Svc:    &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"},
-		JWT:    auth.Signer{Secret: []byte("k"), TTL: time.Hour},
-		Cookie: AuthCookieConfig{},
-	}
+	h := &AuthHandler{Svc: &fakeAuthService{loginErr: service.ErrInvalidCredentials}}
 	r := router(h)
-
 	body, _ := json.Marshal(map[string]string{"email": "a@example.com", "password": "wrong"})
 	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -154,104 +127,152 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("want 401, got %d body=%s", w.Code, w.Body.String())
+		t.Fatalf("want 401, got %d", w.Code)
 	}
 }
 
-func TestLogin_ValidationError(t *testing.T) {
-	h := &AuthHandler{
-		Svc:    &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"},
-		JWT:    auth.Signer{Secret: []byte("k"), TTL: time.Hour},
-		Cookie: AuthCookieConfig{},
-	}
+func TestSignup_Success(t *testing.T) {
+	uid := uuid.New().String()
+	h := &AuthHandler{Svc: &fakeAuthService{signupID: uid}, Cookie: AuthCookieConfig{Name: "forma_token"}}
 	r := router(h)
 
-	// email欠落
-	body, _ := json.Marshal(map[string]string{"password": "x"})
-	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(body))
+	body, _ := json.Marshal(map[string]string{"email": "new@example.com", "password": "password123", "display_name": "TestUser"})
+	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("want 400, got %d", w.Code)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("want 201, got %d body=%s", w.Code, w.Body.String())
 	}
-
-	// emailフォーマット不正
-	body2, _ := json.Marshal(map[string]string{"email": "bad", "password": "x"})
-	req2 := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(body2))
-	req2.Header.Set("Content-Type", "application/json")
-	w2 := httptest.NewRecorder()
-	r.ServeHTTP(w2, req2)
-	if w2.Code != http.StatusBadRequest {
-		t.Fatalf("want 400, got %d", w2.Code)
+	if c := findCookie(w.Result().Cookies(), "forma_token"); c != nil {
+		t.Fatalf("signup should not set cookie")
+	}
+	var resp map[string]string
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp["id"] != uid {
+		t.Fatalf("want id %s, got %s", uid, resp["id"])
 	}
 }
 
-func TestLogout_ClearsCookie(t *testing.T) {
-	s := auth.Signer{Secret: []byte("k"), TTL: time.Hour}
-	h := &AuthHandler{Svc: &fakeAuth{email: "a@example.com", pass: "pass123", uid: "u-1"}, JWT: s, Cookie: AuthCookieConfig{Name: "forma_token"}}
+func TestSignup_Conflict(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuthService{signupErr: service.ErrConflict}}
 	r := router(h)
-
-	loginBody, _ := json.Marshal(map[string]string{"email": "a@example.com", "password": "pass123"})
-	req := httptest.NewRequest("POST", "/v1/auth/login", bytes.NewReader(loginBody))
+	body, _ := json.Marshal(map[string]string{"email": "dup@example.com", "password": "password123", "display_name": "TestUser"})
+	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-	if c := findCookie(w.Result().Cookies(), "forma_token"); c == nil {
-		t.Fatalf("cookie not issued")
+	if w.Code != http.StatusConflict {
+		t.Fatalf("want 409, got %d", w.Code)
 	}
+}
 
-	logoutReq := httptest.NewRequest("POST", "/v1/auth/logout", nil)
-	logoutW := httptest.NewRecorder()
-	r.ServeHTTP(logoutW, logoutReq)
-	if logoutW.Code != http.StatusNoContent {
-		t.Fatalf("want 204, got %d", logoutW.Code)
+func TestLogout_Unauthorized(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuthService{}}
+	r := router(h)
+	req := httptest.NewRequest("POST", "/v1/auth/logout", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401, got %d", w.Code)
 	}
-	logoutCookie := findCookie(logoutW.Result().Cookies(), "forma_token")
+}
+
+func TestLogout_Success(t *testing.T) {
+	sid := uuid.New().String()
+	h := &AuthHandler{Svc: &fakeAuthService{}, Cookie: AuthCookieConfig{Name: "forma_token"}}
+	r := router(h)
+
+	req := httptest.NewRequest("POST", "/v1/auth/logout", nil)
+	req.AddCookie(&http.Cookie{Name: "forma_token", Value: sid})
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("want 204, got %d", w.Code)
+	}
+	logoutCookie := findCookie(w.Result().Cookies(), "forma_token")
 	if logoutCookie == nil || logoutCookie.MaxAge != -1 {
 		t.Fatalf("logout cookie missing or invalid")
 	}
 }
 
-func TestSetAuthCookie_RoundsUpSubSecondTTL(t *testing.T) {
-	h := &AuthHandler{
-		Svc:    &fakeAuth{},
-		JWT:    auth.Signer{Secret: []byte("k"), TTL: 500 * time.Millisecond},
-		Cookie: AuthCookieConfig{Name: "forma_token"},
-	}
+func TestVerifyEmail_NotFound(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuthService{verifyErr: service.ErrTokenNotFound}}
+	r := router(h)
+	body, _ := json.Marshal(map[string]string{"token": "tok"})
+	req := httptest.NewRequest("POST", "/v1/auth/verify-email", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("GET", "/", nil)
-
-	h.setAuthCookie(c, "tok")
-
-	cookie := findCookie(w.Result().Cookies(), "forma_token")
-	if cookie == nil {
-		t.Fatalf("cookie not found")
-	}
-	if cookie.MaxAge != 1 {
-		t.Fatalf("max-age should round up to 1, got %d", cookie.MaxAge)
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("want 404, got %d", w.Code)
 	}
 }
 
-func TestSetAuthCookie_NegativeTTLDeletesCookie(t *testing.T) {
-	h := &AuthHandler{
-		Svc:    &fakeAuth{},
-		JWT:    auth.Signer{Secret: []byte("k"), TTL: -time.Second},
-		Cookie: AuthCookieConfig{Name: "forma_token"},
-	}
+func TestVerifyEmail_Success(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuthService{}}
+	r := router(h)
+	body, _ := json.Marshal(map[string]string{"token": "tok"})
+	req := httptest.NewRequest("POST", "/v1/auth/verify-email", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("GET", "/", nil)
-
-	h.setAuthCookie(c, "tok")
-
-	cookie := findCookie(w.Result().Cookies(), "forma_token")
-	if cookie == nil {
-		t.Fatalf("cookie not found")
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("want 204, got %d", w.Code)
 	}
-	if cookie.MaxAge != -1 {
-		t.Fatalf("max-age should be -1 for negative TTL, got %d", cookie.MaxAge)
+}
+
+func TestResend_Verification(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuthService{}}
+	r := router(h)
+	body, _ := json.Marshal(map[string]string{"email": "a@example.com"})
+	req := httptest.NewRequest("POST", "/v1/auth/verify-email/resend", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("want 202, got %d", w.Code)
+	}
+}
+
+func TestPasswordReset_Request(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuthService{}}
+	r := router(h)
+	body, _ := json.Marshal(map[string]string{"email": "a@example.com"})
+	req := httptest.NewRequest("POST", "/v1/auth/password-reset", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("want 202, got %d", w.Code)
+	}
+}
+
+func TestPasswordReset_Confirm_NotFound(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuthService{confirmErr: service.ErrTokenNotFound}}
+	r := router(h)
+	body, _ := json.Marshal(map[string]string{"token": "bad", "new_password": "newpass123"})
+	req := httptest.NewRequest("POST", "/v1/auth/password-reset/confirm", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("want 404, got %d", w.Code)
+	}
+}
+
+func TestPasswordReset_Confirm_Success(t *testing.T) {
+	h := &AuthHandler{Svc: &fakeAuthService{}}
+	r := router(h)
+	body, _ := json.Marshal(map[string]string{"token": "tok", "new_password": "newpass123"})
+	req := httptest.NewRequest("POST", "/v1/auth/password-reset/confirm", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("want 204, got %d", w.Code)
 	}
 }
 

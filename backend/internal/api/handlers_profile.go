@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hiromichi-5/forma/backend/internal/auth"
 	"github.com/hiromichi-5/forma/backend/internal/db"
 	"github.com/hiromichi-5/forma/backend/internal/service"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ProfileHandler struct {
@@ -29,15 +31,16 @@ type changePasswordReq struct {
 }
 
 type userProfileResp struct {
-	ID          string `json:"id"`
-	Email       string `json:"email"`
-	DisplayName string `json:"display_name"`
+	ID          string  `json:"id"`
+	Email       string  `json:"email"`
+	DisplayName string  `json:"display_name"`
+	VerifiedAt  *string `json:"verified_at"`
 }
 
 func (h *ProfileHandler) GetV1Me(c *gin.Context) {
 	userID, ok := auth.UserID(c)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
 		return
 	}
 
@@ -60,6 +63,7 @@ func (h *ProfileHandler) GetV1Me(c *gin.Context) {
 		ID:          userID,
 		Email:       user.Email,
 		DisplayName: user.DisplayName,
+		VerifiedAt:  timestamptzPtr(user.VerifiedAt),
 	}
 	c.JSON(http.StatusOK, resp)
 }
@@ -67,7 +71,7 @@ func (h *ProfileHandler) GetV1Me(c *gin.Context) {
 func (h *ProfileHandler) PatchV1Me(c *gin.Context) {
 	userID, ok := auth.UserID(c)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
 		return
 	}
 
@@ -96,6 +100,7 @@ func (h *ProfileHandler) PatchV1Me(c *gin.Context) {
 		ID:          userID,
 		Email:       user.Email,
 		DisplayName: user.DisplayName,
+		VerifiedAt:  timestamptzPtr(user.VerifiedAt),
 	}
 	c.JSON(http.StatusOK, resp)
 }
@@ -103,7 +108,7 @@ func (h *ProfileHandler) PatchV1Me(c *gin.Context) {
 func (h *ProfileHandler) DeleteV1Me(c *gin.Context) {
 	userID, ok := auth.UserID(c)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
 		return
 	}
 
@@ -128,7 +133,7 @@ func (h *ProfileHandler) DeleteV1Me(c *gin.Context) {
 func (h *ProfileHandler) PatchV1MePassword(c *gin.Context) {
 	userID, ok := auth.UserID(c)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
 		return
 	}
 
@@ -156,4 +161,12 @@ func (h *ProfileHandler) PatchV1MePassword(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func timestamptzPtr(ts pgtype.Timestamptz) *string {
+	if !ts.Valid {
+		return nil
+	}
+	value := ts.Time.Format(time.RFC3339Nano)
+	return &value
 }

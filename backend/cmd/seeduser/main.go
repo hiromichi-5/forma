@@ -4,15 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
-
-	"github.com/hiromichi-5/forma/backend/internal/db"
 )
 
 func main() {
@@ -20,42 +18,103 @@ func main() {
 
 	pgDSN := viper.GetString("PG_DSN")
 	if pgDSN == "" {
-		log.Fatal("PG_DSN required")
-	}
-
-	email := os.Getenv("SEED_EMAIL")
-	pass := os.Getenv("SEED_PASSWORD")
-	if email == "" || pass == "" {
-		log.Fatal("SEED_EMAIL and SEED_PASSWORD required")
+		log.Fatal("PG_DSN が必要です")
 	}
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, pgDSN)
 	if err != nil {
-		log.Fatalf("pgxpool: %v", err)
+		log.Fatalf("pgxpoolの初期化に失敗しました: %v", err)
 	}
 	defer pool.Close()
-	q := db.New(pool)
 
-	u, err := q.GetUserByEmail(ctx, email)
-	if err == nil {
-		fmt.Printf("user already exists: %s (id=%s)\n", u.Email, u.ID.Bytes)
-		return
+	now := time.Now()
+	seedUsers := []seedUser{
+		{
+			Email:       "a@example.com",
+			Password:    "aexample",
+			DisplayName: "シードユーザa",
+			Verified:    true,
+		},
+		{
+			Email:       "b@example.com",
+			Password:    "bexample",
+			DisplayName: "シードユーザb",
+			Verified:    true,
+		},
+		{
+			Email:       "c@example.com",
+			Password:    "cexample",
+			DisplayName: "シードユーザc",
+			Verified:    false,
+		},
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+	for _, u := range seedUsers {
+		uid, err := upsertUser(ctx, pool, u, now)
+		if err != nil {
+			log.Fatalf("ユーザ作成に失敗しました: %v", err)
+		}
+		fmt.Printf("ユーザ作成・更新: %s (id=%s)\n", u.Email, uid.String())
+
+		if !u.Verified {
+			if err := resetEmailVerificationToken(ctx, pool, uid, now.Add(24*time.Hour)); err != nil {
+				log.Fatalf("メール認証トークンの作成に失敗しました: %v", err)
+			}
+		}
+	}
+}
+
+type seedUser struct {
+	Email       string
+	Password    string
+	DisplayName string
+	Verified    bool
+}
+
+func upsertUser(ctx context.Context, pool *pgxpool.Pool, user seedUser, now time.Time) (uuid.UUID, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Fatalf("bcrypt: %v", err)
+		return uuid.UUID{}, fmt.Errorf("bcryptに失敗しました: %w", err)
 	}
 
-	uid := uuid.New()
-	newU, err := q.CreateUser(ctx, db.CreateUserParams{
-		ID:           pgtype.UUID{Bytes: uid, Valid: true},
-		Email:        email,
-		PasswordHash: string(hash),
-	})
-	if err != nil {
-		log.Fatalf("insert: %v", err)
+	verifiedAt := pgtype.Timestamptz{Valid: false}
+	if user.Verified {
+		verifiedAt = pgtype.Timestamptz{Time: now, Valid: true}
 	}
-	fmt.Printf("created user: %s (id=%s)\n", newU.Email, newU.ID.Bytes)
+
+	userID := uuid.New()
+	row := pool.QueryRow(ctx, `
+		INSERT INTO users (id, email, password_hash, display_name, verified_at)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (email) DO UPDATE
+		SET password_hash = EXCLUDED.password_hash,
+		    display_name = EXCLUDED.display_name,
+		    verified_at = EXCLUDED.verified_at
+		RETURNING id
+	`, userID, user.Email, string(hash), user.DisplayName, verifiedAt)
+
+	var id uuid.UUID
+	if err := row.Scan(&id); err != nil {
+		return uuid.UUID{}, fmt.Errorf("ユーザのUPSERTに失敗しました: %w", err)
+	}
+	return id, nil
+}
+
+func resetEmailVerificationToken(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, expiresAt time.Time) error {
+	_, err := pool.Exec(ctx, `DELETE FROM email_verification_tokens WHERE user_id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("既存トークンの削除に失敗しました: %w", err)
+	}
+
+	tokenID := uuid.New()
+	token := uuid.NewString()
+	_, err = pool.Exec(ctx, `
+		INSERT INTO email_verification_tokens (id, user_id, token, expires_at, used_at)
+		VALUES ($1, $2, $3, $4, NULL)
+	`, tokenID, userID, token, expiresAt)
+	if err != nil {
+		return fmt.Errorf("トークンの挿入に失敗しました: %w", err)
+	}
+	return nil
 }

@@ -13,54 +13,58 @@ import (
 
 const countFormAdmins = `-- name: CountFormAdmins :one
 SELECT COUNT(*)
-FROM user_form_roles
+FROM form_members
 WHERE form_id = $1
   AND role = 'admin'
 `
 
-func (q *Queries) CountFormAdmins(ctx context.Context, formID string) (int64, error) {
+func (q *Queries) CountFormAdmins(ctx context.Context, formID pgtype.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, countFormAdmins, formID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const deleteUserFormRole = `-- name: DeleteUserFormRole :exec
-DELETE FROM user_form_roles WHERE user_id=$1 AND form_id=$2
+const deleteFormMember = `-- name: DeleteFormMember :exec
+DELETE FROM form_members
+WHERE user_id = $1
+  AND form_id = $2
 `
 
-type DeleteUserFormRoleParams struct {
+type DeleteFormMemberParams struct {
 	UserID pgtype.UUID `json:"user_id"`
-	FormID string      `json:"form_id"`
+	FormID pgtype.UUID `json:"form_id"`
 }
 
-func (q *Queries) DeleteUserFormRole(ctx context.Context, arg DeleteUserFormRoleParams) error {
-	_, err := q.db.Exec(ctx, deleteUserFormRole, arg.UserID, arg.FormID)
+func (q *Queries) DeleteFormMember(ctx context.Context, arg DeleteFormMemberParams) error {
+	_, err := q.db.Exec(ctx, deleteFormMember, arg.UserID, arg.FormID)
 	return err
 }
 
-const getUserFormRole = `-- name: GetUserFormRole :one
-SELECT role FROM user_form_roles WHERE user_id = $1 AND form_id = $2
+const getFormMemberRole = `-- name: GetFormMemberRole :one
+SELECT role
+FROM form_members
+WHERE user_id = $1
+  AND form_id = $2
 `
 
-type GetUserFormRoleParams struct {
+type GetFormMemberRoleParams struct {
 	UserID pgtype.UUID `json:"user_id"`
-	FormID string      `json:"form_id"`
+	FormID pgtype.UUID `json:"form_id"`
 }
 
-func (q *Queries) GetUserFormRole(ctx context.Context, arg GetUserFormRoleParams) (string, error) {
-	row := q.db.QueryRow(ctx, getUserFormRole, arg.UserID, arg.FormID)
-	var role string
+func (q *Queries) GetFormMemberRole(ctx context.Context, arg GetFormMemberRoleParams) (FormRole, error) {
+	row := q.db.QueryRow(ctx, getFormMemberRole, arg.UserID, arg.FormID)
+	var role FormRole
 	err := row.Scan(&role)
 	return role, err
 }
 
 const listFormMembers = `-- name: ListFormMembers :many
-SELECT u.id, u.email, u.display_name, u.created_at, r.role
-FROM user_form_roles r
-JOIN users u ON u.id = r.user_id
-AND u.deletedAt IS NULL
-WHERE r.form_id = $1
+SELECT u.id, u.email, u.display_name, u.created_at, m.role
+FROM form_members m
+JOIN users u ON u.id = m.user_id
+WHERE m.form_id = $1
 ORDER BY u.email
 `
 
@@ -69,10 +73,10 @@ type ListFormMembersRow struct {
 	Email       string             `json:"email"`
 	DisplayName string             `json:"display_name"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	Role        string             `json:"role"`
+	Role        FormRole           `json:"role"`
 }
 
-func (q *Queries) ListFormMembers(ctx context.Context, formID string) ([]ListFormMembersRow, error) {
+func (q *Queries) ListFormMembers(ctx context.Context, formID pgtype.UUID) ([]ListFormMembersRow, error) {
 	rows, err := q.db.Query(ctx, listFormMembers, formID)
 	if err != nil {
 		return nil, err
@@ -99,15 +103,18 @@ func (q *Queries) ListFormMembers(ctx context.Context, formID string) ([]ListFor
 }
 
 const listUserAccessibleForms = `-- name: ListUserAccessibleForms :many
-SELECT f.form_id, f.title
-FROM user_form_roles r JOIN forms f ON f.form_id = r.form_id
-WHERE r.user_id = $1
+SELECT f.id, f.form_id, f.title, f.synced_at
+FROM form_members m
+JOIN forms f ON f.id = m.form_id
+WHERE m.user_id = $1
 ORDER BY f.title
 `
 
 type ListUserAccessibleFormsRow struct {
-	FormID string `json:"form_id"`
-	Title  string `json:"title"`
+	ID       pgtype.UUID        `json:"id"`
+	FormID   string             `json:"form_id"`
+	Title    string             `json:"title"`
+	SyncedAt pgtype.Timestamptz `json:"synced_at"`
 }
 
 func (q *Queries) ListUserAccessibleForms(ctx context.Context, userID pgtype.UUID) ([]ListUserAccessibleFormsRow, error) {
@@ -119,7 +126,12 @@ func (q *Queries) ListUserAccessibleForms(ctx context.Context, userID pgtype.UUI
 	var items []ListUserAccessibleFormsRow
 	for rows.Next() {
 		var i ListUserAccessibleFormsRow
-		if err := rows.Scan(&i.FormID, &i.Title); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.FormID,
+			&i.Title,
+			&i.SyncedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -130,19 +142,20 @@ func (q *Queries) ListUserAccessibleForms(ctx context.Context, userID pgtype.UUI
 	return items, nil
 }
 
-const upsertUserFormRole = `-- name: UpsertUserFormRole :exec
-INSERT INTO user_form_roles(user_id, form_id, role)
-VALUES ($1,$2,$3)
-ON CONFLICT (user_id, form_id) DO UPDATE SET role = EXCLUDED.role
+const upsertFormMember = `-- name: UpsertFormMember :exec
+INSERT INTO form_members (user_id, form_id, role)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, form_id) DO UPDATE
+SET role = EXCLUDED.role
 `
 
-type UpsertUserFormRoleParams struct {
+type UpsertFormMemberParams struct {
 	UserID pgtype.UUID `json:"user_id"`
-	FormID string      `json:"form_id"`
-	Role   string      `json:"role"`
+	FormID pgtype.UUID `json:"form_id"`
+	Role   FormRole    `json:"role"`
 }
 
-func (q *Queries) UpsertUserFormRole(ctx context.Context, arg UpsertUserFormRoleParams) error {
-	_, err := q.db.Exec(ctx, upsertUserFormRole, arg.UserID, arg.FormID, arg.Role)
+func (q *Queries) UpsertFormMember(ctx context.Context, arg UpsertFormMemberParams) error {
+	_, err := q.db.Exec(ctx, upsertFormMember, arg.UserID, arg.FormID, arg.Role)
 	return err
 }

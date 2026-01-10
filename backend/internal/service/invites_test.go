@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -12,286 +11,167 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type stubInvitesStore struct {
-	createFn func(ctx context.Context, arg db.CreateFormInviteParams) (db.FormInvite, error)
-	listFn   func(ctx context.Context, arg db.ListActiveFormInvitesParams) ([]db.FormInvite, error)
-	getFn    func(ctx context.Context, code string) (db.FormInvite, error)
-	revokeFn func(ctx context.Context, arg db.RevokeFormInviteParams) (db.FormInvite, error)
+type fakeInvitesStore struct {
+	invites map[uuid.UUID]db.FormInvite
 }
 
-func (s *stubInvitesStore) CreateFormInvite(ctx context.Context, arg db.CreateFormInviteParams) (db.FormInvite, error) {
-	if s.createFn == nil {
-		return db.FormInvite{}, nil
+func (f *fakeInvitesStore) CreateFormInvite(_ context.Context, arg db.CreateFormInviteParams) (db.FormInvite, error) {
+	if f.invites == nil {
+		f.invites = map[uuid.UUID]db.FormInvite{}
 	}
-	return s.createFn(ctx, arg)
-}
-func (s *stubInvitesStore) ListActiveFormInvites(ctx context.Context, arg db.ListActiveFormInvitesParams) ([]db.FormInvite, error) {
-	if s.listFn == nil {
-		return nil, nil
+	inv := db.FormInvite{
+		ID:        arg.ID,
+		FormID:    arg.FormID,
+		Email:     arg.Email,
+		Role:      db.FormRole(arg.Role),
+		InvitedBy: arg.InvitedBy,
+		ExpiresAt: arg.ExpiresAt,
+		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	}
-	return s.listFn(ctx, arg)
-}
-func (s *stubInvitesStore) GetFormInviteForUpdate(ctx context.Context, code string) (db.FormInvite, error) {
-	if s.getFn == nil {
-		return db.FormInvite{}, nil
-	}
-	return s.getFn(ctx, code)
-}
-func (s *stubInvitesStore) RevokeFormInvite(ctx context.Context, arg db.RevokeFormInviteParams) (db.FormInvite, error) {
-	if s.revokeFn == nil {
-		return db.FormInvite{}, nil
-	}
-	return s.revokeFn(ctx, arg)
+	f.invites[arg.ID.Bytes] = inv
+	return inv, nil
 }
 
-type stubRolesStore struct {
-	getFn       func(ctx context.Context, arg db.GetUserFormRoleParams) (string, error)
-	upsertFn    func(ctx context.Context, arg db.UpsertUserFormRoleParams) error
-	deleteFn    func(ctx context.Context, arg db.DeleteUserFormRoleParams) error
-	listMembers func(ctx context.Context, formID string) ([]db.ListFormMembersRow, error)
-	listFormsFn func(ctx context.Context, userID pgtype.UUID) ([]db.ListUserAccessibleFormsRow, error)
-	countAdmins func(ctx context.Context, formID string) (int64, error)
+func (f *fakeInvitesStore) ListActiveFormInvites(_ context.Context, formID pgtype.UUID) ([]db.FormInvite, error) {
+	out := []db.FormInvite{}
+	for _, inv := range f.invites {
+		if inv.FormID == formID && !inv.AcceptedAt.Valid && inv.ExpiresAt.Valid && inv.ExpiresAt.Time.After(time.Now()) {
+			out = append(out, inv)
+		}
+	}
+	return out, nil
 }
 
-func (s *stubRolesStore) GetUserFormRole(ctx context.Context, arg db.GetUserFormRoleParams) (string, error) {
-	if s.getFn == nil {
-		return "", nil
+func (f *fakeInvitesStore) GetFormInviteForUpdate(_ context.Context, id pgtype.UUID) (db.FormInvite, error) {
+	inv, ok := f.invites[id.Bytes]
+	if !ok {
+		return db.FormInvite{}, pgx.ErrNoRows
 	}
-	return s.getFn(ctx, arg)
-}
-func (s *stubRolesStore) UpsertUserFormRole(ctx context.Context, arg db.UpsertUserFormRoleParams) error {
-	if s.upsertFn == nil {
-		return nil
-	}
-	return s.upsertFn(ctx, arg)
-}
-func (s *stubRolesStore) DeleteUserFormRole(ctx context.Context, arg db.DeleteUserFormRoleParams) error {
-	if s.deleteFn == nil {
-		return nil
-	}
-	return s.deleteFn(ctx, arg)
-}
-func (s *stubRolesStore) ListFormMembers(ctx context.Context, formID string) ([]db.ListFormMembersRow, error) {
-	if s.listMembers == nil {
-		return nil, nil
-	}
-	return s.listMembers(ctx, formID)
-}
-func (s *stubRolesStore) ListUserAccessibleForms(ctx context.Context, userID pgtype.UUID) ([]db.ListUserAccessibleFormsRow, error) {
-	if s.listFormsFn == nil {
-		return nil, nil
-	}
-	return s.listFormsFn(ctx, userID)
+	return inv, nil
 }
 
-func (s *stubRolesStore) CountFormAdmins(ctx context.Context, formID string) (int64, error) {
-	if s.countAdmins == nil {
-		return 1, nil
+func (f *fakeInvitesStore) AcceptFormInvite(_ context.Context, id pgtype.UUID) (db.FormInvite, error) {
+	inv, ok := f.invites[id.Bytes]
+	if !ok {
+		return db.FormInvite{}, pgx.ErrNoRows
 	}
-	return s.countAdmins(ctx, formID)
+	inv.AcceptedAt = pgtype.Timestamptz{Time: time.Now(), Valid: true}
+	f.invites[id.Bytes] = inv
+	return inv, nil
 }
 
-func defaultStubRoles() *stubRolesStore {
-	return &stubRolesStore{
-		getFn: func(ctx context.Context, arg db.GetUserFormRoleParams) (string, error) {
-			return "admin", nil
-		},
-	}
+func (f *fakeInvitesStore) DeleteFormInvite(_ context.Context, id pgtype.UUID) error {
+	delete(f.invites, id.Bytes)
+	return nil
 }
 
-func stubInvite(formID, code string, expires time.Time, revoked bool) db.FormInvite {
-	return db.FormInvite{
-		Code:      code,
-		FormID:    formID,
-		Role:      "editor",
-		ExpiresAt: pgtype.Timestamptz{Time: expires, Valid: true},
-		CreatedBy: pgtype.UUID{Bytes: uuid.MustParse("00000000-0000-0000-0000-000000000001"), Valid: true},
-		Revoked:   revoked,
-	}
+type fakeRolesStore struct {
+	roles map[uuid.UUID]db.FormRole
 }
 
-// admin権限のユーザーが招待コードを発行でき、期限計算とコード生成が正しく反映される
+func (f *fakeRolesStore) GetFormMemberRole(_ context.Context, arg db.GetFormMemberRoleParams) (db.FormRole, error) {
+	role, ok := f.roles[arg.UserID.Bytes]
+	if !ok {
+		return "", pgx.ErrNoRows
+	}
+	return role, nil
+}
+
+func (f *fakeRolesStore) UpsertFormMember(_ context.Context, _ db.UpsertFormMemberParams) error {
+	return nil
+}
+
+func (f *fakeRolesStore) DeleteFormMember(_ context.Context, _ db.DeleteFormMemberParams) error {
+	return nil
+}
+
+func (f *fakeRolesStore) ListFormMembers(_ context.Context, _ pgtype.UUID) ([]db.ListFormMembersRow, error) {
+	return nil, nil
+}
+
+func (f *fakeRolesStore) ListUserAccessibleForms(_ context.Context, _ pgtype.UUID) ([]db.ListUserAccessibleFormsRow, error) {
+	return nil, nil
+}
+
+func (f *fakeRolesStore) CountFormAdmins(_ context.Context, _ pgtype.UUID) (int64, error) {
+	return 1, nil
+}
+
+type fakeUsersStore struct {
+	users map[uuid.UUID]db.GetUserByIDRow
+}
+
+func (f *fakeUsersStore) GetUserByID(_ context.Context, id pgtype.UUID) (db.GetUserByIDRow, error) {
+	u, ok := f.users[id.Bytes]
+	if !ok {
+		return db.GetUserByIDRow{}, pgx.ErrNoRows
+	}
+	return u, nil
+}
+
 func TestCreateInvite_Success(t *testing.T) {
-	now := time.Unix(1, 0)
-	svc := &Service{
-		now:          nowFunc(now),
-		generateCode: func() (string, error) { return "abc123", nil },
-	}
-	actor := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+	actor := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	formID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
+	invites := &fakeInvitesStore{}
+	roles := &fakeRolesStore{roles: map[uuid.UUID]db.FormRole{actor: db.FormRoleAdmin}}
+	svc := &Service{Invites: invites, Roles: roles}
 
-	var captured db.CreateFormInviteParams
-	svc.Invites = &stubInvitesStore{
-		createFn: func(ctx context.Context, arg db.CreateFormInviteParams) (db.FormInvite, error) {
-			captured = arg
-			return stubInvite(arg.FormID, arg.Code, arg.ExpiresAt.Time, false), nil
-		},
-	}
-	svc.Roles = &stubRolesStore{
-		getFn: func(ctx context.Context, arg db.GetUserFormRoleParams) (string, error) { return "admin", nil },
-	}
-
-	invite, err := svc.CreateInvite(context.Background(), "formA", actor)
+	inv, err := svc.CreateInvite(context.Background(), formID.String(), "a@example.com", "editor", actor)
 	if err != nil {
-		t.Fatalf("CreateInvite returned error: %v", err)
+		t.Fatalf("want nil err, got %v", err)
 	}
-	if invite.Code != "abc123" {
-		t.Fatalf("want code abc123, got %s", invite.Code)
-	}
-	if captured.FormID != "formA" {
-		t.Fatalf("unexpected formID %s", captured.FormID)
-	}
-	expectedExpiry := now.Add(inviteTTL)
-	if !captured.ExpiresAt.Time.Equal(expectedExpiry) {
-		t.Fatalf("unexpected expires_at: got %v want %v", captured.ExpiresAt.Time, expectedExpiry)
+	if inv.Email != "a@example.com" {
+		t.Fatalf("unexpected email: %s", inv.Email)
 	}
 }
 
-// admin以外のユーザーが発行を試みたときErrForbiddenが返る
-func TestCreateInvite_Forbidden(t *testing.T) {
-	svc := &Service{
-		now:          time.Now,
-		generateCode: defaultInviteCode,
-	}
-	svc.Roles = &stubRolesStore{
-		getFn: func(ctx context.Context, arg db.GetUserFormRoleParams) (string, error) { return "editor", nil },
-	}
+func TestListInvites_Forbidden(t *testing.T) {
+	actor := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	formID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
+	invites := &fakeInvitesStore{}
+	roles := &fakeRolesStore{roles: map[uuid.UUID]db.FormRole{actor: db.FormRoleEditor}}
+	svc := &Service{Invites: invites, Roles: roles}
 
-	_, err := svc.CreateInvite(context.Background(), "formA", uuid.Nil)
-	if !errors.Is(err, ErrForbidden) {
+	_, err := svc.ListInvites(context.Background(), formID.String(), actor)
+	if err != ErrForbidden {
 		t.Fatalf("want ErrForbidden, got %v", err)
 	}
 }
 
-// 有効な招待の一覧をフォームIDと現在時刻をフィルタ条件として渡す
-func TestListInvites_PassesFilters(t *testing.T) {
-	now := time.Unix(1, 0)
-	svc := &Service{
-		now: nowFunc(now),
-	}
-	actor := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+func TestDeleteInvite_NotFound(t *testing.T) {
+	actor := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	formID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
+	invites := &fakeInvitesStore{}
+	roles := &fakeRolesStore{roles: map[uuid.UUID]db.FormRole{actor: db.FormRoleAdmin}}
+	svc := &Service{Invites: invites, Roles: roles}
 
-	svc.Invites = &stubInvitesStore{
-		listFn: func(ctx context.Context, arg db.ListActiveFormInvitesParams) ([]db.FormInvite, error) {
-			if arg.FormID != "formA" {
-				t.Fatalf("unexpected formID %s", arg.FormID)
-			}
-			if !arg.ExpiresAt.Time.Equal(now) {
-				t.Fatalf("unexpected cutoff time %v", arg.ExpiresAt.Time)
-			}
-			return []db.FormInvite{stubInvite("formA", "abc", now.Add(time.Hour), false)}, nil
-		},
-	}
-	svc.Roles = defaultStubRoles()
-
-	invites, err := svc.ListInvites(context.Background(), "formA", actor)
-	if err != nil {
-		t.Fatalf("ListInvites returned error: %v", err)
-	}
-	if len(invites) != 1 || invites[0].Code != "abc" {
-		t.Fatalf("unexpected invites result %#v", invites)
-	}
-}
-
-// 指定したコードが存在しない場合ErrInviteNotFoundを返す
-func TestRevokeInvite_NotFound(t *testing.T) {
-	svc := &Service{now: nowFunc(time.Now())}
-	svc.Roles = defaultStubRoles()
-	svc.Invites = &stubInvitesStore{
-		revokeFn: func(ctx context.Context, arg db.RevokeFormInviteParams) (db.FormInvite, error) {
-			return db.FormInvite{}, pgx.ErrNoRows
-		},
-	}
-
-	_, err := svc.RevokeInvite(context.Background(), "formA", "code1", uuid.Nil)
-	if !errors.Is(err, ErrInviteNotFound) {
+	err := svc.DeleteInvite(context.Background(), formID.String(), uuid.New().String(), actor)
+	if err != ErrInviteNotFound {
 		t.Fatalf("want ErrInviteNotFound, got %v", err)
 	}
 }
 
-// 有効な招待コードでeditor権限付与と招待失効が実行される
-func TestAcceptInvite_Success(t *testing.T) {
-	now := time.Unix(10, 0)
-	actor := uuid.MustParse("00000000-0000-0000-0000-000000000002")
-	svc := &Service{now: nowFunc(now)}
-
-	invite := stubInvite("formA", "code123", now.Add(time.Hour), false)
-	var upsertCalled bool
-	var revokeCalled bool
-
-	svc.Invites = &stubInvitesStore{
-		getFn: func(ctx context.Context, code string) (db.FormInvite, error) {
-			if code != "code123" {
-				t.Fatalf("unexpected code %s", code)
-			}
-			return invite, nil
+func TestAcceptInvite_EmailMismatch(t *testing.T) {
+	invID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
+	formID := uuid.MustParse("00000000-0000-0000-0000-000000000020")
+	actor := uuid.MustParse("00000000-0000-0000-0000-000000000030")
+	invites := &fakeInvitesStore{invites: map[uuid.UUID]db.FormInvite{
+		invID: {
+			ID:        pgtype.UUID{Bytes: invID, Valid: true},
+			FormID:    pgtype.UUID{Bytes: formID, Valid: true},
+			Email:     "a@example.com",
+			Role:      "editor",
+			InvitedBy: pgtype.UUID{Bytes: actor, Valid: true},
+			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
 		},
-		revokeFn: func(ctx context.Context, arg db.RevokeFormInviteParams) (db.FormInvite, error) {
-			revokeCalled = true
-			if arg.Code != "code123" {
-				t.Fatalf("unexpected revoke code %s", arg.Code)
-			}
-			return invite, nil
-		},
-	}
-	svc.Roles = &stubRolesStore{
-		getFn: func(ctx context.Context, arg db.GetUserFormRoleParams) (string, error) { return "", pgx.ErrNoRows },
-		upsertFn: func(ctx context.Context, arg db.UpsertUserFormRoleParams) error {
-			upsertCalled = true
-			if arg.Role != "editor" {
-				t.Fatalf("unexpected role %s", arg.Role)
-			}
-			return nil
-		},
-	}
+	}}
+	roles := &fakeRolesStore{roles: map[uuid.UUID]db.FormRole{actor: db.FormRoleAdmin}}
+	users := &fakeUsersStore{users: map[uuid.UUID]db.GetUserByIDRow{
+		actor: {Email: "other@example.com"},
+	}}
+	svc := &Service{Invites: invites, Roles: roles, Users: users}
 
-	if err := svc.AcceptInvite(context.Background(), "code123", actor); err != nil {
-		t.Fatalf("AcceptInvite returned error: %v", err)
+	if err := svc.AcceptInvite(context.Background(), invID.String(), actor); err != ErrForbidden {
+		t.Fatalf("want ErrForbidden, got %v", err)
 	}
-	if !upsertCalled {
-		t.Fatalf("expected upsertUserFormRole to be called")
-	}
-	if !revokeCalled {
-		t.Fatalf("expected revoke to be called")
-	}
-}
-
-// 既にeditor 以上の権限を持つユーザーが受理するとErrAlreadyMemberを返す
-func TestAcceptInvite_AlreadyMember(t *testing.T) {
-	svc := &Service{now: nowFunc(time.Now())}
-	svc.Invites = &stubInvitesStore{
-		getFn: func(ctx context.Context, code string) (db.FormInvite, error) {
-			return stubInvite("formA", code, time.Now().Add(time.Hour), false), nil
-		},
-	}
-	svc.Roles = &stubRolesStore{
-		getFn: func(ctx context.Context, arg db.GetUserFormRoleParams) (string, error) { return "editor", nil },
-	}
-
-	err := svc.AcceptInvite(context.Background(), "code999", uuid.Nil)
-	if !errors.Is(err, ErrAlreadyMember) {
-		t.Fatalf("want ErrAlreadyMember, got %v", err)
-	}
-}
-
-// 期限切れの招待コードを受理しようとした際にErrInviteExpiredを返す
-func TestAcceptInvite_Expired(t *testing.T) {
-	now := time.Unix(10, 0)
-	svc := &Service{now: nowFunc(now)}
-	svc.Invites = &stubInvitesStore{
-		getFn: func(ctx context.Context, code string) (db.FormInvite, error) {
-			return stubInvite("formA", code, now, false), nil
-		},
-	}
-	svc.Roles = &stubRolesStore{
-		getFn: func(ctx context.Context, arg db.GetUserFormRoleParams) (string, error) { return "", pgx.ErrNoRows },
-	}
-
-	err := svc.AcceptInvite(context.Background(), "code", uuid.Nil)
-	if !errors.Is(err, ErrInviteExpired) {
-		t.Fatalf("want ErrInviteExpired, got %v", err)
-	}
-}
-
-func nowFunc(t time.Time) func() time.Time {
-	return func() time.Time { return t }
 }
