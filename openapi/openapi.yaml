@@ -8,9 +8,6 @@ servers:
 
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
     cookieAuth:
       type: apiKey
       in: cookie
@@ -32,9 +29,9 @@ components:
         password: { type: string }
     LoginResponse:
       type: object
-      required: [token]
+      required: [session_id]
       properties:
-        token: { type: string }
+        session_id: { type: string }
 
     SignupRequest:
       type: object
@@ -355,7 +352,6 @@ components:
         last: { type: string, format: date-time, nullable: true }
 
 security:
-  - bearerAuth: []
   - cookieAuth: []
 
 paths:
