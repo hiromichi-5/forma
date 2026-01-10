@@ -40,7 +40,7 @@ func (s *Service) RequireAdmin(ctx context.Context, formID string, actor uuid.UU
 		}
 		return err
 	}
-	if r != "admin" {
+	if r != db.FormRoleAdmin {
 		return ErrForbidden
 	}
 	return nil
@@ -61,7 +61,7 @@ func (s *Service) RequireEditor(ctx context.Context, formID string, actor uuid.U
 		}
 		return err
 	}
-	if r != "admin" && r != "editor" {
+	if r != db.FormRoleAdmin && r != db.FormRoleEditor {
 		return ErrForbidden
 	}
 	return nil
@@ -75,7 +75,10 @@ func (s *Service) RequireFormAccessForTicket(ctx context.Context, ticketID strin
 
 	ticket, err := s.Q.GetTicket(ctx, pgtype.UUID{Bytes: uid, Valid: true})
 	if err != nil {
-		return ErrForbidden
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrForbidden
+		}
+		return err
 	}
 
 	return s.RequireEditor(ctx, uuid.UUID(ticket.FormID.Bytes).String(), actor)
@@ -99,7 +102,7 @@ func (s *Service) AddMember(ctx context.Context, formID, email, role string) err
 	return s.Roles.UpsertFormMember(ctx, db.UpsertFormMemberParams{
 		UserID: dbUUID(uuid.UUID(u.ID.Bytes)),
 		FormID: dbUUID(fid),
-		Role:   role,
+		Role:   db.FormRole(role),
 	})
 }
 
@@ -123,7 +126,7 @@ func (s *Service) ChangeRole(ctx context.Context, formID, userID, role string) e
 	return s.Roles.UpsertFormMember(ctx, db.UpsertFormMemberParams{
 		UserID: dbUUID(uid),
 		FormID: dbUUID(fid),
-		Role:   role,
+		Role:   db.FormRole(role),
 	})
 }
 
@@ -160,7 +163,7 @@ func (s *Service) ensureFormKeepsAdmin(ctx context.Context, formID string, userI
 		}
 		return err
 	}
-	if role != "admin" {
+	if role != db.FormRoleAdmin {
 		return nil
 	}
 	count, err := s.Roles.CountFormAdmins(ctx, dbUUID(fid))
@@ -188,7 +191,7 @@ func (s *Service) ListMembers(ctx context.Context, formID string) ([]Member, err
 			ID:          r.ID.Bytes,
 			Email:       r.Email,
 			DisplayName: r.DisplayName,
-			Role:        r.Role,
+			Role:        string(r.Role),
 		})
 	}
 	return out, nil

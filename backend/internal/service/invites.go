@@ -31,7 +31,7 @@ func (s *Service) CreateInvite(ctx context.Context, formID, email, role string, 
 		ID:        dbUUID(uuid.New()),
 		FormID:    dbUUID(fid),
 		Email:     email,
-		Role:      role,
+		Role:      db.FormRole(role),
 		InvitedBy: dbUUID(actor),
 		ExpiresAt: expiresAt,
 	})
@@ -122,6 +122,6 @@ func (s *Service) AcceptInvite(ctx context.Context, inviteID string, actor uuid.
 	return s.Roles.UpsertFormMember(ctx, db.UpsertFormMemberParams{
 		UserID: dbUUID(actor),
 		FormID: invite.FormID,
-		Role:   string(invite.Role),
+		Role:   invite.Role,
 	})
 }

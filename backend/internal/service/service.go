@@ -21,7 +21,7 @@ type invitesStore interface {
 }
 
 type rolesStore interface {
-	GetFormMemberRole(ctx context.Context, arg db.GetFormMemberRoleParams) (string, error)
+	GetFormMemberRole(ctx context.Context, arg db.GetFormMemberRoleParams) (db.FormRole, error)
 	UpsertFormMember(ctx context.Context, arg db.UpsertFormMemberParams) error
 	DeleteFormMember(ctx context.Context, arg db.DeleteFormMemberParams) error
 	ListFormMembers(ctx context.Context, formID pgtype.UUID) ([]db.ListFormMembersRow, error)
@@ -75,11 +75,4 @@ func (s *Service) nowTime() time.Time {
 		return s.now()
 	}
 	return time.Now()
-}
-
-func (s *Service) newInviteCode() (string, error) {
-	if s.generateCode != nil {
-		return s.generateCode()
-	}
-	return defaultInviteCode()
 }

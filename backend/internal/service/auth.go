@@ -19,7 +19,7 @@ var ErrInvalidCredentials = errors.New("invalid credentials")
 
 type AuthStore interface {
 	GetUserByEmail(ctx context.Context, email string) (db.GetUserByEmailRow, error)
-	CreateUser(ctx context.Context, arg db.CreateUserParams) (db.User, error)
+	CreateUser(ctx context.Context, arg db.CreateUserParams) (db.CreateUserRow, error)
 	CreateSession(ctx context.Context, arg db.CreateSessionParams) (db.Session, error)
 	DeleteSession(ctx context.Context, id pgtype.UUID) (int64, error)
 	CreateEmailVerificationToken(ctx context.Context, arg db.CreateEmailVerificationTokenParams) (db.EmailVerificationToken, error)

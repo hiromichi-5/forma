@@ -14,8 +14,8 @@ import (
 )
 
 type fakeAuthStore struct {
-	users       map[string]db.User
-	usersByID   map[uuid.UUID]db.User
+	users       map[string]db.GetUserByEmailRow
+	usersByID   map[uuid.UUID]db.GetUserByEmailRow
 	sessions    map[uuid.UUID]db.Session
 	emailTokens map[string]db.EmailVerificationToken
 	resetTokens map[string]db.PasswordResetToken
@@ -27,27 +27,20 @@ func (f *fakeAuthStore) GetUserByEmail(_ context.Context, email string) (db.GetU
 	if !ok {
 		return db.GetUserByEmailRow{}, pgx.ErrNoRows
 	}
-	return db.GetUserByEmailRow{
-		ID:           u.ID,
-		Email:        u.Email,
-		PasswordHash: u.PasswordHash,
-		CreatedAt:    u.CreatedAt,
-		DisplayName:  u.DisplayName,
-		VerifiedAt:   u.VerifiedAt,
-	}, nil
+	return u, nil
 }
 
-func (f *fakeAuthStore) CreateUser(_ context.Context, arg db.CreateUserParams) (db.User, error) {
+func (f *fakeAuthStore) CreateUser(_ context.Context, arg db.CreateUserParams) (db.CreateUserRow, error) {
 	if f.users == nil {
-		f.users = map[string]db.User{}
+		f.users = map[string]db.GetUserByEmailRow{}
 	}
 	if f.usersByID == nil {
-		f.usersByID = map[uuid.UUID]db.User{}
+		f.usersByID = map[uuid.UUID]db.GetUserByEmailRow{}
 	}
 	if _, ok := f.users[arg.Email]; ok {
-		return db.User{}, errors.New("duplicate")
+		return db.CreateUserRow{}, errors.New("duplicate")
 	}
-	u := db.User{
+	u := db.GetUserByEmailRow{
 		ID:           pgUUID(arg.ID.Bytes),
 		Email:        arg.Email,
 		PasswordHash: arg.PasswordHash,
@@ -57,7 +50,14 @@ func (f *fakeAuthStore) CreateUser(_ context.Context, arg db.CreateUserParams) (
 	}
 	f.users[arg.Email] = u
 	f.usersByID[arg.ID.Bytes] = u
-	return u, nil
+	return db.CreateUserRow{
+		ID:           u.ID,
+		Email:        u.Email,
+		PasswordHash: u.PasswordHash,
+		CreatedAt:    u.CreatedAt,
+		DisplayName:  u.DisplayName,
+		VerifiedAt:   u.VerifiedAt,
+	}, nil
 }
 
 func (f *fakeAuthStore) CreateSession(_ context.Context, arg db.CreateSessionParams) (db.Session, error) {
@@ -201,7 +201,7 @@ func mustHash(pw string) string {
 func TestAuthenticate_Success(t *testing.T) {
 	uid := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	store := &fakeAuthStore{now: time.Unix(1_700_000_000, 0)}
-	store.users = map[string]db.User{
+	store.users = map[string]db.GetUserByEmailRow{
 		"a@example.com": {
 			ID:           pgUUID(uid),
 			Email:        "a@example.com",
@@ -211,7 +211,7 @@ func TestAuthenticate_Success(t *testing.T) {
 			VerifiedAt:   pgtype.Timestamptz{Time: store.now, Valid: true},
 		},
 	}
-	store.usersByID = map[uuid.UUID]db.User{uid: store.users["a@example.com"]}
+	store.usersByID = map[uuid.UUID]db.GetUserByEmailRow{uid: store.users["a@example.com"]}
 
 	s := NewAuthService(store)
 	s.now = func() time.Time { return store.now }
@@ -228,7 +228,7 @@ func TestAuthenticate_Success(t *testing.T) {
 func TestAuthenticate_EmailNotVerified(t *testing.T) {
 	uid := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	store := &fakeAuthStore{now: time.Unix(1_700_000_000, 0)}
-	store.users = map[string]db.User{
+	store.users = map[string]db.GetUserByEmailRow{
 		"a@example.com": {
 			ID:           pgUUID(uid),
 			Email:        "a@example.com",
@@ -238,7 +238,7 @@ func TestAuthenticate_EmailNotVerified(t *testing.T) {
 			VerifiedAt:   pgtype.Timestamptz{},
 		},
 	}
-	store.usersByID = map[uuid.UUID]db.User{uid: store.users["a@example.com"]}
+	store.usersByID = map[uuid.UUID]db.GetUserByEmailRow{uid: store.users["a@example.com"]}
 
 	s := NewAuthService(store)
 	_, err := s.Authenticate(context.Background(), "a@example.com", "pass123")
@@ -270,7 +270,7 @@ func TestVerifyEmail_SetsVerifiedAt(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	uid := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	store := &fakeAuthStore{now: now}
-	store.users = map[string]db.User{
+	store.users = map[string]db.GetUserByEmailRow{
 		"a@example.com": {
 			ID:           pgUUID(uid),
 			Email:        "a@example.com",
@@ -280,7 +280,7 @@ func TestVerifyEmail_SetsVerifiedAt(t *testing.T) {
 			VerifiedAt:   pgtype.Timestamptz{},
 		},
 	}
-	store.usersByID = map[uuid.UUID]db.User{uid: store.users["a@example.com"]}
+	store.usersByID = map[uuid.UUID]db.GetUserByEmailRow{uid: store.users["a@example.com"]}
 	store.emailTokens = map[string]db.EmailVerificationToken{
 		"tok": {
 			ID:     pgUUID(uuid.New()),
@@ -304,7 +304,7 @@ func TestConfirmPasswordReset_UpdatesPassword(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	uid := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	store := &fakeAuthStore{now: now}
-	store.users = map[string]db.User{
+	store.users = map[string]db.GetUserByEmailRow{
 		"a@example.com": {
 			ID:           pgUUID(uid),
 			Email:        "a@example.com",
@@ -314,7 +314,7 @@ func TestConfirmPasswordReset_UpdatesPassword(t *testing.T) {
 			VerifiedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 		},
 	}
-	store.usersByID = map[uuid.UUID]db.User{uid: store.users["a@example.com"]}
+	store.usersByID = map[uuid.UUID]db.GetUserByEmailRow{uid: store.users["a@example.com"]}
 	store.resetTokens = map[string]db.PasswordResetToken{
 		"tok": {
 			ID:     pgUUID(uuid.New()),

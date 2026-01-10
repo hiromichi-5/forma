@@ -66,10 +66,10 @@ func (f *fakeInvitesStore) DeleteFormInvite(_ context.Context, id pgtype.UUID) e
 }
 
 type fakeRolesStore struct {
-	roles map[uuid.UUID]string
+	roles map[uuid.UUID]db.FormRole
 }
 
-func (f *fakeRolesStore) GetFormMemberRole(_ context.Context, arg db.GetFormMemberRoleParams) (string, error) {
+func (f *fakeRolesStore) GetFormMemberRole(_ context.Context, arg db.GetFormMemberRoleParams) (db.FormRole, error) {
 	role, ok := f.roles[arg.UserID.Bytes]
 	if !ok {
 		return "", pgx.ErrNoRows
@@ -113,7 +113,7 @@ func TestCreateInvite_Success(t *testing.T) {
 	actor := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	formID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
 	invites := &fakeInvitesStore{}
-	roles := &fakeRolesStore{roles: map[uuid.UUID]string{actor: "admin"}}
+	roles := &fakeRolesStore{roles: map[uuid.UUID]db.FormRole{actor: db.FormRoleAdmin}}
 	svc := &Service{Invites: invites, Roles: roles}
 
 	inv, err := svc.CreateInvite(context.Background(), formID.String(), "a@example.com", "editor", actor)
@@ -129,7 +129,7 @@ func TestListInvites_Forbidden(t *testing.T) {
 	actor := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	formID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
 	invites := &fakeInvitesStore{}
-	roles := &fakeRolesStore{roles: map[uuid.UUID]string{actor: "editor"}}
+	roles := &fakeRolesStore{roles: map[uuid.UUID]db.FormRole{actor: db.FormRoleEditor}}
 	svc := &Service{Invites: invites, Roles: roles}
 
 	_, err := svc.ListInvites(context.Background(), formID.String(), actor)
@@ -142,7 +142,7 @@ func TestDeleteInvite_NotFound(t *testing.T) {
 	actor := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	formID := uuid.MustParse("00000000-0000-0000-0000-000000000010")
 	invites := &fakeInvitesStore{}
-	roles := &fakeRolesStore{roles: map[uuid.UUID]string{actor: "admin"}}
+	roles := &fakeRolesStore{roles: map[uuid.UUID]db.FormRole{actor: db.FormRoleAdmin}}
 	svc := &Service{Invites: invites, Roles: roles}
 
 	err := svc.DeleteInvite(context.Background(), formID.String(), uuid.New().String(), actor)
@@ -165,7 +165,7 @@ func TestAcceptInvite_EmailMismatch(t *testing.T) {
 			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
 		},
 	}}
-	roles := &fakeRolesStore{roles: map[uuid.UUID]string{actor: "admin"}}
+	roles := &fakeRolesStore{roles: map[uuid.UUID]db.FormRole{actor: db.FormRoleAdmin}}
 	users := &fakeUsersStore{users: map[uuid.UUID]db.GetUserByIDRow{
 		actor: {Email: "other@example.com"},
 	}}

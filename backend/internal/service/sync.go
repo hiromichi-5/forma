@@ -162,27 +162,27 @@ func (s *Service) refreshFormQuestions(ctx context.Context, formID pgtype.UUID, 
 		}
 		questions := extractQuestions(item)
 		for _, q := range questions {
-			if q.Question == nil {
+			if q == nil {
 				continue
 			}
 
-			qid := q.Question.QuestionId
+			qid := q.QuestionId
 			if qid == "" {
 				continue
 			}
 
-			title := q.Title
+			title := item.Title
 			if title == "" {
 				title = qid
 			}
 
-			optBytes := marshalQuestionOptions(q.Question)
+			optBytes := marshalQuestionOptions(q)
 
 			if err := s.Q.UpsertFormQuestion(ctx, db.UpsertFormQuestionParams{
 				FormID:       formID,
 				QuestionID:   qid,
 				Title:        title,
-				QuestionType: detectQuestionType(q.Question),
+				QuestionType: detectQuestionType(q),
 				Options:      optBytes,
 			}); err != nil {
 				return err
@@ -191,4 +191,84 @@ func (s *Service) refreshFormQuestions(ctx context.Context, formID pgtype.UUID, 
 	}
 
 	return nil
+}
+
+func extractQuestions(item *forms.Item) []*forms.Question {
+	if item == nil {
+		return nil
+	}
+	if item.QuestionItem != nil && item.QuestionItem.Question != nil {
+		return []*forms.Question{item.QuestionItem.Question}
+	}
+	if item.QuestionGroupItem != nil && len(item.QuestionGroupItem.Questions) > 0 {
+		return item.QuestionGroupItem.Questions
+	}
+	return nil
+}
+
+func marshalQuestionOptions(q *forms.Question) []byte {
+	if q == nil || q.ChoiceQuestion == nil {
+		return nil
+	}
+	choices := make([]string, 0, len(q.ChoiceQuestion.Options))
+	for _, opt := range q.ChoiceQuestion.Options {
+		if opt == nil {
+			continue
+		}
+		if strings.TrimSpace(opt.Value) != "" {
+			choices = append(choices, opt.Value)
+		}
+	}
+	if len(choices) == 0 {
+		return nil
+	}
+	payload := map[string]any{"choices": choices}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return nil
+	}
+	return b
+}
+
+func detectQuestionType(q *forms.Question) string {
+	if q == nil {
+		return "unknown"
+	}
+	if q.TextQuestion != nil {
+		if q.TextQuestion.Paragraph {
+			return "paragraph"
+		}
+		return "text"
+	}
+	if q.ChoiceQuestion != nil {
+		switch strings.ToUpper(q.ChoiceQuestion.Type) {
+		case "RADIO":
+			return "radio"
+		case "CHECKBOX":
+			return "checkbox"
+		case "DROP_DOWN":
+			return "drop_down"
+		default:
+			return "choice"
+		}
+	}
+	if q.ScaleQuestion != nil {
+		return "scale"
+	}
+	if q.DateQuestion != nil {
+		return "date"
+	}
+	if q.TimeQuestion != nil {
+		return "time"
+	}
+	if q.FileUploadQuestion != nil {
+		return "file"
+	}
+	if q.RowQuestion != nil {
+		return "row"
+	}
+	if q.RatingQuestion != nil {
+		return "rating"
+	}
+	return "unknown"
 }
