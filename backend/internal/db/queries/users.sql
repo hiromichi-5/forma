@@ -28,3 +28,7 @@ WHERE id = $1;
 UPDATE users
 SET verified_at = $2
 WHERE id = $1;
+
+-- name: DeleteUser :execrows
+DELETE FROM users
+WHERE id = $1;

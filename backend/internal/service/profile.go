@@ -12,8 +12,8 @@ import (
 )
 
 type ProfileStore interface {
-	GetUser(ctx context.Context, id pgtype.UUID) (db.User, error)
-	UpdateUserDisplayName(ctx context.Context, arg db.UpdateUserDisplayNameParams) (db.User, error)
+	GetUserByID(ctx context.Context, id pgtype.UUID) (db.GetUserByIDRow, error)
+	UpdateUserDisplayName(ctx context.Context, arg db.UpdateUserDisplayNameParams) (db.UpdateUserDisplayNameRow, error)
 	DeleteUser(ctx context.Context, id pgtype.UUID) (int64, error)
 	UpdateUserPasswordHash(ctx context.Context, arg db.UpdateUserPasswordHashParams) error
 }
@@ -32,7 +32,7 @@ func (s *ProfileService) GetProfile(ctx context.Context, userID string) (db.User
 		return db.User{}, ErrValidation
 	}
 
-	user, err := s.q.GetUser(ctx, dbUUID(uid))
+	row, err := s.q.GetUserByID(ctx, dbUUID(uid))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.User{}, ErrUserNotFound
@@ -40,7 +40,7 @@ func (s *ProfileService) GetProfile(ctx context.Context, userID string) (db.User
 		return db.User{}, err
 	}
 
-	return user, nil
+	return userFromGetUserByIDRow(row), nil
 }
 
 func (s *ProfileService) UpdateDisplayName(ctx context.Context, userID, displayName string) (db.User, error) {
@@ -53,7 +53,7 @@ func (s *ProfileService) UpdateDisplayName(ctx context.Context, userID, displayN
 		return db.User{}, ErrValidation
 	}
 
-	user, err := s.q.UpdateUserDisplayName(ctx, db.UpdateUserDisplayNameParams{
+	row, err := s.q.UpdateUserDisplayName(ctx, db.UpdateUserDisplayNameParams{
 		ID:          dbUUID(uid),
 		DisplayName: displayName,
 	})
@@ -64,7 +64,7 @@ func (s *ProfileService) UpdateDisplayName(ctx context.Context, userID, displayN
 		return db.User{}, err
 	}
 
-	return user, nil
+	return userFromUpdateUserDisplayNameRow(row), nil
 }
 
 func (s *ProfileService) DeleteProfile(ctx context.Context, userID string) error {
@@ -102,7 +102,7 @@ func (s *ProfileService) ChangePassword(ctx context.Context, userID, currentPass
 		return ErrValidation
 	}
 
-	user, err := s.q.GetUser(ctx, dbUUID(uid))
+	row, err := s.q.GetUserByID(ctx, dbUUID(uid))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrUserNotFound
@@ -110,7 +110,7 @@ func (s *ProfileService) ChangePassword(ctx context.Context, userID, currentPass
 		return err
 	}
 
-	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)) != nil {
+	if bcrypt.CompareHashAndPassword([]byte(row.PasswordHash), []byte(currentPassword)) != nil {
 		return ErrIncorrectPassword
 	}
 
@@ -120,11 +120,33 @@ func (s *ProfileService) ChangePassword(ctx context.Context, userID, currentPass
 	}
 
 	if err := s.q.UpdateUserPasswordHash(ctx, db.UpdateUserPasswordHashParams{
-		ID:           user.ID,
+		ID:           row.ID,
 		PasswordHash: string(hashed),
 	}); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func userFromGetUserByIDRow(row db.GetUserByIDRow) db.User {
+	return db.User{
+		ID:           row.ID,
+		Email:        row.Email,
+		PasswordHash: row.PasswordHash,
+		DisplayName:  row.DisplayName,
+		VerifiedAt:   row.VerifiedAt,
+		CreatedAt:    row.CreatedAt,
+	}
+}
+
+func userFromUpdateUserDisplayNameRow(row db.UpdateUserDisplayNameRow) db.User {
+	return db.User{
+		ID:           row.ID,
+		Email:        row.Email,
+		PasswordHash: row.PasswordHash,
+		DisplayName:  row.DisplayName,
+		VerifiedAt:   row.VerifiedAt,
+		CreatedAt:    row.CreatedAt,
+	}
 }
