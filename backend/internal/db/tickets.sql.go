@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countTicketsByStatus = `-- name: CountTicketsByStatus :one
+SELECT COUNT(1)
+FROM tickets
+WHERE status_id = $1
+`
+
+func (q *Queries) CountTicketsByStatus(ctx context.Context, statusID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countTicketsByStatus, statusID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createTicket = `-- name: CreateTicket :execrows
 INSERT INTO tickets (id, form_id, response_id, respondent_email, answers, status_id, assignee_id, priority, submitted_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)

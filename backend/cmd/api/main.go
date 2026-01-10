@@ -132,6 +132,7 @@ func main() {
 	fh := &api.FormsHandler{S: svc}
 	mh := &api.MembersHandler{Svc: svc}
 	ih := &api.InvitesHandler{Svc: svc}
+	sh := &api.StatusesHandler{Svc: svc}
 	authz.POST("/forms", fh.PostV1Forms)
 	authz.GET("/forms", fh.GetV1Forms)
 	authz.GET("/forms/:form_id", func(c *gin.Context) {
@@ -150,6 +151,21 @@ func main() {
 	authz.GET("/forms/:form_id/invites", ih.GetV1FormsFormIdInvites)
 	authz.POST("/forms/:form_id/invites", ih.PostV1FormsFormIdInvites)
 	authz.DELETE("/forms/:form_id/invites/:invite_id", ih.DeleteV1FormsFormIdInvitesInviteId)
+	authz.GET("/forms/:form_id/statuses", func(c *gin.Context) {
+		sh.GetV1FormsIdStatuses(c, c.Param("form_id"))
+	})
+	authz.POST("/forms/:form_id/statuses", func(c *gin.Context) {
+		sh.PostV1FormsIdStatuses(c, c.Param("form_id"))
+	})
+	authz.PATCH("/forms/:form_id/statuses/:status_id", func(c *gin.Context) {
+		sh.PatchV1FormsIdStatusesStatusId(c, c.Param("form_id"), c.Param("status_id"))
+	})
+	authz.POST("/forms/:form_id/statuses/:status_id/default", func(c *gin.Context) {
+		sh.PostV1FormsIdStatusesStatusIdDefault(c, c.Param("form_id"), c.Param("status_id"))
+	})
+	authz.DELETE("/forms/:form_id/statuses/:status_id", func(c *gin.Context) {
+		sh.DeleteV1FormsIdStatusesStatusId(c, c.Param("form_id"), c.Param("status_id"))
+	})
 	authz.GET("/forms/:form_id/questions", func(c *gin.Context) {
 		fh.GetV1FormsFormIdQuestions(c, c.Param("form_id"))
 	})

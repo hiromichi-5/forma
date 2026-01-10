@@ -69,3 +69,8 @@ UPDATE tickets
 SET priority = $2
 WHERE id = $1
 RETURNING id, form_id, response_id, respondent_email, answers, status_id, assignee_id, priority, submitted_at, created_at;
+
+-- name: CountTicketsByStatus :one
+SELECT COUNT(1)
+FROM tickets
+WHERE status_id = $1;
