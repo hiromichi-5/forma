@@ -69,10 +69,6 @@ func main() {
 	if addr == "" {
 		addr = ":8080"
 	}
-	secret := viper.GetString("APP_SECRET")
-	if secret == "" {
-		log.Fatal("APP_SECRET required")
-	}
 	pgDSN := viper.GetString("PG_DSN")
 	if pgDSN == "" {
 		log.Fatal("PG_DSN required")
@@ -93,11 +89,6 @@ func main() {
 	defer pool.Close()
 	q := db.New(pool)
 
-	signer := auth.Signer{Secret: []byte(secret), TTL: time.Hour}
-	if signer.TTL <= 0 {
-		log.Fatal("APP_JWT_TTL must be positive duration")
-	}
-
 	gf, err := gforms.NewRealFormsClient(ctx, saPath)
 	if err != nil {
 		log.Fatalf("forms client: %v", err)
@@ -113,13 +104,17 @@ func main() {
 		SameSite: http.SameSiteLaxMode,
 	}
 
-	ah := &api.AuthHandler{Svc: service.NewAuthService(q), JWT: signer, Cookie: cookieCfg}
+	ah := &api.AuthHandler{Svc: service.NewAuthService(q), Cookie: cookieCfg}
 	r.POST("/v1/auth/login", ah.PostV1AuthLogin)
 	r.POST("/v1/auth/signup", ah.PostV1AuthSignup)
 	r.POST("/v1/auth/logout", ah.PostV1AuthLogout)
+	r.POST("/v1/auth/verify-email", ah.PostV1AuthVerifyEmail)
+	r.POST("/v1/auth/verify-email/resend", ah.PostV1AuthVerifyEmailResend)
+	r.POST("/v1/auth/password-reset", ah.PostV1AuthPasswordReset)
+	r.POST("/v1/auth/password-reset/confirm", ah.PostV1AuthPasswordResetConfirm)
 
 	authz := r.Group("/v1")
-	authz.Use(auth.BearerMiddleware(signer, cookieCfg.Name))
+	authz.Use(auth.SessionMiddleware(q, cookieCfg.Name))
 
 	ph := &api.ProfileHandler{Svc: service.NewProfileService(q)}
 	authz.GET("/me", ph.GetV1Me)
