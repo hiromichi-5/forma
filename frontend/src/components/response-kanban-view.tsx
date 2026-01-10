@@ -1,6 +1,7 @@
 "use client"
 
 import type { FormResponse, User } from "@/types/form-response"
+import type { FormStatus } from "@/types"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,29 +26,24 @@ import { useState } from "react"
 type ResponseKanbanViewProps = {
   responses: FormResponse[]
   users: User[]
-  onStatusChange: (id: string, status: FormResponse["status"]) => void
+  statuses: FormStatus[]
+  onStatusChange: (id: string, statusId: string) => void
   onAssignChange: (id: string, userId: string | null) => void
   onPriorityChange: (id: string, priority: FormResponse["priority"]) => void
   onOpenChat: (response: FormResponse) => void
 }
 
-const statusConfig = {
-  new: { label: "新規", color: "bg-blue-50" },
-  in_progress: { label: "対応中", color: "bg-yellow-50" },
-  done: { label: "完了", color: "bg-green-50" },
-}
-
 const priorityConfig = {
-  Low: { label: "低", color: "text-gray-600" },
-  Medium: { label: "中", color: "text-blue-600" },
-  High: { label: "高", color: "text-red-600" },
+  low: { label: "低", color: "text-gray-600" },
+  medium: { label: "中", color: "text-blue-600" },
+  high: { label: "高", color: "text-red-600" },
 }
 
 const isPriorityValue = (value: string): value is FormResponse["priority"] =>
-  value === "Low" || value === "Medium" || value === "High"
+  value === "low" || value === "medium" || value === "high"
 
 const toPriorityValue = (value: string): FormResponse["priority"] =>
-  isPriorityValue(value) ? value : "Medium"
+  isPriorityValue(value) ? value : "medium"
 
 type DraggableCardProps = {
   response: FormResponse
@@ -98,9 +94,9 @@ function DraggableCard({ response, users, onAssignChange, onPriorityChange, onOp
               </span>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Low">低</SelectItem>
-              <SelectItem value="Medium">中</SelectItem>
-              <SelectItem value="High">高</SelectItem>
+              <SelectItem value="low">低</SelectItem>
+              <SelectItem value="medium">中</SelectItem>
+              <SelectItem value="high">高</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -147,20 +143,22 @@ function DraggableCard({ response, users, onAssignChange, onPriorityChange, onOp
 }
 
 type DroppableColumnProps = {
-  status: FormResponse["status"]
+  statusId: string
+  statusName: string
+  statusColor?: string | null
   children: React.ReactNode
   count: number
 }
 
-function DroppableColumn({ status, children, count }: DroppableColumnProps) {
+function DroppableColumn({ statusId, statusName, statusColor, children, count }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
-    id: status,
+    id: statusId,
   })
 
   return (
     <div className="flex flex-col gap-3">
-      <div className={cn("flex items-center justify-between p-3 rounded-lg", statusConfig[status].color)}>
-        <h3 className="font-semibold text-sm text-foreground">{statusConfig[status].label}</h3>
+      <div className={cn("flex items-center justify-between p-3 rounded-lg", statusColor || "bg-gray-50")}>
+        <h3 className="font-semibold text-sm text-foreground">{statusName}</h3>
         <Badge variant="secondary" className="bg-card">
           {count}
         </Badge>
@@ -179,13 +177,15 @@ function DroppableColumn({ status, children, count }: DroppableColumnProps) {
 export function ResponseKanbanView({
   responses,
   users,
+  statuses,
   onStatusChange,
   onAssignChange,
   onPriorityChange,
   onOpenChat,
 }: ResponseKanbanViewProps) {
-  const columns: Array<FormResponse["status"]> = ["new", "in_progress", "done"]
   const [activeId, setActiveId] = useState<string | null>(null)
+
+  const sortedStatuses = [...statuses].sort((a, b) => a.display_order - b.display_order)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -208,11 +208,11 @@ export function ResponseKanbanView({
     }
 
     const responseId = active.id as string
-    const newStatus = over.id as FormResponse["status"]
+    const newStatusId = over.id as string
 
     const response = responses.find((r) => r.id === responseId)
-    if (response && response.status !== newStatus) {
-      onStatusChange(responseId, newStatus)
+    if (response && response.status !== newStatusId) {
+      onStatusChange(responseId, newStatusId)
     }
 
     setActiveId(null)
@@ -228,10 +228,16 @@ export function ResponseKanbanView({
       onDragEnd={handleDragEnd}
     >
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl mx-auto">
-        {columns.map((status) => (
-          <DroppableColumn key={status} status={status} count={responses.filter((r) => r.status === status).length}>
+        {sortedStatuses.map((status) => (
+          <DroppableColumn
+            key={status.id}
+            statusId={status.id}
+            statusName={status.name}
+            statusColor={status.color}
+            count={responses.filter((r) => r.status === status.id).length}
+          >
             {responses
-              .filter((r) => r.status === status)
+              .filter((r) => r.status === status.id)
               .map((response) => (
                 <DraggableCard
                   key={response.id}

@@ -17,7 +17,7 @@ type FormListItem = {
   lastUpdated: Date | null
 }
 
-const buildFormList = (forms: FormSummary[], tickets: TicketSummary[]): FormListItem[] => {
+const buildFormList = (forms: FormSummary[], tickets: TicketSummary[], defaultStatusId?: string): FormListItem[] => {
   const ticketMap = new Map<string, TicketSummary[]>()
 
   tickets.forEach((ticket) => {
@@ -30,19 +30,19 @@ const buildFormList = (forms: FormSummary[], tickets: TicketSummary[]): FormList
   })
 
   return forms.map((form) => {
-    const formTickets = ticketMap.get(form.form_id) ?? []
+    const formTickets = ticketMap.get(form.id) ?? []
     const responseCount = formTickets.length
-    const newCount = formTickets.filter((ticket) => ticket.status === "new").length
+    const newCount = defaultStatusId ? formTickets.filter((ticket) => ticket.status.id === defaultStatusId).length : 0
     const lastUpdated = formTickets.reduce<Date | null>((latest, ticket) => {
-      const updatedAt = new Date(ticket.updated_at)
-      if (!latest || updatedAt > latest) {
-        return updatedAt
+      const createdAt = new Date(ticket.created_at)
+      if (!latest || createdAt > latest) {
+        return createdAt
       }
       return latest
     }, null)
 
     return {
-      id: form.form_id,
+      id: form.id,
       title: form.title,
       responseCount,
       newCount,

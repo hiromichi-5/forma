@@ -40,10 +40,12 @@ const mapTicketDetailToFormResponse = (ticket: TicketDetail): FormResponse => {
     id: ticket.id,
     formId: ticket.form_id,
     formTitle: ticket.form_title,
-    respondentEmail: respondent.email,
+    respondentEmail: ticket.respondent_email ?? respondent.email,
     respondentName: respondent.name,
     submittedAt: new Date(ticket.submitted_at),
-    status: ticket.status,
+    status: ticket.status.id,
+    statusName: ticket.status.name,
+    statusColor: ticket.status.color,
     assignedTo: ticket.assignee?.id ?? null,
     responses: buildResponsesMap(ticket.answers),
     priority: ticket.priority,
@@ -56,10 +58,12 @@ const mapSummaryToFormResponse = (ticket: TicketSummary): FormResponse => {
     id: ticket.id,
     formId: ticket.form_id,
     formTitle: ticket.form_title,
-    respondentEmail: respondent.email,
+    respondentEmail: ticket.respondent_email ?? respondent.email,
     respondentName: respondent.name,
     submittedAt: new Date(ticket.submitted_at),
-    status: ticket.status,
+    status: ticket.status.id,
+    statusName: ticket.status.name,
+    statusColor: ticket.status.color,
     assignedTo: ticket.assignee?.id ?? null,
     responses: {},
     priority: ticket.priority,
@@ -107,9 +111,9 @@ export function useFormResponses(formId: string | null) {
     }
   }, [formId])
 
-  const updateResponseStatus = async (id: string, status: FormResponse["status"]) => {
+  const updateResponseStatus = async (id: string, statusId: string) => {
     try {
-      const updated = await apiClient.updateTicket(id, { status })
+      const updated = await apiClient.updateTicket(id, { status_id: statusId })
       setResponses((prev) => prev.map((r) => (r.id === id ? mapTicketDetailToFormResponse(updated) : r)))
     } catch (error) {
       console.error("Failed to update status:", error)

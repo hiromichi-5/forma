@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LayoutList, LayoutGrid, Search, Users, ArrowLeft } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import type { FormResponse } from "@/types/form-response"
+import type { FormStatus } from "@/types"
 
 type FormManagementHeaderProps = {
   formTitle: string
@@ -11,8 +11,9 @@ type FormManagementHeaderProps = {
   onViewModeChange: (mode: "list" | "kanban") => void
   searchQuery: string
   onSearchChange: (query: string) => void
-  statusFilter: "all" | FormResponse["status"]
-  onStatusFilterChange: (status: "all" | FormResponse["status"]) => void
+  statusFilter: "all" | string
+  onStatusFilterChange: (status: "all" | string) => void
+  statuses: FormStatus[]
   onMembersClick: () => void
 }
 
@@ -24,9 +25,11 @@ export function FormManagementHeader({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
+  statuses,
   onMembersClick,
 }: FormManagementHeaderProps) {
   const navigate = useNavigate()
+  const sortedStatuses = [...statuses].sort((a, b) => a.display_order - b.display_order)
 
   return (
     <div className="space-y-4">
@@ -60,9 +63,11 @@ export function FormManagementHeader({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">すべて</SelectItem>
-            <SelectItem value="new">新規</SelectItem>
-            <SelectItem value="in_progress">対応中</SelectItem>
-            <SelectItem value="done">完了</SelectItem>
+            {sortedStatuses.map((status) => (
+              <SelectItem key={status.id} value={status.id}>
+                {status.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

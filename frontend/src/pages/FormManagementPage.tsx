@@ -9,16 +9,17 @@ import { MembersDialog } from "@/components/members-dialog"
 import { useFormResponses } from "@/hooks/use-form-responses"
 import { apiClient } from "@/lib/api"
 import type { FormResponse } from "@/types/form-response"
-import type { Member } from "@/types"
+import type { Member, FormStatus } from "@/types"
 
 export default function FormManagementPage() {
   const params = useParams()
   const formId = params.id
   const { responses, updateResponseStatus, assignResponse, updatePriority } = useFormResponses(formId ?? null)
   const [members, setMembers] = useState<Member[]>([])
+  const [formStatuses, setFormStatuses] = useState<FormStatus[]>([])
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"all" | FormResponse["status"]>("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | string>("all")
   const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
@@ -46,20 +47,22 @@ export default function FormManagementPage() {
     if (!formId) return
     let isActive = true
 
-    const loadMembers = async () => {
+    const loadData = async () => {
       try {
-        // 外部API(バックエンド)との同期のための処理
-        const response = await apiClient.getMembers(formId)
+        const [membersResponse, statusesResponse] = await Promise.all([
+          apiClient.getMembers(formId),
+          apiClient.getFormStatuses(formId),
+        ])
         if (!isActive) return
-        setMembers(response.members)
+        setMembers(membersResponse.members)
+        setFormStatuses(statusesResponse.statuses)
       } catch (error) {
         if (!isActive) return
-        console.error("Failed to load members:", error)
+        console.error("Failed to load data:", error)
       }
     }
 
-    // 外部API(バックエンド)との同期のための処理
-    loadMembers()
+    loadData()
 
     return () => {
       isActive = false
@@ -81,6 +84,7 @@ export default function FormManagementPage() {
           onSearchChange={setSearchQuery}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
+          statuses={formStatuses}
           onMembersClick={() => setIsMembersOpen(true)}
         />
 
@@ -92,6 +96,7 @@ export default function FormManagementPage() {
               name: member.display_name,
               email: member.email,
             }))}
+            statuses={formStatuses}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
@@ -105,6 +110,7 @@ export default function FormManagementPage() {
               name: member.display_name,
               email: member.email,
             }))}
+            statuses={formStatuses}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
