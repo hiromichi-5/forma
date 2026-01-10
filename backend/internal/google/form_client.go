@@ -27,7 +27,10 @@ func (c *RealFormsClient) GetForm(ctx context.Context, formID string) (*forms.Fo
 }
 
 func (c *RealFormsClient) ListResponses(ctx context.Context, formID, filter, pageToken string) (*forms.ListFormResponsesResponse, error) {
-	call := c.svc.Forms.Responses.List(formID).Filter(filter).Context(ctx)
+	call := c.svc.Forms.Responses.List(formID).Context(ctx)
+	if filter != "" {
+		call = call.Filter(filter)
+	}
 	if pageToken != "" {
 		call = call.PageToken(pageToken)
 	}

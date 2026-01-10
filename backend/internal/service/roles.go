@@ -26,9 +26,13 @@ type Member struct {
 }
 
 func (s *Service) RequireAdmin(ctx context.Context, formID string, actor uuid.UUID) error {
-	r, err := s.Roles.GetUserFormRole(ctx, db.GetUserFormRoleParams{
-		UserID: pgtype.UUID{Bytes: actor, Valid: true},
-		FormID: formID,
+	fid, err := uuid.Parse(formID)
+	if err != nil {
+		return ErrValidation
+	}
+	r, err := s.Roles.GetFormMemberRole(ctx, db.GetFormMemberRoleParams{
+		UserID: dbUUID(actor),
+		FormID: dbUUID(fid),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -43,9 +47,13 @@ func (s *Service) RequireAdmin(ctx context.Context, formID string, actor uuid.UU
 }
 
 func (s *Service) RequireEditor(ctx context.Context, formID string, actor uuid.UUID) error {
-	r, err := s.Roles.GetUserFormRole(ctx, db.GetUserFormRoleParams{
-		UserID: pgtype.UUID{Bytes: actor, Valid: true},
-		FormID: formID,
+	fid, err := uuid.Parse(formID)
+	if err != nil {
+		return ErrValidation
+	}
+	r, err := s.Roles.GetFormMemberRole(ctx, db.GetFormMemberRoleParams{
+		UserID: dbUUID(actor),
+		FormID: dbUUID(fid),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -70,11 +78,15 @@ func (s *Service) RequireFormAccessForTicket(ctx context.Context, ticketID strin
 		return ErrForbidden
 	}
 
-	return s.RequireEditor(ctx, ticket.FormID, actor)
+	return s.RequireEditor(ctx, uuid.UUID(ticket.FormID.Bytes).String(), actor)
 }
 
 func (s *Service) AddMember(ctx context.Context, formID, email, role string) error {
 	if role != "admin" && role != "editor" {
+		return ErrValidation
+	}
+	fid, err := uuid.Parse(formID)
+	if err != nil {
 		return ErrValidation
 	}
 	u, err := s.Q.GetUserByEmail(ctx, email)
@@ -84,15 +96,19 @@ func (s *Service) AddMember(ctx context.Context, formID, email, role string) err
 		}
 		return err
 	}
-	return s.Roles.UpsertUserFormRole(ctx, db.UpsertUserFormRoleParams{
-		UserID: pgtype.UUID{Bytes: u.ID.Bytes, Valid: true},
-		FormID: formID,
+	return s.Roles.UpsertFormMember(ctx, db.UpsertFormMemberParams{
+		UserID: dbUUID(uuid.UUID(u.ID.Bytes)),
+		FormID: dbUUID(fid),
 		Role:   role,
 	})
 }
 
 func (s *Service) ChangeRole(ctx context.Context, formID, userID, role string) error {
 	if role != "admin" && role != "editor" {
+		return ErrValidation
+	}
+	fid, err := uuid.Parse(formID)
+	if err != nil {
 		return ErrValidation
 	}
 	uid, err := uuid.Parse(userID)
@@ -104,14 +120,18 @@ func (s *Service) ChangeRole(ctx context.Context, formID, userID, role string) e
 			return err
 		}
 	}
-	return s.Roles.UpsertUserFormRole(ctx, db.UpsertUserFormRoleParams{
-		UserID: pgtype.UUID{Bytes: uid, Valid: true},
-		FormID: formID,
+	return s.Roles.UpsertFormMember(ctx, db.UpsertFormMemberParams{
+		UserID: dbUUID(uid),
+		FormID: dbUUID(fid),
 		Role:   role,
 	})
 }
 
 func (s *Service) RemoveMember(ctx context.Context, formID, userID string) error {
+	fid, err := uuid.Parse(formID)
+	if err != nil {
+		return ErrValidation
+	}
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return ErrValidation
@@ -119,16 +139,20 @@ func (s *Service) RemoveMember(ctx context.Context, formID, userID string) error
 	if err := s.ensureFormKeepsAdmin(ctx, formID, uid); err != nil {
 		return err
 	}
-	return s.Roles.DeleteUserFormRole(ctx, db.DeleteUserFormRoleParams{
-		UserID: pgtype.UUID{Bytes: uid, Valid: true},
-		FormID: formID,
+	return s.Roles.DeleteFormMember(ctx, db.DeleteFormMemberParams{
+		UserID: dbUUID(uid),
+		FormID: dbUUID(fid),
 	})
 }
 
 func (s *Service) ensureFormKeepsAdmin(ctx context.Context, formID string, userID uuid.UUID) error {
-	role, err := s.Roles.GetUserFormRole(ctx, db.GetUserFormRoleParams{
-		UserID: pgtype.UUID{Bytes: userID, Valid: true},
-		FormID: formID,
+	fid, err := uuid.Parse(formID)
+	if err != nil {
+		return ErrValidation
+	}
+	role, err := s.Roles.GetFormMemberRole(ctx, db.GetFormMemberRoleParams{
+		UserID: dbUUID(userID),
+		FormID: dbUUID(fid),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -139,7 +163,7 @@ func (s *Service) ensureFormKeepsAdmin(ctx context.Context, formID string, userI
 	if role != "admin" {
 		return nil
 	}
-	count, err := s.Roles.CountFormAdmins(ctx, formID)
+	count, err := s.Roles.CountFormAdmins(ctx, dbUUID(fid))
 	if err != nil {
 		return err
 	}
@@ -150,7 +174,11 @@ func (s *Service) ensureFormKeepsAdmin(ctx context.Context, formID string, userI
 }
 
 func (s *Service) ListMembers(ctx context.Context, formID string) ([]Member, error) {
-	rows, err := s.Roles.ListFormMembers(ctx, formID)
+	fid, err := uuid.Parse(formID)
+	if err != nil {
+		return nil, ErrValidation
+	}
+	rows, err := s.Roles.ListFormMembers(ctx, dbUUID(fid))
 	if err != nil {
 		return nil, err
 	}

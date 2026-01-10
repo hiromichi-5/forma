@@ -133,8 +133,11 @@ func main() {
 	fh := &api.FormsHandler{S: svc}
 	authz.POST("/forms", fh.PostV1Forms)
 	authz.GET("/forms", fh.GetV1Forms)
-	authz.GET("/forms/:form_id/health", func(c *gin.Context) {
-		fh.GetV1FormsFormIdHealth(c, c.Param("form_id"))
+	authz.GET("/forms/:form_id", func(c *gin.Context) {
+		fh.GetV1FormsId(c, c.Param("form_id"))
+	})
+	authz.PATCH("/forms/:form_id", func(c *gin.Context) {
+		fh.PatchV1FormsId(c, c.Param("form_id"))
 	})
 	authz.POST("/forms/:form_id/sync", func(c *gin.Context) {
 		fh.PostV1FormsFormIdSync(c, c.Param("form_id"))
@@ -154,9 +157,6 @@ func main() {
 	})
 	authz.GET("/forms/:form_id/questions", func(c *gin.Context) {
 		fh.GetV1FormsFormIdQuestions(c, c.Param("form_id"))
-	})
-	authz.PATCH("/forms/:form_id/title-question", func(c *gin.Context) {
-		fh.PatchV1FormsFormIdTitleQuestion(c, c.Param("form_id"))
 	})
 	authz.POST("/invites/accept", fh.PostV1InvitesAccept)
 

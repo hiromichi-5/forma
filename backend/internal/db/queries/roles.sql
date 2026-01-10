@@ -23,7 +23,7 @@ WHERE m.form_id = $1
 ORDER BY u.email;
 
 -- name: ListUserAccessibleForms :many
-SELECT f.id, f.form_id, f.title
+SELECT f.id, f.form_id, f.title, f.synced_at
 FROM form_members m
 JOIN forms f ON f.id = m.form_id
 WHERE m.user_id = $1

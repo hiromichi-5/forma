@@ -103,7 +103,7 @@ func (q *Queries) ListFormMembers(ctx context.Context, formID pgtype.UUID) ([]Li
 }
 
 const listUserAccessibleForms = `-- name: ListUserAccessibleForms :many
-SELECT f.id, f.form_id, f.title
+SELECT f.id, f.form_id, f.title, f.synced_at
 FROM form_members m
 JOIN forms f ON f.id = m.form_id
 WHERE m.user_id = $1
@@ -111,9 +111,10 @@ ORDER BY f.title
 `
 
 type ListUserAccessibleFormsRow struct {
-	ID     pgtype.UUID `json:"id"`
-	FormID string      `json:"form_id"`
-	Title  string      `json:"title"`
+	ID       pgtype.UUID        `json:"id"`
+	FormID   string             `json:"form_id"`
+	Title    string             `json:"title"`
+	SyncedAt pgtype.Timestamptz `json:"synced_at"`
 }
 
 func (q *Queries) ListUserAccessibleForms(ctx context.Context, userID pgtype.UUID) ([]ListUserAccessibleFormsRow, error) {
@@ -125,7 +126,12 @@ func (q *Queries) ListUserAccessibleForms(ctx context.Context, userID pgtype.UUI
 	var items []ListUserAccessibleFormsRow
 	for rows.Next() {
 		var i ListUserAccessibleFormsRow
-		if err := rows.Scan(&i.ID, &i.FormID, &i.Title); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.FormID,
+			&i.Title,
+			&i.SyncedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

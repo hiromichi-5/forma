@@ -12,13 +12,24 @@ import (
 )
 
 func (h *FormsHandler) PostV1FormsFormIdSync(c *gin.Context, formID string) {
-	uidStr, _ := auth.UserID(c)
-	uid, _ := uuid.Parse(uidStr)
+	uidStr, ok := auth.UserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
+		return
+	}
+	uid, err := uuid.Parse(uidStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
+		return
+	}
 	synced, newTickets, last, err := h.S.SyncFormOnce(c, formID, uid)
 	if err != nil {
-		if err == service.ErrForbidden {
-			c.JSON(http.StatusForbidden, gin.H{"code": "FORBIDDEN"})
-		} else {
+		switch err {
+		case service.ErrForbidden, service.ErrFormsNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
+		case service.ErrValidation:
+			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
+		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
 		}
 		return
