@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Forma API
   description: API documentation for the Forma API
-  version: 0.0.2
+  version: 0.1.0
 servers:
   - url: http://localhost:8080
 
@@ -11,7 +11,19 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: forma_token
   schemas:
+    Error:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+        message: { type: string, nullable: true }
+        details: { type: object, additionalProperties: true, nullable: true }
+
     LoginRequest:
       type: object
       required: [email, password]
@@ -23,6 +35,7 @@ components:
       required: [token]
       properties:
         token: { type: string }
+
     SignupRequest:
       type: object
       required: [email, password, display_name]
@@ -32,26 +45,66 @@ components:
         display_name: { type: string }
     SignupResponse:
       type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+
+    VerifyEmailRequest:
+      type: object
       required: [token]
       properties:
         token: { type: string }
+    ResendVerificationRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+
+    PasswordResetRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    PasswordResetConfirmRequest:
+      type: object
+      required: [token, new_password]
+      properties:
+        token: { type: string }
+        new_password: { type: string, minLength: 8 }
+
+    UserProfile:
+      type: object
+      required: [id, email, display_name]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        display_name: { type: string }
+        verified_at: { type: string, format: date-time, nullable: true }
+
+    UpdateUserProfileRequest:
+      type: object
+      required: [display_name]
+      properties:
+        display_name: { type: string }
+
     RegisterFormRequest:
       type: object
       required: [url]
       properties:
         url: { type: string, description: "Google Forms のURLまたはフォームID" }
-        polling_sec: { type: integer, default: 30 }
     RegisterFormResponse:
       type: object
-      required: [form_id]
+      required: [id]
       properties:
-        form_id: { type: string }
+        id: { type: string, format: uuid }
+
     FormSummary:
       type: object
-      required: [form_id, title]
+      required: [id, title]
       properties:
-        form_id: { type: string }
+        id: { type: string, format: uuid }
         title: { type: string }
+        synced_at: { type: string, format: date-time, nullable: true }
     ListFormsResponse:
       type: object
       required: [forms]
@@ -59,19 +112,31 @@ components:
         forms:
           type: array
           items: { $ref: "#/components/schemas/FormSummary" }
-    Error:
+
+    Form:
       type: object
-      required: [code]
+      required: [id, title, created_at]
       properties:
-        code: { type: string }
-        message: { type: string, nullable: true }
-        details: { type: object, additionalProperties: true, nullable: true }
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        title_question_id: { type: string, nullable: true }
+        email_collection_type: { type: string, nullable: true }
+        synced_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    UpdateFormRequest:
+      type: object
+      properties:
+        title_question_id: { type: string, nullable: true }
+
     Member:
       type: object
       required: [id, email, role]
       properties:
         id: { type: string, format: uuid }
         email: { type: string, format: email }
+        display_name: { type: string }
         role: { type: string, enum: [admin, editor] }
     ListMembersResponse:
       type: object
@@ -91,18 +156,29 @@ components:
       required: [role]
       properties:
         role: { type: string, enum: [admin, editor] }
+
+    CreateInviteRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, editor] }
+    CreateInviteResponse:
+      type: object
+      required: [invite_id, expires_at]
+      properties:
+        invite_id: { type: string, format: uuid }
+        expires_at: { type: string, format: date-time }
     FormInvite:
       type: object
-      required:
-        [code, form_id, role, expires_at, created_by, created_at, revoked]
+      required: [id, email, role, invited_by, expires_at, created_at]
       properties:
-        code: { type: string }
-        form_id: { type: string }
-        role: { type: string, enum: [editor] }
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, editor] }
+        invited_by: { type: string, format: uuid }
         expires_at: { type: string, format: date-time }
-        created_by: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
-        revoked: { type: boolean }
     ListFormInvitesResponse:
       type: object
       required: [invites]
@@ -110,95 +186,11 @@ components:
         invites:
           type: array
           items: { $ref: "#/components/schemas/FormInvite" }
-    SyncResponse:
-      type: object
-      required: [synced, newTickets]
-      properties:
-        synced: { type: integer, description: "同期された回答数" }
-        newTickets: { type: integer, description: "新規作成されたチケット数" }
-        last:
-          {
-            type: string,
-            description: "最後に同期された回答の送信時刻（RFC3339形式）または空文字列",
-          }
-    Response:
-      type: object
-      required:
-        [
-          response_id,
-          form_id,
-          submitted_at,
-          payload,
-          schema_version,
-          created_at,
-        ]
-      properties:
-        response_id: { type: string }
-        form_id: { type: string }
-        submitted_at: { type: string, format: date-time }
-        payload: { type: object, additionalProperties: true }
-        schema_version: { type: integer }
-        created_at: { type: string, format: date-time }
-    ListResponsesResponse:
-      type: object
-      required: [responses]
-      properties:
-        responses:
-          type: array
-          items: { $ref: "#/components/schemas/Response" }
-    TicketAssignee:
-      type: object
-      required: [id, display_name, email]
-      properties:
-        id: { type: string, format: uuid }
-        display_name: { type: string }
-        email: { type: string, format: email }
-    TicketSummary:
-      type: object
-      required:
-        [
-          id,
-          form_id,
-          form_title,
-          response_id,
-          status,
-          priority,
-          title,
-          submitted_at,
-          updated_at,
-        ]
-      properties:
-        id: { type: string, format: uuid }
-        form_id: { type: string }
-        form_title: { type: string }
-        response_id: { type: string }
-        status: { type: string, enum: [new, in_progress, done] }
-        priority: { type: string, enum: [High, Medium, Low] }
-        title_question_id: { type: string, nullable: true }
-        title: { type: string }
-        assignee:
-          allOf:
-            - $ref: "#/components/schemas/TicketAssignee"
-          nullable: true
-        submitted_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
-    TicketAnswer:
-      type: object
-      required:
-        [question_id, question_title, question_type, values, display_value]
-      properties:
-        question_id: { type: string }
-        question_title: { type: string }
-        question_type: { type: string }
-        values:
-          type: array
-          items: { type: string }
-        display_value: { type: string }
+
     FormQuestion:
       type: object
-      required: [form_id, question_id, title, question_type]
+      required: [question_id, title, question_type]
       properties:
-        form_id: { type: string }
         question_id: { type: string }
         title: { type: string }
         question_type: { type: string }
@@ -213,10 +205,102 @@ components:
         questions:
           type: array
           items: { $ref: "#/components/schemas/FormQuestion" }
-    UpdateFormTitleQuestionRequest:
+
+    FormStatus:
+      type: object
+      required: [id, name, display_order, is_default]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        color: { type: string, nullable: true }
+        display_order: { type: integer }
+        is_default: { type: boolean }
+    ListFormStatusesResponse:
+      type: object
+      required: [statuses]
+      properties:
+        statuses:
+          type: array
+          items: { $ref: "#/components/schemas/FormStatus" }
+    CreateFormStatusRequest:
+      type: object
+      required: [name, display_order]
+      properties:
+        name: { type: string }
+        color: { type: string, nullable: true }
+        display_order: { type: integer }
+        is_default: { type: boolean }
+    UpdateFormStatusRequest:
       type: object
       properties:
+        name: { type: string }
+        color: { type: string, nullable: true }
+        display_order: { type: integer }
+
+    TicketPriority:
+      type: string
+      enum: [high, medium, low]
+
+    TicketStatus:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        color: { type: string, nullable: true }
+
+    TicketAssignee:
+      type: object
+      required: [id, display_name, email]
+      properties:
+        id: { type: string, format: uuid }
+        display_name: { type: string }
+        email: { type: string, format: email }
+
+    TicketSummary:
+      type: object
+      required:
+        [
+          id,
+          form_id,
+          form_title,
+          response_id,
+          status,
+          priority,
+          title,
+          submitted_at,
+          created_at,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        form_id: { type: string, format: uuid }
+        form_title: { type: string }
+        response_id: { type: string }
+        respondent_email: { type: string, nullable: true }
+        status: { $ref: "#/components/schemas/TicketStatus" }
+        priority: { $ref: "#/components/schemas/TicketPriority" }
         title_question_id: { type: string, nullable: true }
+        title: { type: string }
+        assignee:
+          allOf:
+            - $ref: "#/components/schemas/TicketAssignee"
+          nullable: true
+        submitted_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    TicketAnswer:
+      type: object
+      required:
+        [question_id, question_title, question_type, values, display_value]
+      properties:
+        question_id: { type: string }
+        question_title: { type: string }
+        question_type: { type: string }
+        values:
+          type: array
+          items: { type: string }
+        display_value: { type: string }
+
     TicketDetail:
       allOf:
         - $ref: "#/components/schemas/TicketSummary"
@@ -226,6 +310,7 @@ components:
             answers:
               type: array
               items: { $ref: "#/components/schemas/TicketAnswer" }
+
     ListTicketsResponse:
       type: object
       required: [tickets]
@@ -233,27 +318,45 @@ components:
         tickets:
           type: array
           items: { $ref: "#/components/schemas/TicketSummary" }
+
     UpdateTicketRequest:
       type: object
       properties:
-        status: { type: string, enum: [new, in_progress, done] }
+        status_id: { type: string, format: uuid }
         assignee_id: { type: string, format: uuid, nullable: true }
-        priority: { type: string, enum: [High, Medium, Low] }
-    UserProfile:
+        priority: { $ref: "#/components/schemas/TicketPriority" }
+
+    TicketHistory:
       type: object
-      required: [id, email, display_name]
+      required: [id, ticket_id, changed_by_name, field_name, created_at]
       properties:
         id: { type: string, format: uuid }
-        email: { type: string, format: email }
-        display_name: { type: string }
-    UpdateUserProfileRequest:
+        ticket_id: { type: string, format: uuid }
+        changed_by: { type: string, format: uuid, nullable: true }
+        changed_by_name: { type: string }
+        field_name: { type: string }
+        old_value: { type: string, nullable: true }
+        new_value: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+    ListTicketHistoriesResponse:
       type: object
-      required: [display_name]
+      required: [histories]
       properties:
-        display_name: { type: string }
+        histories:
+          type: array
+          items: { $ref: "#/components/schemas/TicketHistory" }
+
+    SyncResponse:
+      type: object
+      required: [synced, new_tickets]
+      properties:
+        synced: { type: integer }
+        new_tickets: { type: integer }
+        last: { type: string, format: date-time, nullable: true }
 
 security:
   - bearerAuth: []
+  - cookieAuth: []
 
 paths:
   /healthz:
@@ -268,6 +371,37 @@ paths:
               schema:
                 type: string
                 example: "ok"
+
+  /v1/auth/signup:
+    post:
+      summary: サインアップ
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignupRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignupResponse" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /v1/auth/login:
     post:
@@ -294,56 +428,110 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Email not verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "500":
           description: Internal server error
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/auth/signup:
+  /v1/auth/logout:
     post:
-      summary: サインアップ
+      summary: ログアウト
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/auth/verify-email:
+    post:
+      summary: メール認証
       security: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/SignupRequest" }
+            schema: { $ref: "#/components/schemas/VerifyEmailRequest" }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/SignupResponse" }
+        "204":
+          description: No Content
         "400":
           description: Validation error
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "409":
-          description: Email already exists
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
+        "404":
+          description: Token not found or expired
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/whoami:
-    get:
-      summary: user_idの取得
+  /v1/auth/verify-email/resend:
+    post:
+      summary: 認証メール再送
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResendVerificationRequest" }
       responses:
-        "200":
-          description: OK
+        "202":
+          description: Accepted
+        "400":
+          description: Validation error
           content:
             application/json:
-              schema:
-                type: object
-                required: [user_id]
-                properties:
-                  user_id: { type: string }
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/auth/password-reset:
+    post:
+      summary: パスワードリセット
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordResetRequest" }
+      responses:
+        "202":
+          description: Accepted
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/auth/password-reset/confirm:
+    post:
+      summary: パスワードリセット
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordResetConfirmRequest" }
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Token not found or expired
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /v1/me:
     get:
@@ -356,16 +544,6 @@ paths:
               schema: { $ref: "#/components/schemas/UserProfile" }
         "401":
           description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404":
-          description: User not found
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -392,16 +570,6 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "404":
-          description: User not found
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
     delete:
       summary: アカウント削除
       responses:
@@ -409,11 +577,6 @@ paths:
           description: No Content
         "401":
           description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -449,11 +612,6 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
 
   /v1/forms:
     get:
@@ -466,11 +624,6 @@ paths:
               schema: { $ref: "#/components/schemas/ListFormsResponse" }
         "401":
           description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -497,70 +650,95 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Forms not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{form_id}/health:
+  /v1/forms/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
     get:
-      summary: 接続検証
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
+      summary: フォーム取得
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                required: [form_id, title]
-                properties:
-                  form_id: { type: string }
-                  title: { type: string }
+              schema: { $ref: "#/components/schemas/Form" }
         "401":
           description: Unauthorized
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    patch:
+      summary: フォーム更新
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateFormRequest" }
+      responses:
+        "204":
+          description: Updated
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
-          description: Forms not found
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{form_id}/members:
-    get:
-      summary: メンバー一覧取得（admin/editor）
+  /v1/forms/{id}/sync:
+    post:
+      summary: 回答の同期
       parameters:
         - in: path
-          name: form_id
+          name: id
           required: true
-          schema: { type: string }
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 同期完了
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{id}/members:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: メンバー一覧取得
       responses:
         "200":
           description: OK
@@ -572,24 +750,13 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin/editor role required)
+        "404":
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
     post:
-      summary: メンバー追加（admin専用）
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
+      summary: メンバー追加
       requestBody:
         required: true
         content:
@@ -608,278 +775,29 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
         "404":
-          description: User not found
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-  /v1/forms/{form_id}/members/{user_id}:
+
+  /v1/forms/{id}/members/{user_id}:
     parameters:
       - in: path
-        name: form_id
+        name: id
         required: true
-        schema: { type: string }
+        schema: { type: string, format: uuid }
       - in: path
         name: user_id
         required: true
         schema: { type: string, format: uuid }
     put:
-      summary: メンバーロール変更（admin専用）
+      summary: メンバーロール変更
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/ChangeMemberRoleRequest" }
-      responses:
-        "200":
-          description: OK
-        "400":
-          description: Validation error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
-    delete:
-      summary: メンバー削除（admin専用）
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Validation error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
-
-  /v1/forms/{form_id}/invites:
-    get:
-      summary: 招待コード一覧取得（admin専用）
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ListFormInvitesResponse" }
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
-    post:
-      summary: 招待コード発行（admin専用）
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [code]
-                properties:
-                  code: { type: string }
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
-  /v1/forms/{form_id}/invites/{code}:
-    delete:
-      summary: 招待コード失効（admin専用）
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
-        - in: path
-          name: code
-          required: true
-          schema: { type: string }
-      responses:
-        "204":
-          description: No Content
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404":
-          description: Invite not found
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
-  /v1/invites/accept:
-    post:
-      summary: 招待コード受理
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [code]
-              properties:
-                code: { type: string }
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Validation error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404":
-          description: Invite not found
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "409":
-          description: Already member
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "410":
-          description: Invite expired or revoked
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
-  /v1/forms/{form_id}/questions:
-    get:
-      summary: フォームの質問一覧取得（admin/editor）
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ListFormQuestionsResponse" }
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin/editor role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
-  /v1/forms/{form_id}/title-question:
-    patch:
-      summary: タイトル用質問の更新（admin/editor）
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              { $ref: "#/components/schemas/UpdateFormTitleQuestionRequest" }
       responses:
         "204":
           description: Updated
@@ -893,67 +811,71 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin/editor role required)
+        "404":
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
-  /v1/forms/{form_id}/sync:
-    post:
-      summary: フォーム回答の手動同期（admin/editor）
-      parameters:
-        - in: path
-          name: form_id
-          required: true
-          schema: { type: string }
+    delete:
+      summary: メンバー削除
       responses:
-        "200":
-          description: 同期完了
+        "204":
+          description: No Content
+        "400":
+          description: Validation error
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/SyncResponse" }
+              schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: Unauthorized
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin/editor role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
+        "404":
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/responses:
+  /v1/forms/{id}/invites:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
     get:
-      summary: 回答一覧取得（admin/editor）
-      parameters:
-        - in: query
-          name: form_id
-          schema: { type: string }
-          description: "フィルタリング用のフォームID"
-        - in: query
-          name: since
-          schema: { type: string, format: date-time }
-          description: "指定時刻以降の回答を取得（RFC3339形式）"
+      summary: 招待一覧取得
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ListResponsesResponse" }
+              schema: { $ref: "#/components/schemas/ListFormInvitesResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      summary: 招待作成
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInviteRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreateInviteResponse" }
         "400":
-          description: Validation error (invalid since format)
+          description: Validation error
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -962,29 +884,238 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin/editor role required)
+        "404":
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
+
+  /v1/forms/{id}/invites/{invite_id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: invite_id
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: 招待削除
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/invites/{invite_id}/accept:
+    parameters:
+      - in: path
+        name: invite_id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: 招待受諾
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{id}/questions:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: 質問一覧取得
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListFormQuestionsResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{id}/statuses:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: ステータス一覧取得
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListFormStatusesResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      summary: ステータス作成
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateFormStatusRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormStatus" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{id}/statuses/{status_id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: status_id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: ステータス更新
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateFormStatusRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormStatus" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      summary: ステータス削除
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Status in use
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{id}/statuses/{status_id}/default:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: status_id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: デフォルトステータス設定
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FormStatus" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
   /v1/tickets:
     get:
-      summary: チケット一覧取得（admin/editor）
+      summary: チケット一覧取得
       parameters:
         - in: query
-          name: form_id
-          schema: { type: string }
+          name: form
+          schema: { type: string, format: uuid }
           description: "フィルタリング用のフォームID"
         - in: query
-          name: status
-          schema: { type: string, enum: [new, in_progress, done] }
-          description: "フィルタリング用のステータス"
+          name: status_id
+          schema: { type: string, format: uuid }
+          description: "フィルタリング用のステータスID"
       responses:
         "200":
           description: OK
@@ -996,59 +1127,38 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin/editor role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
+        "404":
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
   /v1/tickets/{ticket_id}:
+    parameters:
+      - in: path
+        name: ticket_id
+        required: true
+        schema: { type: string, format: uuid }
     get:
-      summary: チケット詳細取得（admin/editor）
-      parameters:
-        - in: path
-          name: ticket_id
-          required: true
-          schema: { type: string, format: uuid }
+      summary: チケット詳細取得
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/TicketDetail" }
-        "400":
-          description: Validation error (invalid ticket_id format)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: Unauthorized
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin/editor role required)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
         "404":
-          description: Ticket not found
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-
     patch:
-      summary: チケット更新（admin/editor）
-      parameters:
-        - in: path
-          name: ticket_id
-          required: true
-          schema: { type: string, format: uuid }
+      summary: チケット更新
       requestBody:
         required: true
         content:
@@ -1070,13 +1180,34 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "403":
-          description: Forbidden (admin/editor role required)
+        "404":
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
-        "500":
-          description: Internal server error
+
+  /v1/tickets/{ticket_id}/histories:
+    parameters:
+      - in: path
+        name: ticket_id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: チケット履歴一覧取得
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/ListTicketHistoriesResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

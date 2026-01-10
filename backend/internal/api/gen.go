@@ -22,6 +22,7 @@ import (
 
 const (
 	BearerAuthScopes = "bearerAuth.Scopes"
+	CookieAuthScopes = "cookieAuth.Scopes"
 )
 
 // Defines values for AddMemberRequestRole.
@@ -36,64 +37,29 @@ const (
 	ChangeMemberRoleRequestRoleEditor ChangeMemberRoleRequestRole = "editor"
 )
 
+// Defines values for CreateInviteRequestRole.
+const (
+	CreateInviteRequestRoleAdmin  CreateInviteRequestRole = "admin"
+	CreateInviteRequestRoleEditor CreateInviteRequestRole = "editor"
+)
+
 // Defines values for FormInviteRole.
 const (
+	FormInviteRoleAdmin  FormInviteRole = "admin"
 	FormInviteRoleEditor FormInviteRole = "editor"
 )
 
 // Defines values for MemberRole.
 const (
-	MemberRoleAdmin  MemberRole = "admin"
-	MemberRoleEditor MemberRole = "editor"
+	Admin  MemberRole = "admin"
+	Editor MemberRole = "editor"
 )
 
-// Defines values for TicketDetailPriority.
+// Defines values for TicketPriority.
 const (
-	TicketDetailPriorityHigh   TicketDetailPriority = "High"
-	TicketDetailPriorityLow    TicketDetailPriority = "Low"
-	TicketDetailPriorityMedium TicketDetailPriority = "Medium"
-)
-
-// Defines values for TicketDetailStatus.
-const (
-	TicketDetailStatusDone       TicketDetailStatus = "done"
-	TicketDetailStatusInProgress TicketDetailStatus = "in_progress"
-	TicketDetailStatusNew        TicketDetailStatus = "new"
-)
-
-// Defines values for TicketSummaryPriority.
-const (
-	TicketSummaryPriorityHigh   TicketSummaryPriority = "High"
-	TicketSummaryPriorityLow    TicketSummaryPriority = "Low"
-	TicketSummaryPriorityMedium TicketSummaryPriority = "Medium"
-)
-
-// Defines values for TicketSummaryStatus.
-const (
-	TicketSummaryStatusDone       TicketSummaryStatus = "done"
-	TicketSummaryStatusInProgress TicketSummaryStatus = "in_progress"
-	TicketSummaryStatusNew        TicketSummaryStatus = "new"
-)
-
-// Defines values for UpdateTicketRequestPriority.
-const (
-	High   UpdateTicketRequestPriority = "High"
-	Low    UpdateTicketRequestPriority = "Low"
-	Medium UpdateTicketRequestPriority = "Medium"
-)
-
-// Defines values for UpdateTicketRequestStatus.
-const (
-	UpdateTicketRequestStatusDone       UpdateTicketRequestStatus = "done"
-	UpdateTicketRequestStatusInProgress UpdateTicketRequestStatus = "in_progress"
-	UpdateTicketRequestStatusNew        UpdateTicketRequestStatus = "new"
-)
-
-// Defines values for GetV1TicketsParamsStatus.
-const (
-	GetV1TicketsParamsStatusDone       GetV1TicketsParamsStatus = "done"
-	GetV1TicketsParamsStatusInProgress GetV1TicketsParamsStatus = "in_progress"
-	GetV1TicketsParamsStatusNew        GetV1TicketsParamsStatus = "new"
+	High   TicketPriority = "high"
+	Low    TicketPriority = "low"
+	Medium TicketPriority = "medium"
 )
 
 // AddMemberRequest defines model for AddMemberRequest.
@@ -113,6 +79,29 @@ type ChangeMemberRoleRequest struct {
 // ChangeMemberRoleRequestRole defines model for ChangeMemberRoleRequest.Role.
 type ChangeMemberRoleRequestRole string
 
+// CreateFormStatusRequest defines model for CreateFormStatusRequest.
+type CreateFormStatusRequest struct {
+	Color        *string `json:"color"`
+	DisplayOrder int     `json:"display_order"`
+	IsDefault    *bool   `json:"is_default,omitempty"`
+	Name         string  `json:"name"`
+}
+
+// CreateInviteRequest defines model for CreateInviteRequest.
+type CreateInviteRequest struct {
+	Email openapi_types.Email     `json:"email"`
+	Role  CreateInviteRequestRole `json:"role"`
+}
+
+// CreateInviteRequestRole defines model for CreateInviteRequest.Role.
+type CreateInviteRequestRole string
+
+// CreateInviteResponse defines model for CreateInviteResponse.
+type CreateInviteResponse struct {
+	ExpiresAt time.Time          `json:"expires_at"`
+	InviteId  openapi_types.UUID `json:"invite_id"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Code    string                  `json:"code"`
@@ -120,15 +109,25 @@ type Error struct {
 	Message *string                 `json:"message"`
 }
 
+// Form defines model for Form.
+type Form struct {
+	CreatedAt           time.Time          `json:"created_at"`
+	Description         *string            `json:"description"`
+	EmailCollectionType *string            `json:"email_collection_type"`
+	Id                  openapi_types.UUID `json:"id"`
+	SyncedAt            *time.Time         `json:"synced_at"`
+	Title               string             `json:"title"`
+	TitleQuestionId     *string            `json:"title_question_id"`
+}
+
 // FormInvite defines model for FormInvite.
 type FormInvite struct {
-	Code      string             `json:"code"`
-	CreatedAt time.Time          `json:"created_at"`
-	CreatedBy openapi_types.UUID `json:"created_by"`
-	ExpiresAt time.Time          `json:"expires_at"`
-	FormId    string             `json:"form_id"`
-	Revoked   bool               `json:"revoked"`
-	Role      FormInviteRole     `json:"role"`
+	CreatedAt time.Time           `json:"created_at"`
+	Email     openapi_types.Email `json:"email"`
+	ExpiresAt time.Time           `json:"expires_at"`
+	Id        openapi_types.UUID  `json:"id"`
+	InvitedBy openapi_types.UUID  `json:"invited_by"`
+	Role      FormInviteRole      `json:"role"`
 }
 
 // FormInviteRole defines model for FormInvite.Role.
@@ -136,17 +135,26 @@ type FormInviteRole string
 
 // FormQuestion defines model for FormQuestion.
 type FormQuestion struct {
-	FormId       string    `json:"form_id"`
 	Options      *[]string `json:"options"`
 	QuestionId   string    `json:"question_id"`
 	QuestionType string    `json:"question_type"`
 	Title        string    `json:"title"`
 }
 
+// FormStatus defines model for FormStatus.
+type FormStatus struct {
+	Color        *string            `json:"color"`
+	DisplayOrder int                `json:"display_order"`
+	Id           openapi_types.UUID `json:"id"`
+	IsDefault    bool               `json:"is_default"`
+	Name         string             `json:"name"`
+}
+
 // FormSummary defines model for FormSummary.
 type FormSummary struct {
-	FormId string `json:"form_id"`
-	Title  string `json:"title"`
+	Id       openapi_types.UUID `json:"id"`
+	SyncedAt *time.Time         `json:"synced_at"`
+	Title    string             `json:"title"`
 }
 
 // ListFormInvitesResponse defines model for ListFormInvitesResponse.
@@ -159,6 +167,11 @@ type ListFormQuestionsResponse struct {
 	Questions []FormQuestion `json:"questions"`
 }
 
+// ListFormStatusesResponse defines model for ListFormStatusesResponse.
+type ListFormStatusesResponse struct {
+	Statuses []FormStatus `json:"statuses"`
+}
+
 // ListFormsResponse defines model for ListFormsResponse.
 type ListFormsResponse struct {
 	Forms []FormSummary `json:"forms"`
@@ -169,9 +182,9 @@ type ListMembersResponse struct {
 	Members []Member `json:"members"`
 }
 
-// ListResponsesResponse defines model for ListResponsesResponse.
-type ListResponsesResponse struct {
-	Responses []Response `json:"responses"`
+// ListTicketHistoriesResponse defines model for ListTicketHistoriesResponse.
+type ListTicketHistoriesResponse struct {
+	Histories []TicketHistory `json:"histories"`
 }
 
 // ListTicketsResponse defines model for ListTicketsResponse.
@@ -192,35 +205,40 @@ type LoginResponse struct {
 
 // Member defines model for Member.
 type Member struct {
-	Email openapi_types.Email `json:"email"`
-	Id    openapi_types.UUID  `json:"id"`
-	Role  MemberRole          `json:"role"`
+	DisplayName *string             `json:"display_name,omitempty"`
+	Email       openapi_types.Email `json:"email"`
+	Id          openapi_types.UUID  `json:"id"`
+	Role        MemberRole          `json:"role"`
 }
 
 // MemberRole defines model for Member.Role.
 type MemberRole string
 
+// PasswordResetConfirmRequest defines model for PasswordResetConfirmRequest.
+type PasswordResetConfirmRequest struct {
+	NewPassword string `json:"new_password"`
+	Token       string `json:"token"`
+}
+
+// PasswordResetRequest defines model for PasswordResetRequest.
+type PasswordResetRequest struct {
+	Email openapi_types.Email `json:"email"`
+}
+
 // RegisterFormRequest defines model for RegisterFormRequest.
 type RegisterFormRequest struct {
-	PollingSec *int `json:"polling_sec,omitempty"`
-
 	// Url Google Forms のURLまたはフォームID
 	Url string `json:"url"`
 }
 
 // RegisterFormResponse defines model for RegisterFormResponse.
 type RegisterFormResponse struct {
-	FormId string `json:"form_id"`
+	Id openapi_types.UUID `json:"id"`
 }
 
-// Response defines model for Response.
-type Response struct {
-	CreatedAt     time.Time              `json:"created_at"`
-	FormId        string                 `json:"form_id"`
-	Payload       map[string]interface{} `json:"payload"`
-	ResponseId    string                 `json:"response_id"`
-	SchemaVersion int                    `json:"schema_version"`
-	SubmittedAt   time.Time              `json:"submitted_at"`
+// ResendVerificationRequest defines model for ResendVerificationRequest.
+type ResendVerificationRequest struct {
+	Email openapi_types.Email `json:"email"`
 }
 
 // SignupRequest defines model for SignupRequest.
@@ -232,19 +250,14 @@ type SignupRequest struct {
 
 // SignupResponse defines model for SignupResponse.
 type SignupResponse struct {
-	Token string `json:"token"`
+	Id openapi_types.UUID `json:"id"`
 }
 
 // SyncResponse defines model for SyncResponse.
 type SyncResponse struct {
-	// Last 最後に同期された回答の送信時刻（RFC3339形式）または空文字列
-	Last *string `json:"last,omitempty"`
-
-	// NewTickets 新規作成されたチケット数
-	NewTickets int `json:"newTickets"`
-
-	// Synced 同期された回答数
-	Synced int `json:"synced"`
+	Last       *time.Time `json:"last"`
+	NewTickets int        `json:"new_tickets"`
+	Synced     int        `json:"synced"`
 }
 
 // TicketAnswer defines model for TicketAnswer.
@@ -265,64 +278,77 @@ type TicketAssignee struct {
 
 // TicketDetail defines model for TicketDetail.
 type TicketDetail struct {
-	Answers         []TicketAnswer       `json:"answers"`
-	Assignee        *TicketAssignee      `json:"assignee"`
-	FormId          string               `json:"form_id"`
-	FormTitle       string               `json:"form_title"`
-	Id              openapi_types.UUID   `json:"id"`
-	Priority        TicketDetailPriority `json:"priority"`
-	ResponseId      string               `json:"response_id"`
-	Status          TicketDetailStatus   `json:"status"`
-	SubmittedAt     time.Time            `json:"submitted_at"`
-	Title           string               `json:"title"`
-	TitleQuestionId *string              `json:"title_question_id"`
-	UpdatedAt       time.Time            `json:"updated_at"`
+	Answers         []TicketAnswer     `json:"answers"`
+	Assignee        *TicketAssignee    `json:"assignee"`
+	CreatedAt       time.Time          `json:"created_at"`
+	FormId          openapi_types.UUID `json:"form_id"`
+	FormTitle       string             `json:"form_title"`
+	Id              openapi_types.UUID `json:"id"`
+	Priority        TicketPriority     `json:"priority"`
+	RespondentEmail *string            `json:"respondent_email"`
+	ResponseId      string             `json:"response_id"`
+	Status          TicketStatus       `json:"status"`
+	SubmittedAt     time.Time          `json:"submitted_at"`
+	Title           string             `json:"title"`
+	TitleQuestionId *string            `json:"title_question_id"`
 }
 
-// TicketDetailPriority defines model for TicketDetail.Priority.
-type TicketDetailPriority string
+// TicketHistory defines model for TicketHistory.
+type TicketHistory struct {
+	ChangedBy     *openapi_types.UUID `json:"changed_by"`
+	ChangedByName string              `json:"changed_by_name"`
+	CreatedAt     time.Time           `json:"created_at"`
+	FieldName     string              `json:"field_name"`
+	Id            openapi_types.UUID  `json:"id"`
+	NewValue      *string             `json:"new_value"`
+	OldValue      *string             `json:"old_value"`
+	TicketId      openapi_types.UUID  `json:"ticket_id"`
+}
 
-// TicketDetailStatus defines model for TicketDetail.Status.
-type TicketDetailStatus string
+// TicketPriority defines model for TicketPriority.
+type TicketPriority string
+
+// TicketStatus defines model for TicketStatus.
+type TicketStatus struct {
+	Color *string            `json:"color"`
+	Id    openapi_types.UUID `json:"id"`
+	Name  string             `json:"name"`
+}
 
 // TicketSummary defines model for TicketSummary.
 type TicketSummary struct {
-	Assignee        *TicketAssignee       `json:"assignee"`
-	FormId          string                `json:"form_id"`
-	FormTitle       string                `json:"form_title"`
-	Id              openapi_types.UUID    `json:"id"`
-	Priority        TicketSummaryPriority `json:"priority"`
-	ResponseId      string                `json:"response_id"`
-	Status          TicketSummaryStatus   `json:"status"`
-	SubmittedAt     time.Time             `json:"submitted_at"`
-	Title           string                `json:"title"`
-	TitleQuestionId *string               `json:"title_question_id"`
-	UpdatedAt       time.Time             `json:"updated_at"`
+	Assignee        *TicketAssignee    `json:"assignee"`
+	CreatedAt       time.Time          `json:"created_at"`
+	FormId          openapi_types.UUID `json:"form_id"`
+	FormTitle       string             `json:"form_title"`
+	Id              openapi_types.UUID `json:"id"`
+	Priority        TicketPriority     `json:"priority"`
+	RespondentEmail *string            `json:"respondent_email"`
+	ResponseId      string             `json:"response_id"`
+	Status          TicketStatus       `json:"status"`
+	SubmittedAt     time.Time          `json:"submitted_at"`
+	Title           string             `json:"title"`
+	TitleQuestionId *string            `json:"title_question_id"`
 }
 
-// TicketSummaryPriority defines model for TicketSummary.Priority.
-type TicketSummaryPriority string
-
-// TicketSummaryStatus defines model for TicketSummary.Status.
-type TicketSummaryStatus string
-
-// UpdateFormTitleQuestionRequest defines model for UpdateFormTitleQuestionRequest.
-type UpdateFormTitleQuestionRequest struct {
+// UpdateFormRequest defines model for UpdateFormRequest.
+type UpdateFormRequest struct {
 	TitleQuestionId *string `json:"title_question_id"`
+}
+
+// UpdateFormStatusRequest defines model for UpdateFormStatusRequest.
+type UpdateFormStatusRequest struct {
+	Color        *string `json:"color"`
+	DisplayOrder *int    `json:"display_order,omitempty"`
+	Name         *string `json:"name,omitempty"`
 }
 
 // UpdateTicketRequest defines model for UpdateTicketRequest.
 type UpdateTicketRequest struct {
-	AssigneeId *openapi_types.UUID          `json:"assignee_id"`
-	Priority   *UpdateTicketRequestPriority `json:"priority,omitempty"`
-	Status     *UpdateTicketRequestStatus   `json:"status,omitempty"`
+	AssigneeId *openapi_types.UUID `json:"assignee_id"`
+	Priority   *TicketPriority     `json:"priority,omitempty"`
+	StatusId   *openapi_types.UUID `json:"status_id,omitempty"`
 }
-
-// UpdateTicketRequestPriority defines model for UpdateTicketRequest.Priority.
-type UpdateTicketRequestPriority string
-
-// UpdateTicketRequestStatus defines model for UpdateTicketRequest.Status.
-type UpdateTicketRequestStatus string
 
 // UpdateUserProfileRequest defines model for UpdateUserProfileRequest.
 type UpdateUserProfileRequest struct {
@@ -334,11 +360,12 @@ type UserProfile struct {
 	DisplayName string              `json:"display_name"`
 	Email       openapi_types.Email `json:"email"`
 	Id          openapi_types.UUID  `json:"id"`
+	VerifiedAt  *time.Time          `json:"verified_at"`
 }
 
-// PostV1InvitesAcceptJSONBody defines parameters for PostV1InvitesAccept.
-type PostV1InvitesAcceptJSONBody struct {
-	Code string `json:"code"`
+// VerifyEmailRequest defines model for VerifyEmailRequest.
+type VerifyEmailRequest struct {
+	Token string `json:"token"`
 }
 
 // PatchV1MePasswordJSONBody defines parameters for PatchV1MePassword.
@@ -347,47 +374,53 @@ type PatchV1MePasswordJSONBody struct {
 	NewPassword     string `json:"new_password"`
 }
 
-// GetV1ResponsesParams defines parameters for GetV1Responses.
-type GetV1ResponsesParams struct {
-	// FormId フィルタリング用のフォームID
-	FormId *string `form:"form_id,omitempty" json:"form_id,omitempty"`
-
-	// Since 指定時刻以降の回答を取得（RFC3339形式）
-	Since *time.Time `form:"since,omitempty" json:"since,omitempty"`
-}
-
 // GetV1TicketsParams defines parameters for GetV1Tickets.
 type GetV1TicketsParams struct {
-	// FormId フィルタリング用のフォームID
-	FormId *string `form:"form_id,omitempty" json:"form_id,omitempty"`
+	// Form フィルタリング用のフォームID
+	Form *openapi_types.UUID `form:"form,omitempty" json:"form,omitempty"`
 
-	// Status フィルタリング用のステータス
-	Status *GetV1TicketsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+	// StatusId フィルタリング用のステータスID
+	StatusId *openapi_types.UUID `form:"status_id,omitempty" json:"status_id,omitempty"`
 }
-
-// GetV1TicketsParamsStatus defines parameters for GetV1Tickets.
-type GetV1TicketsParamsStatus string
 
 // PostV1AuthLoginJSONRequestBody defines body for PostV1AuthLogin for application/json ContentType.
 type PostV1AuthLoginJSONRequestBody = LoginRequest
 
+// PostV1AuthPasswordResetJSONRequestBody defines body for PostV1AuthPasswordReset for application/json ContentType.
+type PostV1AuthPasswordResetJSONRequestBody = PasswordResetRequest
+
+// PostV1AuthPasswordResetConfirmJSONRequestBody defines body for PostV1AuthPasswordResetConfirm for application/json ContentType.
+type PostV1AuthPasswordResetConfirmJSONRequestBody = PasswordResetConfirmRequest
+
 // PostV1AuthSignupJSONRequestBody defines body for PostV1AuthSignup for application/json ContentType.
 type PostV1AuthSignupJSONRequestBody = SignupRequest
+
+// PostV1AuthVerifyEmailJSONRequestBody defines body for PostV1AuthVerifyEmail for application/json ContentType.
+type PostV1AuthVerifyEmailJSONRequestBody = VerifyEmailRequest
+
+// PostV1AuthVerifyEmailResendJSONRequestBody defines body for PostV1AuthVerifyEmailResend for application/json ContentType.
+type PostV1AuthVerifyEmailResendJSONRequestBody = ResendVerificationRequest
 
 // PostV1FormsJSONRequestBody defines body for PostV1Forms for application/json ContentType.
 type PostV1FormsJSONRequestBody = RegisterFormRequest
 
-// PostV1FormsFormIdMembersJSONRequestBody defines body for PostV1FormsFormIdMembers for application/json ContentType.
-type PostV1FormsFormIdMembersJSONRequestBody = AddMemberRequest
+// PatchV1FormsIdJSONRequestBody defines body for PatchV1FormsId for application/json ContentType.
+type PatchV1FormsIdJSONRequestBody = UpdateFormRequest
 
-// PutV1FormsFormIdMembersUserIdJSONRequestBody defines body for PutV1FormsFormIdMembersUserId for application/json ContentType.
-type PutV1FormsFormIdMembersUserIdJSONRequestBody = ChangeMemberRoleRequest
+// PostV1FormsIdInvitesJSONRequestBody defines body for PostV1FormsIdInvites for application/json ContentType.
+type PostV1FormsIdInvitesJSONRequestBody = CreateInviteRequest
 
-// PatchV1FormsFormIdTitleQuestionJSONRequestBody defines body for PatchV1FormsFormIdTitleQuestion for application/json ContentType.
-type PatchV1FormsFormIdTitleQuestionJSONRequestBody = UpdateFormTitleQuestionRequest
+// PostV1FormsIdMembersJSONRequestBody defines body for PostV1FormsIdMembers for application/json ContentType.
+type PostV1FormsIdMembersJSONRequestBody = AddMemberRequest
 
-// PostV1InvitesAcceptJSONRequestBody defines body for PostV1InvitesAccept for application/json ContentType.
-type PostV1InvitesAcceptJSONRequestBody PostV1InvitesAcceptJSONBody
+// PutV1FormsIdMembersUserIdJSONRequestBody defines body for PutV1FormsIdMembersUserId for application/json ContentType.
+type PutV1FormsIdMembersUserIdJSONRequestBody = ChangeMemberRoleRequest
+
+// PostV1FormsIdStatusesJSONRequestBody defines body for PostV1FormsIdStatuses for application/json ContentType.
+type PostV1FormsIdStatusesJSONRequestBody = CreateFormStatusRequest
+
+// PatchV1FormsIdStatusesStatusIdJSONRequestBody defines body for PatchV1FormsIdStatusesStatusId for application/json ContentType.
+type PatchV1FormsIdStatusesStatusIdJSONRequestBody = UpdateFormStatusRequest
 
 // PatchV1MeJSONRequestBody defines body for PatchV1Me for application/json ContentType.
 type PatchV1MeJSONRequestBody = UpdateUserProfileRequest
@@ -406,51 +439,81 @@ type ServerInterface interface {
 	// ログイン
 	// (POST /v1/auth/login)
 	PostV1AuthLogin(c *gin.Context)
+	// ログアウト
+	// (POST /v1/auth/logout)
+	PostV1AuthLogout(c *gin.Context)
+	// パスワードリセット
+	// (POST /v1/auth/password-reset)
+	PostV1AuthPasswordReset(c *gin.Context)
+	// パスワードリセット
+	// (POST /v1/auth/password-reset/confirm)
+	PostV1AuthPasswordResetConfirm(c *gin.Context)
 	// サインアップ
 	// (POST /v1/auth/signup)
 	PostV1AuthSignup(c *gin.Context)
+	// メール認証
+	// (POST /v1/auth/verify-email)
+	PostV1AuthVerifyEmail(c *gin.Context)
+	// 認証メール再送
+	// (POST /v1/auth/verify-email/resend)
+	PostV1AuthVerifyEmailResend(c *gin.Context)
 	// フォーム一覧
 	// (GET /v1/forms)
 	GetV1Forms(c *gin.Context)
 	// フォーム登録
 	// (POST /v1/forms)
 	PostV1Forms(c *gin.Context)
-	// 接続検証
-	// (GET /v1/forms/{form_id}/health)
-	GetV1FormsFormIdHealth(c *gin.Context, formId string)
-	// 招待コード一覧取得（admin専用）
-	// (GET /v1/forms/{form_id}/invites)
-	GetV1FormsFormIdInvites(c *gin.Context, formId string)
-	// 招待コード発行（admin専用）
-	// (POST /v1/forms/{form_id}/invites)
-	PostV1FormsFormIdInvites(c *gin.Context, formId string)
-	// 招待コード失効（admin専用）
-	// (DELETE /v1/forms/{form_id}/invites/{code})
-	DeleteV1FormsFormIdInvitesCode(c *gin.Context, formId string, code string)
-	// メンバー一覧取得（admin/editor）
-	// (GET /v1/forms/{form_id}/members)
-	GetV1FormsFormIdMembers(c *gin.Context, formId string)
-	// メンバー追加（admin専用）
-	// (POST /v1/forms/{form_id}/members)
-	PostV1FormsFormIdMembers(c *gin.Context, formId string)
-	// メンバー削除（admin専用）
-	// (DELETE /v1/forms/{form_id}/members/{user_id})
-	DeleteV1FormsFormIdMembersUserId(c *gin.Context, formId string, userId openapi_types.UUID)
-	// メンバーロール変更（admin専用）
-	// (PUT /v1/forms/{form_id}/members/{user_id})
-	PutV1FormsFormIdMembersUserId(c *gin.Context, formId string, userId openapi_types.UUID)
-	// フォームの質問一覧取得（admin/editor）
-	// (GET /v1/forms/{form_id}/questions)
-	GetV1FormsFormIdQuestions(c *gin.Context, formId string)
-	// フォーム回答の手動同期（admin/editor）
-	// (POST /v1/forms/{form_id}/sync)
-	PostV1FormsFormIdSync(c *gin.Context, formId string)
-	// タイトル用質問の更新（admin/editor）
-	// (PATCH /v1/forms/{form_id}/title-question)
-	PatchV1FormsFormIdTitleQuestion(c *gin.Context, formId string)
-	// 招待コード受理
-	// (POST /v1/invites/accept)
-	PostV1InvitesAccept(c *gin.Context)
+	// フォーム取得
+	// (GET /v1/forms/{id})
+	GetV1FormsId(c *gin.Context, id openapi_types.UUID)
+	// フォーム更新
+	// (PATCH /v1/forms/{id})
+	PatchV1FormsId(c *gin.Context, id openapi_types.UUID)
+	// 招待一覧取得
+	// (GET /v1/forms/{id}/invites)
+	GetV1FormsIdInvites(c *gin.Context, id openapi_types.UUID)
+	// 招待作成
+	// (POST /v1/forms/{id}/invites)
+	PostV1FormsIdInvites(c *gin.Context, id openapi_types.UUID)
+	// 招待削除
+	// (DELETE /v1/forms/{id}/invites/{invite_id})
+	DeleteV1FormsIdInvitesInviteId(c *gin.Context, id openapi_types.UUID, inviteId openapi_types.UUID)
+	// メンバー一覧取得
+	// (GET /v1/forms/{id}/members)
+	GetV1FormsIdMembers(c *gin.Context, id openapi_types.UUID)
+	// メンバー追加
+	// (POST /v1/forms/{id}/members)
+	PostV1FormsIdMembers(c *gin.Context, id openapi_types.UUID)
+	// メンバー削除
+	// (DELETE /v1/forms/{id}/members/{user_id})
+	DeleteV1FormsIdMembersUserId(c *gin.Context, id openapi_types.UUID, userId openapi_types.UUID)
+	// メンバーロール変更
+	// (PUT /v1/forms/{id}/members/{user_id})
+	PutV1FormsIdMembersUserId(c *gin.Context, id openapi_types.UUID, userId openapi_types.UUID)
+	// 質問一覧取得
+	// (GET /v1/forms/{id}/questions)
+	GetV1FormsIdQuestions(c *gin.Context, id openapi_types.UUID)
+	// ステータス一覧取得
+	// (GET /v1/forms/{id}/statuses)
+	GetV1FormsIdStatuses(c *gin.Context, id openapi_types.UUID)
+	// ステータス作成
+	// (POST /v1/forms/{id}/statuses)
+	PostV1FormsIdStatuses(c *gin.Context, id openapi_types.UUID)
+	// ステータス削除
+	// (DELETE /v1/forms/{id}/statuses/{status_id})
+	DeleteV1FormsIdStatusesStatusId(c *gin.Context, id openapi_types.UUID, statusId openapi_types.UUID)
+	// ステータス更新
+	// (PATCH /v1/forms/{id}/statuses/{status_id})
+	PatchV1FormsIdStatusesStatusId(c *gin.Context, id openapi_types.UUID, statusId openapi_types.UUID)
+	// デフォルトステータス設定
+	// (POST /v1/forms/{id}/statuses/{status_id}/default)
+	PostV1FormsIdStatusesStatusIdDefault(c *gin.Context, id openapi_types.UUID, statusId openapi_types.UUID)
+	// 回答の同期
+	// (POST /v1/forms/{id}/sync)
+	PostV1FormsIdSync(c *gin.Context, id openapi_types.UUID)
+	// 招待受諾
+	// (POST /v1/invites/{invite_id}/accept)
+	PostV1InvitesInviteIdAccept(c *gin.Context, inviteId openapi_types.UUID)
 	// アカウント削除
 	// (DELETE /v1/me)
 	DeleteV1Me(c *gin.Context)
@@ -463,21 +526,18 @@ type ServerInterface interface {
 	// パスワード変更
 	// (PATCH /v1/me/password)
 	PatchV1MePassword(c *gin.Context)
-	// 回答一覧取得（admin/editor）
-	// (GET /v1/responses)
-	GetV1Responses(c *gin.Context, params GetV1ResponsesParams)
-	// チケット一覧取得（admin/editor）
+	// チケット一覧取得
 	// (GET /v1/tickets)
 	GetV1Tickets(c *gin.Context, params GetV1TicketsParams)
-	// チケット詳細取得（admin/editor）
+	// チケット詳細取得
 	// (GET /v1/tickets/{ticket_id})
 	GetV1TicketsTicketId(c *gin.Context, ticketId openapi_types.UUID)
-	// チケット更新（admin/editor）
+	// チケット更新
 	// (PATCH /v1/tickets/{ticket_id})
 	PatchV1TicketsTicketId(c *gin.Context, ticketId openapi_types.UUID)
-	// user_idの取得
-	// (GET /v1/whoami)
-	GetV1Whoami(c *gin.Context)
+	// チケット履歴一覧取得
+	// (GET /v1/tickets/{ticket_id}/histories)
+	GetV1TicketsTicketIdHistories(c *gin.Context, ticketId openapi_types.UUID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -515,6 +575,49 @@ func (siw *ServerInterfaceWrapper) PostV1AuthLogin(c *gin.Context) {
 	siw.Handler.PostV1AuthLogin(c)
 }
 
+// PostV1AuthLogout operation middleware
+func (siw *ServerInterfaceWrapper) PostV1AuthLogout(c *gin.Context) {
+
+	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1AuthLogout(c)
+}
+
+// PostV1AuthPasswordReset operation middleware
+func (siw *ServerInterfaceWrapper) PostV1AuthPasswordReset(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1AuthPasswordReset(c)
+}
+
+// PostV1AuthPasswordResetConfirm operation middleware
+func (siw *ServerInterfaceWrapper) PostV1AuthPasswordResetConfirm(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1AuthPasswordResetConfirm(c)
+}
+
 // PostV1AuthSignup operation middleware
 func (siw *ServerInterfaceWrapper) PostV1AuthSignup(c *gin.Context) {
 
@@ -528,10 +631,38 @@ func (siw *ServerInterfaceWrapper) PostV1AuthSignup(c *gin.Context) {
 	siw.Handler.PostV1AuthSignup(c)
 }
 
+// PostV1AuthVerifyEmail operation middleware
+func (siw *ServerInterfaceWrapper) PostV1AuthVerifyEmail(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1AuthVerifyEmail(c)
+}
+
+// PostV1AuthVerifyEmailResend operation middleware
+func (siw *ServerInterfaceWrapper) PostV1AuthVerifyEmailResend(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1AuthVerifyEmailResend(c)
+}
+
 // GetV1Forms operation middleware
 func (siw *ServerInterfaceWrapper) GetV1Forms(c *gin.Context) {
 
 	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -548,6 +679,8 @@ func (siw *ServerInterfaceWrapper) PostV1Forms(c *gin.Context) {
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -558,21 +691,23 @@ func (siw *ServerInterfaceWrapper) PostV1Forms(c *gin.Context) {
 	siw.Handler.PostV1Forms(c)
 }
 
-// GetV1FormsFormIdHealth operation middleware
-func (siw *ServerInterfaceWrapper) GetV1FormsFormIdHealth(c *gin.Context) {
+// GetV1FormsId operation middleware
+func (siw *ServerInterfaceWrapper) GetV1FormsId(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
 
 	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -581,24 +716,26 @@ func (siw *ServerInterfaceWrapper) GetV1FormsFormIdHealth(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetV1FormsFormIdHealth(c, formId)
+	siw.Handler.GetV1FormsId(c, id)
 }
 
-// GetV1FormsFormIdInvites operation middleware
-func (siw *ServerInterfaceWrapper) GetV1FormsFormIdInvites(c *gin.Context) {
+// PatchV1FormsId operation middleware
+func (siw *ServerInterfaceWrapper) PatchV1FormsId(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
 
 	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -607,24 +744,26 @@ func (siw *ServerInterfaceWrapper) GetV1FormsFormIdInvites(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetV1FormsFormIdInvites(c, formId)
+	siw.Handler.PatchV1FormsId(c, id)
 }
 
-// PostV1FormsFormIdInvites operation middleware
-func (siw *ServerInterfaceWrapper) PostV1FormsFormIdInvites(c *gin.Context) {
+// GetV1FormsIdInvites operation middleware
+func (siw *ServerInterfaceWrapper) GetV1FormsIdInvites(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
 
 	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -633,33 +772,26 @@ func (siw *ServerInterfaceWrapper) PostV1FormsFormIdInvites(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.PostV1FormsFormIdInvites(c, formId)
+	siw.Handler.GetV1FormsIdInvites(c, id)
 }
 
-// DeleteV1FormsFormIdInvitesCode operation middleware
-func (siw *ServerInterfaceWrapper) DeleteV1FormsFormIdInvitesCode(c *gin.Context) {
+// PostV1FormsIdInvites operation middleware
+func (siw *ServerInterfaceWrapper) PostV1FormsIdInvites(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "code" -------------
-	var code string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "code", c.Param("code"), &code, runtime.BindStyledParameterOptions{Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter code: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
 
 	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -668,24 +800,35 @@ func (siw *ServerInterfaceWrapper) DeleteV1FormsFormIdInvitesCode(c *gin.Context
 		}
 	}
 
-	siw.Handler.DeleteV1FormsFormIdInvitesCode(c, formId, code)
+	siw.Handler.PostV1FormsIdInvites(c, id)
 }
 
-// GetV1FormsFormIdMembers operation middleware
-func (siw *ServerInterfaceWrapper) GetV1FormsFormIdMembers(c *gin.Context) {
+// DeleteV1FormsIdInvitesInviteId operation middleware
+func (siw *ServerInterfaceWrapper) DeleteV1FormsIdInvitesInviteId(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "invite_id" -------------
+	var inviteId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "invite_id", c.Param("invite_id"), &inviteId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter invite_id: %w", err), http.StatusBadRequest)
 		return
 	}
 
 	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -694,24 +837,26 @@ func (siw *ServerInterfaceWrapper) GetV1FormsFormIdMembers(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetV1FormsFormIdMembers(c, formId)
+	siw.Handler.DeleteV1FormsIdInvitesInviteId(c, id, inviteId)
 }
 
-// PostV1FormsFormIdMembers operation middleware
-func (siw *ServerInterfaceWrapper) PostV1FormsFormIdMembers(c *gin.Context) {
+// GetV1FormsIdMembers operation middleware
+func (siw *ServerInterfaceWrapper) GetV1FormsIdMembers(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
 
 	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -720,20 +865,48 @@ func (siw *ServerInterfaceWrapper) PostV1FormsFormIdMembers(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.PostV1FormsFormIdMembers(c, formId)
+	siw.Handler.GetV1FormsIdMembers(c, id)
 }
 
-// DeleteV1FormsFormIdMembersUserId operation middleware
-func (siw *ServerInterfaceWrapper) DeleteV1FormsFormIdMembersUserId(c *gin.Context) {
+// PostV1FormsIdMembers operation middleware
+func (siw *ServerInterfaceWrapper) PostV1FormsIdMembers(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1FormsIdMembers(c, id)
+}
+
+// DeleteV1FormsIdMembersUserId operation middleware
+func (siw *ServerInterfaceWrapper) DeleteV1FormsIdMembersUserId(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -748,6 +921,8 @@ func (siw *ServerInterfaceWrapper) DeleteV1FormsFormIdMembersUserId(c *gin.Conte
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -755,20 +930,20 @@ func (siw *ServerInterfaceWrapper) DeleteV1FormsFormIdMembersUserId(c *gin.Conte
 		}
 	}
 
-	siw.Handler.DeleteV1FormsFormIdMembersUserId(c, formId, userId)
+	siw.Handler.DeleteV1FormsIdMembersUserId(c, id, userId)
 }
 
-// PutV1FormsFormIdMembersUserId operation middleware
-func (siw *ServerInterfaceWrapper) PutV1FormsFormIdMembersUserId(c *gin.Context) {
+// PutV1FormsIdMembersUserId operation middleware
+func (siw *ServerInterfaceWrapper) PutV1FormsIdMembersUserId(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -783,6 +958,8 @@ func (siw *ServerInterfaceWrapper) PutV1FormsFormIdMembersUserId(c *gin.Context)
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -790,25 +967,27 @@ func (siw *ServerInterfaceWrapper) PutV1FormsFormIdMembersUserId(c *gin.Context)
 		}
 	}
 
-	siw.Handler.PutV1FormsFormIdMembersUserId(c, formId, userId)
+	siw.Handler.PutV1FormsIdMembersUserId(c, id, userId)
 }
 
-// GetV1FormsFormIdQuestions operation middleware
-func (siw *ServerInterfaceWrapper) GetV1FormsFormIdQuestions(c *gin.Context) {
+// GetV1FormsIdQuestions operation middleware
+func (siw *ServerInterfaceWrapper) GetV1FormsIdQuestions(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -816,25 +995,27 @@ func (siw *ServerInterfaceWrapper) GetV1FormsFormIdQuestions(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetV1FormsFormIdQuestions(c, formId)
+	siw.Handler.GetV1FormsIdQuestions(c, id)
 }
 
-// PostV1FormsFormIdSync operation middleware
-func (siw *ServerInterfaceWrapper) PostV1FormsFormIdSync(c *gin.Context) {
+// GetV1FormsIdStatuses operation middleware
+func (siw *ServerInterfaceWrapper) GetV1FormsIdStatuses(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -842,25 +1023,27 @@ func (siw *ServerInterfaceWrapper) PostV1FormsFormIdSync(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.PostV1FormsFormIdSync(c, formId)
+	siw.Handler.GetV1FormsIdStatuses(c, id)
 }
 
-// PatchV1FormsFormIdTitleQuestion operation middleware
-func (siw *ServerInterfaceWrapper) PatchV1FormsFormIdTitleQuestion(c *gin.Context) {
+// PostV1FormsIdStatuses operation middleware
+func (siw *ServerInterfaceWrapper) PostV1FormsIdStatuses(c *gin.Context) {
 
 	var err error
 
-	// ------------- Path parameter "form_id" -------------
-	var formId string
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "form_id", c.Param("form_id"), &formId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -868,14 +1051,36 @@ func (siw *ServerInterfaceWrapper) PatchV1FormsFormIdTitleQuestion(c *gin.Contex
 		}
 	}
 
-	siw.Handler.PatchV1FormsFormIdTitleQuestion(c, formId)
+	siw.Handler.PostV1FormsIdStatuses(c, id)
 }
 
-// PostV1InvitesAccept operation middleware
-func (siw *ServerInterfaceWrapper) PostV1InvitesAccept(c *gin.Context) {
+// DeleteV1FormsIdStatusesStatusId operation middleware
+func (siw *ServerInterfaceWrapper) DeleteV1FormsIdStatusesStatusId(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "status_id" -------------
+	var statusId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "status_id", c.Param("status_id"), &statusId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status_id: %w", err), http.StatusBadRequest)
+		return
+	}
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -883,13 +1088,145 @@ func (siw *ServerInterfaceWrapper) PostV1InvitesAccept(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.PostV1InvitesAccept(c)
+	siw.Handler.DeleteV1FormsIdStatusesStatusId(c, id, statusId)
+}
+
+// PatchV1FormsIdStatusesStatusId operation middleware
+func (siw *ServerInterfaceWrapper) PatchV1FormsIdStatusesStatusId(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "status_id" -------------
+	var statusId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "status_id", c.Param("status_id"), &statusId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PatchV1FormsIdStatusesStatusId(c, id, statusId)
+}
+
+// PostV1FormsIdStatusesStatusIdDefault operation middleware
+func (siw *ServerInterfaceWrapper) PostV1FormsIdStatusesStatusIdDefault(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "status_id" -------------
+	var statusId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "status_id", c.Param("status_id"), &statusId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1FormsIdStatusesStatusIdDefault(c, id, statusId)
+}
+
+// PostV1FormsIdSync operation middleware
+func (siw *ServerInterfaceWrapper) PostV1FormsIdSync(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1FormsIdSync(c, id)
+}
+
+// PostV1InvitesInviteIdAccept operation middleware
+func (siw *ServerInterfaceWrapper) PostV1InvitesInviteIdAccept(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "invite_id" -------------
+	var inviteId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "invite_id", c.Param("invite_id"), &inviteId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter invite_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PostV1InvitesInviteIdAccept(c, inviteId)
 }
 
 // DeleteV1Me operation middleware
 func (siw *ServerInterfaceWrapper) DeleteV1Me(c *gin.Context) {
 
 	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -906,6 +1243,8 @@ func (siw *ServerInterfaceWrapper) GetV1Me(c *gin.Context) {
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -920,6 +1259,8 @@ func (siw *ServerInterfaceWrapper) GetV1Me(c *gin.Context) {
 func (siw *ServerInterfaceWrapper) PatchV1Me(c *gin.Context) {
 
 	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -936,6 +1277,8 @@ func (siw *ServerInterfaceWrapper) PatchV1MePassword(c *gin.Context) {
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -946,42 +1289,6 @@ func (siw *ServerInterfaceWrapper) PatchV1MePassword(c *gin.Context) {
 	siw.Handler.PatchV1MePassword(c)
 }
 
-// GetV1Responses operation middleware
-func (siw *ServerInterfaceWrapper) GetV1Responses(c *gin.Context) {
-
-	var err error
-
-	c.Set(BearerAuthScopes, []string{})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetV1ResponsesParams
-
-	// ------------- Optional query parameter "form_id" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "form_id", c.Request.URL.Query(), &params.FormId)
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "since" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "since", c.Request.URL.Query(), &params.Since)
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter since: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.GetV1Responses(c, params)
-}
-
 // GetV1Tickets operation middleware
 func (siw *ServerInterfaceWrapper) GetV1Tickets(c *gin.Context) {
 
@@ -989,22 +1296,24 @@ func (siw *ServerInterfaceWrapper) GetV1Tickets(c *gin.Context) {
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetV1TicketsParams
 
-	// ------------- Optional query parameter "form_id" -------------
+	// ------------- Optional query parameter "form" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "form_id", c.Request.URL.Query(), &params.FormId)
+	err = runtime.BindQueryParameter("form", true, false, "form", c.Request.URL.Query(), &params.Form)
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form_id: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter form: %w", err), http.StatusBadRequest)
 		return
 	}
 
-	// ------------- Optional query parameter "status" -------------
+	// ------------- Optional query parameter "status_id" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "status", c.Request.URL.Query(), &params.Status)
+	err = runtime.BindQueryParameter("form", true, false, "status_id", c.Request.URL.Query(), &params.StatusId)
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter status_id: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -1034,6 +1343,8 @@ func (siw *ServerInterfaceWrapper) GetV1TicketsTicketId(c *gin.Context) {
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1060,6 +1371,8 @@ func (siw *ServerInterfaceWrapper) PatchV1TicketsTicketId(c *gin.Context) {
 
 	c.Set(BearerAuthScopes, []string{})
 
+	c.Set(CookieAuthScopes, []string{})
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -1070,10 +1383,23 @@ func (siw *ServerInterfaceWrapper) PatchV1TicketsTicketId(c *gin.Context) {
 	siw.Handler.PatchV1TicketsTicketId(c, ticketId)
 }
 
-// GetV1Whoami operation middleware
-func (siw *ServerInterfaceWrapper) GetV1Whoami(c *gin.Context) {
+// GetV1TicketsTicketIdHistories operation middleware
+func (siw *ServerInterfaceWrapper) GetV1TicketsTicketIdHistories(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "ticket_id" -------------
+	var ticketId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ticket_id", c.Param("ticket_id"), &ticketId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter ticket_id: %w", err), http.StatusBadRequest)
+		return
+	}
 
 	c.Set(BearerAuthScopes, []string{})
+
+	c.Set(CookieAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -1082,7 +1408,7 @@ func (siw *ServerInterfaceWrapper) GetV1Whoami(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetV1Whoami(c)
+	siw.Handler.GetV1TicketsTicketIdHistories(c, ticketId)
 }
 
 // GinServerOptions provides options for the Gin server.
@@ -1114,85 +1440,96 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 
 	router.GET(options.BaseURL+"/healthz", wrapper.GetHealthz)
 	router.POST(options.BaseURL+"/v1/auth/login", wrapper.PostV1AuthLogin)
+	router.POST(options.BaseURL+"/v1/auth/logout", wrapper.PostV1AuthLogout)
+	router.POST(options.BaseURL+"/v1/auth/password-reset", wrapper.PostV1AuthPasswordReset)
+	router.POST(options.BaseURL+"/v1/auth/password-reset/confirm", wrapper.PostV1AuthPasswordResetConfirm)
 	router.POST(options.BaseURL+"/v1/auth/signup", wrapper.PostV1AuthSignup)
+	router.POST(options.BaseURL+"/v1/auth/verify-email", wrapper.PostV1AuthVerifyEmail)
+	router.POST(options.BaseURL+"/v1/auth/verify-email/resend", wrapper.PostV1AuthVerifyEmailResend)
 	router.GET(options.BaseURL+"/v1/forms", wrapper.GetV1Forms)
 	router.POST(options.BaseURL+"/v1/forms", wrapper.PostV1Forms)
-	router.GET(options.BaseURL+"/v1/forms/:form_id/health", wrapper.GetV1FormsFormIdHealth)
-	router.GET(options.BaseURL+"/v1/forms/:form_id/invites", wrapper.GetV1FormsFormIdInvites)
-	router.POST(options.BaseURL+"/v1/forms/:form_id/invites", wrapper.PostV1FormsFormIdInvites)
-	router.DELETE(options.BaseURL+"/v1/forms/:form_id/invites/:code", wrapper.DeleteV1FormsFormIdInvitesCode)
-	router.GET(options.BaseURL+"/v1/forms/:form_id/members", wrapper.GetV1FormsFormIdMembers)
-	router.POST(options.BaseURL+"/v1/forms/:form_id/members", wrapper.PostV1FormsFormIdMembers)
-	router.DELETE(options.BaseURL+"/v1/forms/:form_id/members/:user_id", wrapper.DeleteV1FormsFormIdMembersUserId)
-	router.PUT(options.BaseURL+"/v1/forms/:form_id/members/:user_id", wrapper.PutV1FormsFormIdMembersUserId)
-	router.GET(options.BaseURL+"/v1/forms/:form_id/questions", wrapper.GetV1FormsFormIdQuestions)
-	router.POST(options.BaseURL+"/v1/forms/:form_id/sync", wrapper.PostV1FormsFormIdSync)
-	router.PATCH(options.BaseURL+"/v1/forms/:form_id/title-question", wrapper.PatchV1FormsFormIdTitleQuestion)
-	router.POST(options.BaseURL+"/v1/invites/accept", wrapper.PostV1InvitesAccept)
+	router.GET(options.BaseURL+"/v1/forms/:id", wrapper.GetV1FormsId)
+	router.PATCH(options.BaseURL+"/v1/forms/:id", wrapper.PatchV1FormsId)
+	router.GET(options.BaseURL+"/v1/forms/:id/invites", wrapper.GetV1FormsIdInvites)
+	router.POST(options.BaseURL+"/v1/forms/:id/invites", wrapper.PostV1FormsIdInvites)
+	router.DELETE(options.BaseURL+"/v1/forms/:id/invites/:invite_id", wrapper.DeleteV1FormsIdInvitesInviteId)
+	router.GET(options.BaseURL+"/v1/forms/:id/members", wrapper.GetV1FormsIdMembers)
+	router.POST(options.BaseURL+"/v1/forms/:id/members", wrapper.PostV1FormsIdMembers)
+	router.DELETE(options.BaseURL+"/v1/forms/:id/members/:user_id", wrapper.DeleteV1FormsIdMembersUserId)
+	router.PUT(options.BaseURL+"/v1/forms/:id/members/:user_id", wrapper.PutV1FormsIdMembersUserId)
+	router.GET(options.BaseURL+"/v1/forms/:id/questions", wrapper.GetV1FormsIdQuestions)
+	router.GET(options.BaseURL+"/v1/forms/:id/statuses", wrapper.GetV1FormsIdStatuses)
+	router.POST(options.BaseURL+"/v1/forms/:id/statuses", wrapper.PostV1FormsIdStatuses)
+	router.DELETE(options.BaseURL+"/v1/forms/:id/statuses/:status_id", wrapper.DeleteV1FormsIdStatusesStatusId)
+	router.PATCH(options.BaseURL+"/v1/forms/:id/statuses/:status_id", wrapper.PatchV1FormsIdStatusesStatusId)
+	router.POST(options.BaseURL+"/v1/forms/:id/statuses/:status_id/default", wrapper.PostV1FormsIdStatusesStatusIdDefault)
+	router.POST(options.BaseURL+"/v1/forms/:id/sync", wrapper.PostV1FormsIdSync)
+	router.POST(options.BaseURL+"/v1/invites/:invite_id/accept", wrapper.PostV1InvitesInviteIdAccept)
 	router.DELETE(options.BaseURL+"/v1/me", wrapper.DeleteV1Me)
 	router.GET(options.BaseURL+"/v1/me", wrapper.GetV1Me)
 	router.PATCH(options.BaseURL+"/v1/me", wrapper.PatchV1Me)
 	router.PATCH(options.BaseURL+"/v1/me/password", wrapper.PatchV1MePassword)
-	router.GET(options.BaseURL+"/v1/responses", wrapper.GetV1Responses)
 	router.GET(options.BaseURL+"/v1/tickets", wrapper.GetV1Tickets)
 	router.GET(options.BaseURL+"/v1/tickets/:ticket_id", wrapper.GetV1TicketsTicketId)
 	router.PATCH(options.BaseURL+"/v1/tickets/:ticket_id", wrapper.PatchV1TicketsTicketId)
-	router.GET(options.BaseURL+"/v1/whoami", wrapper.GetV1Whoami)
+	router.GET(options.BaseURL+"/v1/tickets/:ticket_id/histories", wrapper.GetV1TicketsTicketIdHistories)
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"ZgAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
