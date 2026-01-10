@@ -133,6 +133,7 @@ func main() {
 	mh := &api.MembersHandler{Svc: svc}
 	ih := &api.InvitesHandler{Svc: svc}
 	sh := &api.StatusesHandler{Svc: svc}
+	th := &api.TicketHistoriesHandler{Svc: svc}
 	authz.POST("/forms", fh.PostV1Forms)
 	authz.GET("/forms", fh.GetV1Forms)
 	authz.GET("/forms/:form_id", func(c *gin.Context) {
@@ -179,6 +180,9 @@ func main() {
 	})
 	authz.PATCH("/tickets/:ticket_id", func(c *gin.Context) {
 		fh.PatchV1TicketsTicketId(c, c.Param("ticket_id"))
+	})
+	authz.GET("/tickets/:ticket_id/histories", func(c *gin.Context) {
+		th.GetV1TicketsTicketIdHistories(c, c.Param("ticket_id"))
 	})
 
 	if err := r.Run(addr); err != nil {
