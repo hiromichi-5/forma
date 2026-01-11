@@ -293,7 +293,7 @@ class ApiClient {
     formId: string,
     questionId: string | null
   ): Promise<void> {
-    await this.request<void>(`/v1/forms/${formId}/title-question`, {
+    await this.request<void>(`/v1/forms/${formId}`, {
       method: "PATCH",
       body: JSON.stringify({ title_question_id: questionId }),
     });
