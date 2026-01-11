@@ -9,6 +9,7 @@ export type FormResponse = {
   statusColor?: string | null
   assignedTo: string | null
   responses: Record<string, string>
+  questions: FormQuestion[]
   priority: "high" | "medium" | "low"
 }
 

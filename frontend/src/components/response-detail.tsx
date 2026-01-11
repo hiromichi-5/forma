@@ -90,16 +90,17 @@ export function ResponseDetail({
                 </span>
               </div>
               <div className="space-y-3">
-                {Object.entries(response.responses).map(
-                  ([key, value], index) => (
-                    <div key={key} className="bg-muted/50 p-3 rounded-lg">
-                      <p className="font-medium text-muted-foreground text-xs mb-1">
-                        質問 {index + 1}
-                      </p>
-                      <p className="text-sm">{value}</p>
-                    </div>
-                  )
-                )}
+                {response.questions.map((question, index) => (
+                  <div
+                    key={`${question.questionId}-${index}`}
+                    className="bg-muted/50 p-3 rounded-lg"
+                  >
+                    <p className="font-medium text-muted-foreground text-xs mb-1">
+                      {question.question}
+                    </p>
+                    <p className="text-sm">{question.answer}</p>
+                  </div>
+                ))}
               </div>
             </div>
 

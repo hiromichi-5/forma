@@ -215,16 +215,19 @@ export function ResponseTableView({
                       <h4 className="font-semibold text-sm text-foreground">
                         回答内容
                       </h4>
-                      {Object.entries(response.responses).map(
-                        ([key, value], index) => (
-                          <div key={key} className="text-sm">
-                            <span className="text-muted-foreground">
-                              質問 {index + 1}:{" "}
-                            </span>
-                            <span className="text-foreground">{value}</span>
-                          </div>
-                        )
-                      )}
+                      {response.questions.map((question, index) => (
+                        <div
+                          key={`${question.questionId}-${index}`}
+                          className="text-sm"
+                        >
+                          <span className="text-muted-foreground">
+                            {question.question}{" "}
+                          </span>
+                          <span className="text-foreground">
+                            {question.answer}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </TableCell>
                 </TableRow>

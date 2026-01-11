@@ -11,6 +11,13 @@ const buildResponsesMap = (answers: TicketAnswer[]): Record<string, string> =>
     return acc
   }, {})
 
+const buildQuestions = (answers: TicketAnswer[]): FormResponse["questions"] =>
+  answers.map((answer) => ({
+    questionId: answer.question_id,
+    question: answer.question_title,
+    answer: answer.display_value,
+  }))
+
 const normalizeRespondentEmail = (email: string | null): string =>
   email ?? "メールアドレス未登録"
 
@@ -26,6 +33,7 @@ const mapTicketDetailToFormResponse = (ticket: TicketDetail): FormResponse => {
     statusColor: ticket.status.color,
     assignedTo: ticket.assignee?.id ?? null,
     responses: buildResponsesMap(ticket.answers),
+    questions: buildQuestions(ticket.answers),
     priority: ticket.priority,
   }
 }
@@ -42,6 +50,7 @@ const mapSummaryToFormResponse = (ticket: TicketSummary): FormResponse => {
     statusColor: ticket.status.color,
     assignedTo: ticket.assignee?.id ?? null,
     responses: {},
+    questions: [],
     priority: ticket.priority,
   }
 }
