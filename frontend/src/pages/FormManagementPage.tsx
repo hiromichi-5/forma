@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Navigate, useParams } from "react-router-dom"
 import { AppLayout } from "@/components/app-layout"
 import { FormManagementHeader } from "@/components/form-management-header"
@@ -6,6 +6,7 @@ import { ResponseTableView } from "@/components/response-table-view"
 import { ResponseKanbanView } from "@/components/response-kanban-view"
 import { ResponseDetail } from "@/components/response-detail"
 import { MembersDialog } from "@/components/members-dialog"
+import { StatusesDialog } from "@/components/statuses-dialog"
 import { useFormResponses } from "@/hooks/use-form-responses"
 import { apiClient } from "@/lib/api"
 import type { FormResponse } from "@/types/form-response"
@@ -25,17 +26,35 @@ export default function FormManagementPage() {
   const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
+  const [isStatusesOpen, setIsStatusesOpen] = useState(false)
 
-  const formResponses = responses
+  const statusMap = useMemo(() => new Map(formStatuses.map((status) => [status.id, status])), [formStatuses])
+  const formResponses = useMemo(
+    () =>
+      responses.map((response) => {
+        const status = statusMap.get(response.status)
+        if (!status) return response
+        if (response.statusName === status.name && response.statusColor === status.color) {
+          return response
+        }
+        return {
+          ...response,
+          statusName: status.name,
+          statusColor: status.color,
+        }
+      }),
+    [responses, statusMap]
+  )
 
-  const filteredResponses = formResponses.filter((response) => {
-    const matchesSearch =
-      response.respondentEmail.toLowerCase().includes(searchQuery.toLowerCase())
-
-    const matchesStatus = statusFilter === "all" || response.status === statusFilter
-
-    return matchesSearch && matchesStatus
-  })
+  const filteredResponses = useMemo(
+    () =>
+      formResponses.filter((response) => {
+        const matchesSearch = response.respondentEmail.toLowerCase().includes(searchQuery.toLowerCase())
+        const matchesStatus = statusFilter === "all" || response.status === statusFilter
+        return matchesSearch && matchesStatus
+      }),
+    [formResponses, searchQuery, statusFilter]
+  )
 
   const formTitle = formResponses[0]?.formTitle || "フォーム管理"
 
@@ -103,6 +122,7 @@ export default function FormManagementPage() {
           questions={questions}
           titleQuestionId={form?.title_question_id ?? null}
           onTitleQuestionChange={handleTitleQuestionChange}
+          onStatusManageClick={() => setIsStatusesOpen(true)}
           onMembersClick={() => setIsMembersOpen(true)}
         />
 
@@ -145,6 +165,16 @@ export default function FormManagementPage() {
           onClose={() => setIsDetailOpen(false)}
           currentUserId="1"
           currentUserName="田中 太郎"
+        />
+      )}
+
+      {formId && (
+        <StatusesDialog
+          formId={formId}
+          open={isStatusesOpen}
+          onOpenChange={setIsStatusesOpen}
+          statuses={formStatuses}
+          onStatusesChange={setFormStatuses}
         />
       )}
 
