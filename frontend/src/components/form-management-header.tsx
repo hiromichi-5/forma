@@ -5,10 +5,11 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { LayoutList, LayoutGrid, Search, Users, ArrowLeft } from "lucide-react";
+import { LayoutList, LayoutGrid, Search, Users, ArrowLeft, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { FormStatus } from "@/types";
+import type { FormStatus, FormQuestion } from "@/types";
 
 const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
   if (!hex) return "transparent";
@@ -28,6 +29,10 @@ type FormManagementHeaderProps = {
   statusFilter: "all" | string;
   onStatusFilterChange: (status: "all" | string) => void;
   statuses: FormStatus[];
+  questions: FormQuestion[];
+  titleQuestionId: string | null;
+  onTitleQuestionChange: (questionId: string | null) => void;
+  onStatusManageClick?: () => void;
   onMembersClick: () => void;
 };
 
@@ -40,6 +45,10 @@ export function FormManagementHeader({
   statusFilter,
   onStatusFilterChange,
   statuses,
+  questions,
+  titleQuestionId,
+  onTitleQuestionChange,
+  onStatusManageClick,
   onMembersClick,
 }: FormManagementHeaderProps) {
   const navigate = useNavigate();
@@ -53,6 +62,7 @@ export function FormManagementHeader({
 
   return (
     <div className="space-y-4">
+      {/* 行1: タイトルと管理系ボタン */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
           <ArrowLeft className="h-5 w-5" />
@@ -60,6 +70,16 @@ export function FormManagementHeader({
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-foreground">{formTitle}</h1>
         </div>
+        {onStatusManageClick && (
+          <Button
+            onClick={onStatusManageClick}
+            variant="outline"
+            className="gap-2 bg-transparent"
+          >
+            <Settings className="h-4 w-4" />
+            ステータス管理
+          </Button>
+        )}
         <Button
           onClick={onMembersClick}
           variant="outline"
@@ -70,6 +90,7 @@ export function FormManagementHeader({
         </Button>
       </div>
 
+      {/* 行2: 検索・フィルター・表示設定 */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -109,6 +130,25 @@ export function FormManagementHeader({
             {sortedStatuses.map((status) => (
               <SelectItem key={status.id} value={status.id}>
                 {status.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={titleQuestionId ?? "none"}
+          onValueChange={(value) =>
+            onTitleQuestionChange(value === "none" ? null : value)
+          }
+        >
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue placeholder="表示する質問を選択" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">タイトル質問なし</SelectItem>
+            {questions.map((question) => (
+              <SelectItem key={question.question_id} value={question.question_id}>
+                {question.title}
               </SelectItem>
             ))}
           </SelectContent>

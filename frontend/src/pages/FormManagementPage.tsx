@@ -4,24 +4,26 @@ import { AppLayout } from "@/components/app-layout"
 import { FormManagementHeader } from "@/components/form-management-header"
 import { ResponseTableView } from "@/components/response-table-view"
 import { ResponseKanbanView } from "@/components/response-kanban-view"
-import { ChatInterface } from "@/components/chat-interface"
+import { ResponseDetail } from "@/components/response-detail"
 import { MembersDialog } from "@/components/members-dialog"
 import { useFormResponses } from "@/hooks/use-form-responses"
 import { apiClient } from "@/lib/api"
 import type { FormResponse } from "@/types/form-response"
-import type { Member, FormStatus } from "@/types"
+import type { Member, FormStatus, Form, FormQuestion } from "@/types"
 
 export default function FormManagementPage() {
   const params = useParams()
   const formId = params.id
   const { responses, updateResponseStatus, assignResponse, updatePriority } = useFormResponses(formId ?? null)
+  const [form, setForm] = useState<Form | null>(null)
+  const [questions, setQuestions] = useState<FormQuestion[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [formStatuses, setFormStatuses] = useState<FormStatus[]>([])
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | string>("all")
   const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null)
-  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
 
   const formResponses = responses
@@ -37,9 +39,19 @@ export default function FormManagementPage() {
 
   const formTitle = formResponses[0]?.formTitle || "フォーム管理"
 
-  const handleOpenChat = (response: FormResponse) => {
+  const handleOpenDetail = (response: FormResponse) => {
     setSelectedResponse(response)
-    setIsChatOpen(true)
+    setIsDetailOpen(true)
+  }
+
+  const handleTitleQuestionChange = async (questionId: string | null) => {
+    if (!formId) return
+    try {
+      await apiClient.updateFormTitleQuestion(formId, questionId)
+      setForm((prev) => (prev ? { ...prev, title_question_id: questionId } : null))
+    } catch (error) {
+      console.error("Failed to update title question:", error)
+    }
   }
 
   useEffect(() => {
@@ -48,11 +60,15 @@ export default function FormManagementPage() {
 
     const loadData = async () => {
       try {
-        const [membersResponse, statusesResponse] = await Promise.all([
+        const [formResponse, questionsResponse, membersResponse, statusesResponse] = await Promise.all([
+          apiClient.getForm(formId),
+          apiClient.getFormQuestions(formId),
           apiClient.getMembers(formId),
           apiClient.getFormStatuses(formId),
         ])
         if (!isActive) return
+        setForm(formResponse)
+        setQuestions(questionsResponse.questions)
         setMembers(membersResponse.members)
         setFormStatuses(statusesResponse.statuses)
       } catch (error) {
@@ -84,6 +100,9 @@ export default function FormManagementPage() {
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           statuses={formStatuses}
+          questions={questions}
+          titleQuestionId={form?.title_question_id ?? null}
+          onTitleQuestionChange={handleTitleQuestionChange}
           onMembersClick={() => setIsMembersOpen(true)}
         />
 
@@ -96,10 +115,11 @@ export default function FormManagementPage() {
               email: member.email,
             }))}
             statuses={formStatuses}
+            titleQuestionId={form?.title_question_id ?? null}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
-            onOpenChat={handleOpenChat}
+            onOpenDetail={handleOpenDetail}
           />
         ) : (
           <ResponseKanbanView
@@ -110,18 +130,19 @@ export default function FormManagementPage() {
               email: member.email,
             }))}
             statuses={formStatuses}
+            titleQuestionId={form?.title_question_id ?? null}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
-            onOpenChat={handleOpenChat}
+            onOpenDetail={handleOpenDetail}
           />
         )}
       </div>
 
-      {isChatOpen && selectedResponse && (
-        <ChatInterface
+      {isDetailOpen && selectedResponse && (
+        <ResponseDetail
           response={selectedResponse}
-          onClose={() => setIsChatOpen(false)}
+          onClose={() => setIsDetailOpen(false)}
           currentUserId="1"
           currentUserName="田中 太郎"
         />

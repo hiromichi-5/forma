@@ -10,24 +10,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { X, Send, User, Bot } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useChatMessages } from "@/hooks/use-chat-messages";
 import { cn } from "@/lib/utils";
 
-interface ChatInterfaceProps {
+type ResponseDetailProps = {
   response: FormResponse;
   onClose: () => void;
   currentUserId: string;
   currentUserName: string;
-}
+};
 
-export function ChatInterface({
+export function ResponseDetail({
   response,
   onClose,
   currentUserId,
   currentUserName,
-}: ChatInterfaceProps) {
+}: ResponseDetailProps) {
   const { messages, sendMessage } = useChatMessages(response.id);
   const [inputValue, setInputValue] = useState("");
   const [memoValue, setMemoValue] = useState("");
@@ -66,7 +66,7 @@ export function ChatInterface({
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex-1">
             <h3 className="text-lg font-semibold">
-              {response.respondentEmail}とのチャット
+              {response.respondentEmail}の詳細
             </h3>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -85,18 +85,22 @@ export function ChatInterface({
                     locale: ja,
                   })}
                 </span>
+                <span className="text-xs text-muted-foreground">
+                  ({format(response.submittedAt, "yyyy/MM/dd HH:mm")})
+                </span>
               </div>
               <div className="space-y-3">
-                {Object.entries(response.responses).map(
-                  ([key, value], index) => (
-                    <div key={key} className="bg-muted/50 p-3 rounded-lg">
-                      <p className="font-medium text-muted-foreground text-xs mb-1">
-                        質問 {index + 1}
-                      </p>
-                      <p className="text-sm">{value}</p>
-                    </div>
-                  )
-                )}
+                {response.questions.map((question, index) => (
+                  <div
+                    key={`${question.questionId}-${index}`}
+                    className="bg-muted/50 p-3 rounded-lg"
+                  >
+                    <p className="font-medium text-muted-foreground text-xs mb-1">
+                      {question.question}
+                    </p>
+                    <p className="text-sm">{question.answer}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -175,6 +179,9 @@ export function ChatInterface({
                               addSuffix: true,
                               locale: ja,
                             })}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            ({format(message.timestamp, "yyyy/MM/dd HH:mm")})
                           </span>
                         </div>
 

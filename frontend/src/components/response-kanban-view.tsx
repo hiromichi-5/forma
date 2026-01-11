@@ -33,10 +33,11 @@ type ResponseKanbanViewProps = {
   responses: FormResponse[];
   users: User[];
   statuses: FormStatus[];
+  titleQuestionId: string | null;
   onStatusChange: (id: string, statusId: string) => void;
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
-  onOpenChat: (response: FormResponse) => void;
+  onOpenDetail: (response: FormResponse) => void;
 };
 
 const priorityConfig = {
@@ -63,17 +64,19 @@ const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
 type DraggableCardProps = {
   response: FormResponse;
   users: User[];
+  titleQuestionId: string | null;
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
-  onOpenChat: (response: FormResponse) => void;
+  onOpenDetail: (response: FormResponse) => void;
 };
 
 function DraggableCard({
   response,
   users,
+  titleQuestionId,
   onAssignChange,
   onPriorityChange,
-  onOpenChat,
+  onOpenDetail,
 }: DraggableCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -89,14 +92,23 @@ function DraggableCard({
       }
     : undefined;
 
+  const getTitleAnswer = (): string | null => {
+    if (!titleQuestionId) return null;
+    const titleQuestion = response.questions.find(
+      (q) => q.questionId === titleQuestionId
+    );
+    return titleQuestion?.answer || null;
+  };
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       className={cn(
-        "p-4 border hover:bg-muted/30 transition-colors cursor-grab active:cursor-grabbing",
+        "p-4 border hover:bg-muted/30 transition-colors cursor-pointer",
         isDragging && "opacity-50"
       )}
+      onClick={() => onOpenDetail(response)}
       {...attributes}
       {...listeners}
     >
@@ -104,8 +116,13 @@ function DraggableCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
             <h4 className="font-semibold text-sm text-foreground mb-1">
-              {response.respondentEmail}
+              {getTitleAnswer() || response.respondentEmail}
             </h4>
+            {getTitleAnswer() && (
+              <p className="text-xs text-muted-foreground">
+                {response.respondentEmail}
+              </p>
+            )}
           </div>
           <Select
             value={response.priority}
@@ -144,10 +161,6 @@ function DraggableCard({
           </Select>
         </div>
 
-        <div className="text-xs text-muted-foreground line-clamp-2">
-          {Object.values(response.responses)[0]}
-        </div>
-
         <Select
           value={response.assignedTo || "unassigned"}
           onValueChange={(value) =>
@@ -182,7 +195,7 @@ function DraggableCard({
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              onOpenChat(response);
+              onOpenDetail(response);
             }}
             className="gap-1 h-7 px-2"
           >
@@ -254,16 +267,25 @@ export function ResponseKanbanView({
   responses,
   users,
   statuses,
+  titleQuestionId,
   onStatusChange,
   onAssignChange,
   onPriorityChange,
-  onOpenChat,
+  onOpenDetail,
 }: ResponseKanbanViewProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sortedStatuses = [...statuses].sort(
     (a, b) => a.display_order - b.display_order
   );
+
+  const getTitleAnswer = (response: FormResponse): string | null => {
+    if (!titleQuestionId) return null;
+    const titleQuestion = response.questions.find(
+      (q) => q.questionId === titleQuestionId
+    );
+    return titleQuestion?.answer || null;
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -323,9 +345,10 @@ export function ResponseKanbanView({
                   key={response.id}
                   response={response}
                   users={users}
+                  titleQuestionId={titleQuestionId}
                   onAssignChange={onAssignChange}
                   onPriorityChange={onPriorityChange}
-                  onOpenChat={onOpenChat}
+                  onOpenDetail={onOpenDetail}
                 />
               ))}
           </DroppableColumn>
@@ -339,8 +362,13 @@ export function ResponseKanbanView({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                   <h4 className="font-semibold text-sm text-foreground mb-1">
-                    {activeResponse.respondentEmail}
+                    {getTitleAnswer(activeResponse) || activeResponse.respondentEmail}
                   </h4>
+                  {getTitleAnswer(activeResponse) && (
+                    <p className="text-xs text-muted-foreground">
+                      {activeResponse.respondentEmail}
+                    </p>
+                  )}
                 </div>
                 <span
                   className={cn(
@@ -350,9 +378,6 @@ export function ResponseKanbanView({
                 >
                   {priorityConfig[activeResponse.priority].label}
                 </span>
-              </div>
-              <div className="text-xs text-muted-foreground line-clamp-2">
-                {Object.values(activeResponse.responses)[0]}
               </div>
             </div>
           </Card>

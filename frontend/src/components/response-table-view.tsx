@@ -22,16 +22,16 @@ import {
 import { MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 
 type ResponseTableViewProps = {
   responses: FormResponse[];
   users: User[];
   statuses: FormStatus[];
+  titleQuestionId: string | null;
   onStatusChange: (id: string, statusId: string) => void;
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
-  onOpenChat: (response: FormResponse) => void;
+  onOpenDetail: (response: FormResponse) => void;
 };
 
 const priorityConfig = {
@@ -59,16 +59,25 @@ export function ResponseTableView({
   responses,
   users,
   statuses,
+  titleQuestionId,
   onStatusChange,
   onAssignChange,
   onPriorityChange,
-  onOpenChat,
+  onOpenDetail,
 }: ResponseTableViewProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const sortedStatuses = [...statuses].sort(
     (a, b) => a.display_order - b.display_order
   );
+
+  const getTitleAnswer = (response: FormResponse): string | null => {
+    if (!titleQuestionId) return null;
+    const titleQuestion = response.questions.find(
+      (q) => q.questionId === titleQuestionId
+    );
+    return titleQuestion?.answer || null;
+  };
 
   return (
     <div className="bg-card rounded-lg border">
@@ -99,6 +108,11 @@ export function ResponseTableView({
                     <p className="font-medium text-foreground">
                       {response.respondentEmail}
                     </p>
+                    {getTitleAnswer(response) && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {getTitleAnswer(response)}
+                      </p>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
@@ -143,7 +157,7 @@ export function ResponseTableView({
                       )
                     }
                   >
-                    <SelectTrigger className="w-[130px] h-8">
+                    <SelectTrigger className="w-[130px] h-8 border-0 shadow-none">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -202,7 +216,7 @@ export function ResponseTableView({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onOpenChat(response)}
+                    onClick={() => onOpenDetail(response)}
                     className="gap-2 h-8"
                   >
                     <MessageSquare className="h-4 w-4" />
@@ -216,16 +230,19 @@ export function ResponseTableView({
                       <h4 className="font-semibold text-sm text-foreground">
                         回答内容
                       </h4>
-                      {Object.entries(response.responses).map(
-                        ([key, value], index) => (
-                          <div key={key} className="text-sm">
-                            <span className="text-muted-foreground">
-                              質問 {index + 1}:{" "}
-                            </span>
-                            <span className="text-foreground">{value}</span>
-                          </div>
-                        )
-                      )}
+                      {response.questions.map((question, index) => (
+                        <div
+                          key={`${question.questionId}-${index}`}
+                          className="text-sm"
+                        >
+                          <span className="text-muted-foreground">
+                            {question.question}{" "}
+                          </span>
+                          <span className="text-foreground">
+                            {question.answer}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </TableCell>
                 </TableRow>
