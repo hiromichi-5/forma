@@ -5,10 +5,11 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { LayoutList, LayoutGrid, Search, Users, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { FormStatus } from "@/types";
+import type { FormStatus, FormQuestion } from "@/types";
 
 const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
   if (!hex) return "transparent";
@@ -28,6 +29,9 @@ type FormManagementHeaderProps = {
   statusFilter: "all" | string;
   onStatusFilterChange: (status: "all" | string) => void;
   statuses: FormStatus[];
+  questions: FormQuestion[];
+  titleQuestionId: string | null;
+  onTitleQuestionChange: (questionId: string | null) => void;
   onMembersClick: () => void;
 };
 
@@ -40,6 +44,9 @@ export function FormManagementHeader({
   statusFilter,
   onStatusFilterChange,
   statuses,
+  questions,
+  titleQuestionId,
+  onTitleQuestionChange,
   onMembersClick,
 }: FormManagementHeaderProps) {
   const navigate = useNavigate();
@@ -151,6 +158,35 @@ export function FormManagementHeader({
             <LayoutGrid className="h-4 w-4" />
             カンバン
           </button>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground text-right">
+            リストやカンバンに表示する質問を選択できます
+          </p>
+          <Select
+            value={titleQuestionId ?? "none"}
+            onValueChange={(value) =>
+              onTitleQuestionChange(value === "none" ? null : value)
+            }
+          >
+            <SelectTrigger className="w-full sm:w-[300px]">
+              <SelectValue placeholder="タイトル質問を選択" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">タイトル質問なし</SelectItem>
+              {questions.map((question) => (
+                <SelectItem
+                  key={question.question_id}
+                  value={question.question_id}
+                >
+                  {question.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

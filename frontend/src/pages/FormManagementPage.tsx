@@ -9,12 +9,14 @@ import { MembersDialog } from "@/components/members-dialog"
 import { useFormResponses } from "@/hooks/use-form-responses"
 import { apiClient } from "@/lib/api"
 import type { FormResponse } from "@/types/form-response"
-import type { Member, FormStatus } from "@/types"
+import type { Member, FormStatus, Form, FormQuestion } from "@/types"
 
 export default function FormManagementPage() {
   const params = useParams()
   const formId = params.id
   const { responses, updateResponseStatus, assignResponse, updatePriority } = useFormResponses(formId ?? null)
+  const [form, setForm] = useState<Form | null>(null)
+  const [questions, setQuestions] = useState<FormQuestion[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [formStatuses, setFormStatuses] = useState<FormStatus[]>([])
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
@@ -42,17 +44,31 @@ export default function FormManagementPage() {
     setIsDetailOpen(true)
   }
 
+  const handleTitleQuestionChange = async (questionId: string | null) => {
+    if (!formId) return
+    try {
+      await apiClient.updateFormTitleQuestion(formId, questionId)
+      setForm((prev) => (prev ? { ...prev, title_question_id: questionId } : null))
+    } catch (error) {
+      console.error("Failed to update title question:", error)
+    }
+  }
+
   useEffect(() => {
     if (!formId) return
     let isActive = true
 
     const loadData = async () => {
       try {
-        const [membersResponse, statusesResponse] = await Promise.all([
+        const [formResponse, questionsResponse, membersResponse, statusesResponse] = await Promise.all([
+          apiClient.getForm(formId),
+          apiClient.getFormQuestions(formId),
           apiClient.getMembers(formId),
           apiClient.getFormStatuses(formId),
         ])
         if (!isActive) return
+        setForm(formResponse)
+        setQuestions(questionsResponse.questions)
         setMembers(membersResponse.members)
         setFormStatuses(statusesResponse.statuses)
       } catch (error) {
@@ -84,6 +100,9 @@ export default function FormManagementPage() {
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           statuses={formStatuses}
+          questions={questions}
+          titleQuestionId={form?.title_question_id ?? null}
+          onTitleQuestionChange={handleTitleQuestionChange}
           onMembersClick={() => setIsMembersOpen(true)}
         />
 
@@ -96,6 +115,7 @@ export default function FormManagementPage() {
               email: member.email,
             }))}
             statuses={formStatuses}
+            titleQuestionId={form?.title_question_id ?? null}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
@@ -110,6 +130,7 @@ export default function FormManagementPage() {
               email: member.email,
             }))}
             statuses={formStatuses}
+            titleQuestionId={form?.title_question_id ?? null}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}

@@ -27,6 +27,7 @@ type ResponseTableViewProps = {
   responses: FormResponse[];
   users: User[];
   statuses: FormStatus[];
+  titleQuestionId: string | null;
   onStatusChange: (id: string, statusId: string) => void;
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
@@ -58,6 +59,7 @@ export function ResponseTableView({
   responses,
   users,
   statuses,
+  titleQuestionId,
   onStatusChange,
   onAssignChange,
   onPriorityChange,
@@ -68,6 +70,14 @@ export function ResponseTableView({
   const sortedStatuses = [...statuses].sort(
     (a, b) => a.display_order - b.display_order
   );
+
+  const getTitleAnswer = (response: FormResponse): string | null => {
+    if (!titleQuestionId) return null;
+    const titleQuestion = response.questions.find(
+      (q) => q.questionId === titleQuestionId
+    );
+    return titleQuestion?.answer || null;
+  };
 
   return (
     <div className="bg-card rounded-lg border">
@@ -98,6 +108,11 @@ export function ResponseTableView({
                     <p className="font-medium text-foreground">
                       {response.respondentEmail}
                     </p>
+                    {getTitleAnswer(response) && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {getTitleAnswer(response)}
+                      </p>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
