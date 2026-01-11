@@ -5,6 +5,15 @@ import { LayoutList, LayoutGrid, Search, Users, ArrowLeft } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import type { FormStatus } from "@/types"
 
+const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
+  if (!hex) return "transparent"
+  const sanitized = hex.replace("#", "")
+  const red = Number.parseInt(sanitized.slice(0, 2), 16)
+  const green = Number.parseInt(sanitized.slice(2, 4), 16)
+  const blue = Number.parseInt(sanitized.slice(4, 6), 16)
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+}
+
 type FormManagementHeaderProps = {
   formTitle: string
   viewMode: "list" | "kanban"
@@ -30,6 +39,8 @@ export function FormManagementHeader({
 }: FormManagementHeaderProps) {
   const navigate = useNavigate()
   const sortedStatuses = [...statuses].sort((a, b) => a.display_order - b.display_order)
+  const selectedStatus =
+    statusFilter === "all" ? null : sortedStatuses.find((status) => status.id === statusFilter)
 
   return (
     <div className="space-y-4">
@@ -58,11 +69,30 @@ export function FormManagementHeader({
         </div>
 
         <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="ステータス絞込" />
+          <SelectTrigger className="w-full sm:w-[180px] border-0 shadow-none">
+            <div
+              className="flex items-center gap-2 px-2 py-1 rounded"
+              style={{
+                backgroundColor: hexToRgba(selectedStatus?.color ?? null, 0.1),
+              }}
+            >
+              {selectedStatus ? (
+                <div
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: selectedStatus.color ?? "#9CA3AF",
+                  }}
+                />
+              ) : (
+                <div className="w-2 h-2 rounded-full shrink-0 bg-muted-foreground/60" />
+              )}
+              <span className="text-sm">
+                {selectedStatus?.name ?? "全てのステータス"}
+              </span>
+            </div>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">すべて</SelectItem>
+            <SelectItem value="all">全てのステータス</SelectItem>
             {sortedStatuses.map((status) => (
               <SelectItem key={status.id} value={status.id}>
                 {status.name}
