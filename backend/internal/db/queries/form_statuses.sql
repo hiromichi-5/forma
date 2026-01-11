@@ -20,13 +20,13 @@ SELECT id, form_id, name, color, display_order, is_default, created_at
 FROM form_statuses
 WHERE id = $1;
 
+-- name: ClearDefaultFormStatus :exec
+UPDATE form_statuses
+SET is_default = FALSE
+WHERE form_id = $1
+  AND is_default = TRUE;
+
 -- name: SetDefaultFormStatus :one
-WITH cleared AS (
-  UPDATE form_statuses
-  SET is_default = FALSE
-  WHERE form_id = $1
-    AND is_default = TRUE
-)
 UPDATE form_statuses AS fs
 SET is_default = TRUE
 WHERE fs.id = $2

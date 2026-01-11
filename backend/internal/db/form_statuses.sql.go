@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearDefaultFormStatus = `-- name: ClearDefaultFormStatus :exec
+UPDATE form_statuses
+SET is_default = FALSE
+WHERE form_id = $1
+  AND is_default = TRUE
+`
+
+func (q *Queries) ClearDefaultFormStatus(ctx context.Context, formID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearDefaultFormStatus, formID)
+	return err
+}
+
 const createFormStatus = `-- name: CreateFormStatus :one
 INSERT INTO form_statuses (id, form_id, name, color, display_order, is_default)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -137,12 +149,6 @@ func (q *Queries) ListFormStatuses(ctx context.Context, formID pgtype.UUID) ([]F
 }
 
 const setDefaultFormStatus = `-- name: SetDefaultFormStatus :one
-WITH cleared AS (
-  UPDATE form_statuses
-  SET is_default = FALSE
-  WHERE form_id = $1
-    AND is_default = TRUE
-)
 UPDATE form_statuses AS fs
 SET is_default = TRUE
 WHERE fs.id = $2
