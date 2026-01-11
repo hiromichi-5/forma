@@ -142,7 +142,7 @@ export function ResponseTableView({
                       )
                     }
                   >
-                    <SelectTrigger className="w-[130px] h-8">
+                    <SelectTrigger className="w-[130px] h-8 border-0 shadow-none">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
