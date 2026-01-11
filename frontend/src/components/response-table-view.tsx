@@ -35,9 +35,9 @@ type ResponseTableViewProps = {
 };
 
 const priorityConfig = {
-  low: { label: "低", color: "text-gray-600" },
-  medium: { label: "中", color: "text-blue-600" },
-  high: { label: "高", color: "text-red-600" },
+  low: { label: "低", color: "text-gray-600", hex: "#6B7280" },
+  medium: { label: "中", color: "text-blue-600", hex: "#2563EB" },
+  high: { label: "高", color: "text-red-600", hex: "#DC2626" },
 };
 
 const isPriorityValue = (value: string): value is FormResponse["priority"] =>
@@ -166,15 +166,25 @@ export function ResponseTableView({
                       onPriorityChange(response.id, toPriorityValue(value))
                     }
                   >
-                    <SelectTrigger className="w-[90px] h-8">
-                      <span
-                        className={cn(
-                          "font-medium",
-                          priorityConfig[response.priority].color
-                        )}
+                    <SelectTrigger className="w-[90px] h-8 border-0 shadow-none">
+                      <div
+                        className="flex items-center gap-2 px-2 py-1 rounded"
+                        style={{
+                          backgroundColor: hexToRgba(
+                            priorityConfig[response.priority].hex,
+                            0.1
+                          ),
+                        }}
                       >
-                        {priorityConfig[response.priority].label}
-                      </span>
+                        <span
+                          className="text-sm font-medium"
+                          style={{
+                            color: priorityConfig[response.priority].hex,
+                          }}
+                        >
+                          {priorityConfig[response.priority].label}
+                        </span>
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">低</SelectItem>
