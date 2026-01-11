@@ -1,30 +1,35 @@
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { LayoutList, LayoutGrid, Search, Users, ArrowLeft } from "lucide-react"
-import { useNavigate } from "react-router-dom"
-import type { FormStatus } from "@/types"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
+import { LayoutList, LayoutGrid, Search, Users, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import type { FormStatus } from "@/types";
 
 const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
-  if (!hex) return "transparent"
-  const sanitized = hex.replace("#", "")
-  const red = Number.parseInt(sanitized.slice(0, 2), 16)
-  const green = Number.parseInt(sanitized.slice(2, 4), 16)
-  const blue = Number.parseInt(sanitized.slice(4, 6), 16)
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
-}
+  if (!hex) return "transparent";
+  const sanitized = hex.replace("#", "");
+  const red = Number.parseInt(sanitized.slice(0, 2), 16);
+  const green = Number.parseInt(sanitized.slice(2, 4), 16);
+  const blue = Number.parseInt(sanitized.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+};
 
 type FormManagementHeaderProps = {
-  formTitle: string
-  viewMode: "list" | "kanban"
-  onViewModeChange: (mode: "list" | "kanban") => void
-  searchQuery: string
-  onSearchChange: (query: string) => void
-  statusFilter: "all" | string
-  onStatusFilterChange: (status: "all" | string) => void
-  statuses: FormStatus[]
-  onMembersClick: () => void
-}
+  formTitle: string;
+  viewMode: "list" | "kanban";
+  onViewModeChange: (mode: "list" | "kanban") => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  statusFilter: "all" | string;
+  onStatusFilterChange: (status: "all" | string) => void;
+  statuses: FormStatus[];
+  onMembersClick: () => void;
+};
 
 export function FormManagementHeader({
   formTitle,
@@ -37,10 +42,14 @@ export function FormManagementHeader({
   statuses,
   onMembersClick,
 }: FormManagementHeaderProps) {
-  const navigate = useNavigate()
-  const sortedStatuses = [...statuses].sort((a, b) => a.display_order - b.display_order)
+  const navigate = useNavigate();
+  const sortedStatuses = [...statuses].sort(
+    (a, b) => a.display_order - b.display_order
+  );
   const selectedStatus =
-    statusFilter === "all" ? null : sortedStatuses.find((status) => status.id === statusFilter)
+    statusFilter === "all"
+      ? null
+      : sortedStatuses.find((status) => status.id === statusFilter);
 
   return (
     <div className="space-y-4">
@@ -51,7 +60,11 @@ export function FormManagementHeader({
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-foreground">{formTitle}</h1>
         </div>
-        <Button onClick={onMembersClick} variant="outline" className="gap-2 bg-transparent">
+        <Button
+          onClick={onMembersClick}
+          variant="outline"
+          className="gap-2 bg-transparent"
+        >
           <Users className="h-4 w-4" />
           メンバー管理
         </Button>
@@ -101,27 +114,45 @@ export function FormManagementHeader({
           </SelectContent>
         </Select>
 
-        <div className="flex gap-1 bg-muted p-1 rounded-md">
-          <Button
-            variant={viewMode === "list" ? "secondary" : "ghost"}
-            size="sm"
+        <div className="relative grid grid-cols-2 gap-0.5 bg-muted p-0.5 rounded-md">
+          <div
+            className="absolute top-0.5 bottom-0.5 bg-background rounded shadow-sm transition-transform duration-200 ease-in-out"
+            style={{
+              width: "calc(50% - 0.125rem)",
+              transform:
+                viewMode === "kanban"
+                  ? "translateX(calc(100% + 0.125rem))"
+                  : "translateX(0)",
+            }}
+          />
+
+          <button
+            type="button"
             onClick={() => onViewModeChange("list")}
-            className="gap-2"
+            className={`relative z-10 flex items-center justify-center gap-1 px-3 py-1.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+              viewMode === "list"
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
             <LayoutList className="h-4 w-4" />
             リスト
-          </Button>
-          <Button
-            variant={viewMode === "kanban" ? "secondary" : "ghost"}
-            size="sm"
+          </button>
+
+          <button
+            type="button"
             onClick={() => onViewModeChange("kanban")}
-            className="gap-2"
+            className={`relative z-10 flex items-center justify-center gap-1 px-3 py-1.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+              viewMode === "kanban"
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
             <LayoutGrid className="h-4 w-4" />
             カンバン
-          </Button>
+          </button>
         </div>
       </div>
     </div>
-  )
+  );
 }
