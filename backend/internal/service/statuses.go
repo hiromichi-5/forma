@@ -159,6 +159,9 @@ func (s *Service) SetDefaultFormStatus(ctx context.Context, formID, statusID str
 		return FormStatus{}, ErrValidation
 	}
 
+	if err := s.Q.ClearDefaultFormStatus(ctx, dbUUID(fid)); err != nil {
+		return FormStatus{}, err
+	}
 	row, err := s.Q.SetDefaultFormStatus(ctx, db.SetDefaultFormStatusParams{
 		FormID: dbUUID(fid),
 		ID:     dbUUID(sid),
