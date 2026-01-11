@@ -1,38 +1,59 @@
-"use client"
+"use client";
 
-import { Fragment, useState } from "react"
-import type { FormResponse, User } from "@/types/form-response"
-import type { FormStatus } from "@/types"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MessageSquare } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
-import { ja } from "date-fns/locale"
-import { cn } from "@/lib/utils"
+import { Fragment, useState } from "react";
+import type { FormResponse, User } from "@/types/form-response";
+import type { FormStatus } from "@/types";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { MessageSquare } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ja } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 type ResponseTableViewProps = {
-  responses: FormResponse[]
-  users: User[]
-  statuses: FormStatus[]
-  onStatusChange: (id: string, statusId: string) => void
-  onAssignChange: (id: string, userId: string | null) => void
-  onPriorityChange: (id: string, priority: FormResponse["priority"]) => void
-  onOpenChat: (response: FormResponse) => void
-}
+  responses: FormResponse[];
+  users: User[];
+  statuses: FormStatus[];
+  onStatusChange: (id: string, statusId: string) => void;
+  onAssignChange: (id: string, userId: string | null) => void;
+  onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
+  onOpenChat: (response: FormResponse) => void;
+};
 
 const priorityConfig = {
   low: { label: "低", color: "text-gray-600" },
   medium: { label: "中", color: "text-blue-600" },
   high: { label: "高", color: "text-red-600" },
-}
+};
 
 const isPriorityValue = (value: string): value is FormResponse["priority"] =>
-  value === "low" || value === "medium" || value === "high"
+  value === "low" || value === "medium" || value === "high";
 
 const toPriorityValue = (value: string): FormResponse["priority"] =>
-  isPriorityValue(value) ? value : "medium"
+  isPriorityValue(value) ? value : "medium";
+
+const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
+  if (!hex) return `rgba(156, 163, 175, ${alpha})`;
+  const cleanHex = hex.replace("#", "");
+  const r = parseInt(cleanHex.slice(0, 2), 16);
+  const g = parseInt(cleanHex.slice(2, 4), 16);
+  const b = parseInt(cleanHex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 export function ResponseTableView({
   responses,
@@ -43,9 +64,11 @@ export function ResponseTableView({
   onPriorityChange,
   onOpenChat,
 }: ResponseTableViewProps) {
-  const [expandedRow, setExpandedRow] = useState<string | null>(null)
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
-  const sortedStatuses = [...statuses].sort((a, b) => a.display_order - b.display_order)
+  const sortedStatuses = [...statuses].sort(
+    (a, b) => a.display_order - b.display_order
+  );
 
   return (
     <div className="bg-card rounded-lg border">
@@ -65,23 +88,44 @@ export function ResponseTableView({
             <Fragment key={response.id}>
               <TableRow
                 className="cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => setExpandedRow(expandedRow === response.id ? null : response.id)}
+                onClick={() =>
+                  setExpandedRow(
+                    expandedRow === response.id ? null : response.id
+                  )
+                }
               >
                 <TableCell>
                   <div>
-                    <p className="font-medium text-foreground">{response.respondentName}</p>
-                    <p className="text-sm text-muted-foreground">{response.respondentEmail}</p>
+                    <p className="font-medium text-foreground">
+                      {response.respondentName}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {response.respondentEmail}
+                    </p>
                   </div>
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Select
                     value={response.status}
-                    onValueChange={(value) => onStatusChange(response.id, value)}
+                    onValueChange={(value) =>
+                      onStatusChange(response.id, value)
+                    }
                   >
-                    <SelectTrigger className="w-[130px] h-8">
-                      <Badge variant="outline" className={cn("border", response.statusColor || "bg-gray-50")}>
-                        {response.statusName}
-                      </Badge>
+                    <SelectTrigger className="w-[130px] h-8 border-0 shadow-none">
+                      <div
+                        className="flex items-center gap-2 px-2 py-1 rounded"
+                        style={{
+                          backgroundColor: hexToRgba(response.statusColor, 0.1),
+                        }}
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: response.statusColor || "#9CA3AF",
+                          }}
+                        />
+                        <span className="text-sm">{response.statusName}</span>
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
                       {sortedStatuses.map((status) => (
@@ -95,7 +139,12 @@ export function ResponseTableView({
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Select
                     value={response.assignedTo || "unassigned"}
-                    onValueChange={(value) => onAssignChange(response.id, value === "unassigned" ? null : value)}
+                    onValueChange={(value) =>
+                      onAssignChange(
+                        response.id,
+                        value === "unassigned" ? null : value
+                      )
+                    }
                   >
                     <SelectTrigger className="w-[130px] h-8">
                       <SelectValue />
@@ -113,10 +162,17 @@ export function ResponseTableView({
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Select
                     value={response.priority}
-                    onValueChange={(value) => onPriorityChange(response.id, toPriorityValue(value))}
+                    onValueChange={(value) =>
+                      onPriorityChange(response.id, toPriorityValue(value))
+                    }
                   >
                     <SelectTrigger className="w-[90px] h-8">
-                      <span className={cn("font-medium", priorityConfig[response.priority].color)}>
+                      <span
+                        className={cn(
+                          "font-medium",
+                          priorityConfig[response.priority].color
+                        )}
+                      >
                         {priorityConfig[response.priority].label}
                       </span>
                     </SelectTrigger>
@@ -129,11 +185,19 @@ export function ResponseTableView({
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">
-                    {formatDistanceToNow(response.submittedAt, { addSuffix: true, locale: ja })}
+                    {formatDistanceToNow(response.submittedAt, {
+                      addSuffix: true,
+                      locale: ja,
+                    })}
                   </span>
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="sm" onClick={() => onOpenChat(response)} className="gap-2 h-8">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onOpenChat(response)}
+                    className="gap-2 h-8"
+                  >
                     <MessageSquare className="h-4 w-4" />
                   </Button>
                 </TableCell>
@@ -142,13 +206,19 @@ export function ResponseTableView({
                 <TableRow className="hover:bg-muted/20">
                   <TableCell colSpan={6} className="bg-muted/20 p-4">
                     <div className="space-y-3">
-                      <h4 className="font-semibold text-sm text-foreground">回答内容</h4>
-                      {Object.entries(response.responses).map(([key, value], index) => (
-                        <div key={key} className="text-sm">
-                          <span className="text-muted-foreground">質問 {index + 1}: </span>
-                          <span className="text-foreground">{value}</span>
-                        </div>
-                      ))}
+                      <h4 className="font-semibold text-sm text-foreground">
+                        回答内容
+                      </h4>
+                      {Object.entries(response.responses).map(
+                        ([key, value], index) => (
+                          <div key={key} className="text-sm">
+                            <span className="text-muted-foreground">
+                              質問 {index + 1}:{" "}
+                            </span>
+                            <span className="text-foreground">{value}</span>
+                          </div>
+                        )
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -158,5 +228,5 @@ export function ResponseTableView({
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }
