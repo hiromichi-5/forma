@@ -121,19 +121,20 @@ func (s *Service) RegisterForm(ctx context.Context, formURL string, creator uuid
 func (s *Service) initFormStatuses(ctx context.Context, formID pgtype.UUID) error {
 	statuses := []struct {
 		name      string
+		color     string
 		order     int32
 		isDefault bool
 	}{
-		{name: "未対応", order: 1, isDefault: true},
-		{name: "対応中", order: 2, isDefault: false},
-		{name: "対応完了", order: 3, isDefault: false},
+		{name: "未対応", color: "#E53935", order: 1, isDefault: true},
+		{name: "対応中", color: "#FB8C00", order: 2, isDefault: false},
+		{name: "対応完了", color: "#43A047", order: 3, isDefault: false},
 	}
 	for _, st := range statuses {
 		if _, err := s.Q.CreateFormStatus(ctx, db.CreateFormStatusParams{
 			ID:           dbUUID(uuid.New()),
 			FormID:       formID,
 			Name:         st.name,
-			Color:        pgtype.Text{Valid: false},
+			Color:        pgtype.Text{String: st.color, Valid: true},
 			DisplayOrder: st.order,
 			IsDefault:    st.isDefault,
 		}); err != nil {
