@@ -114,6 +114,11 @@ func (s *Service) UpdateTicket(ctx context.Context, id string, statusID *string,
 		return TicketDetail{}, err
 	}
 
+	changedByName, err := s.getUserDisplayName(ctx, actor)
+	if err != nil {
+		return TicketDetail{}, err
+	}
+
 	if clearAssignee && assignee != nil {
 		return TicketDetail{}, ErrValidation
 	}
@@ -124,6 +129,9 @@ func (s *Service) UpdateTicket(ctx context.Context, id string, statusID *string,
 		}
 	}
 
+	var statusChanged bool
+	var oldStatusName string
+	var newStatusName string
 	if statusID != nil {
 		st := strings.TrimSpace(*statusID)
 		if st == "" {
@@ -143,36 +151,102 @@ func (s *Service) UpdateTicket(ctx context.Context, id string, statusID *string,
 		if statusRow.FormID != currentRow.FormID {
 			return TicketDetail{}, ErrValidation
 		}
-		if _, err := s.Q.UpdateTicketStatus(ctx, db.UpdateTicketStatusParams{
-			ID:       pgtype.UUID{Bytes: uid, Valid: true},
-			StatusID: statusRow.ID,
-		}); err != nil {
-			return TicketDetail{}, err
+		if !equalUUID(statusRow.ID, currentRow.StatusID) {
+			oldStatusRow, err := s.Q.GetFormStatusByID(ctx, currentRow.StatusID)
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return TicketDetail{}, ErrValidation
+				}
+				return TicketDetail{}, err
+			}
+			oldStatusName = oldStatusRow.Name
+			newStatusName = statusRow.Name
+			statusChanged = true
+
+			if _, err := s.Q.UpdateTicketStatus(ctx, db.UpdateTicketStatusParams{
+				ID:       pgtype.UUID{Bytes: uid, Valid: true},
+				StatusID: statusRow.ID,
+			}); err != nil {
+				return TicketDetail{}, err
+			}
 		}
 	}
 
+	var assigneeChanged bool
+	var oldAssigneeName *string
+	var newAssigneeName *string
 	if clearAssignee || assignee != nil {
 		param := pgtype.UUID{Valid: false}
 		if assignee != nil {
 			param = pgtype.UUID{Bytes: *assignee, Valid: true}
 		}
-		if _, err := s.Q.UpdateTicketAssignee(ctx, db.UpdateTicketAssigneeParams{
-			ID:         pgtype.UUID{Bytes: uid, Valid: true},
-			AssigneeID: param,
-		}); err != nil {
-			return TicketDetail{}, err
+		if !equalUUID(currentRow.AssigneeID, param) {
+			assigneeChanged = true
+			if currentRow.AssigneeID.Valid {
+				name, err := s.getUserDisplayName(ctx, uuid.UUID(currentRow.AssigneeID.Bytes))
+				if err != nil {
+					return TicketDetail{}, err
+				}
+				oldAssigneeName = &name
+			}
+			if param.Valid {
+				name, err := s.getUserDisplayName(ctx, uuid.UUID(param.Bytes))
+				if err != nil {
+					return TicketDetail{}, err
+				}
+				newAssigneeName = &name
+			}
+			if _, err := s.Q.UpdateTicketAssignee(ctx, db.UpdateTicketAssigneeParams{
+				ID:         pgtype.UUID{Bytes: uid, Valid: true},
+				AssigneeID: param,
+			}); err != nil {
+				return TicketDetail{}, err
+			}
 		}
 	}
 
+	var priorityChanged bool
+	var oldPriority string
+	var newPriority string
 	if priority != nil {
 		p := strings.TrimSpace(*priority)
 		p = strings.ToLower(p)
 		if !isValidTicketPriority(p) {
 			return TicketDetail{}, ErrValidation
 		}
-		if _, err := s.Q.UpdateTicketPriority(ctx, db.UpdateTicketPriorityParams{
-			ID:       pgtype.UUID{Bytes: uid, Valid: true},
-			Priority: p,
+		if p != currentRow.Priority {
+			oldPriority = currentRow.Priority
+			newPriority = p
+			priorityChanged = true
+			if _, err := s.Q.UpdateTicketPriority(ctx, db.UpdateTicketPriorityParams{
+				ID:       pgtype.UUID{Bytes: uid, Valid: true},
+				Priority: p,
+			}); err != nil {
+				return TicketDetail{}, err
+			}
+		}
+	}
+
+	histories := buildTicketHistoryChanges(
+		statusChanged,
+		oldStatusName,
+		newStatusName,
+		assigneeChanged,
+		oldAssigneeName,
+		newAssigneeName,
+		priorityChanged,
+		oldPriority,
+		newPriority,
+	)
+	for _, history := range histories {
+		if _, err := s.Q.CreateTicketHistory(ctx, db.CreateTicketHistoryParams{
+			ID:            dbUUID(uuid.New()),
+			TicketID:      dbUUID(uid),
+			ChangedBy:     dbUUID(actor),
+			ChangedByName: changedByName,
+			FieldName:     history.FieldName,
+			OldValue:      textFromStringPtr(history.OldValue),
+			NewValue:      textFromStringPtr(history.NewValue),
 		}); err != nil {
 			return TicketDetail{}, err
 		}

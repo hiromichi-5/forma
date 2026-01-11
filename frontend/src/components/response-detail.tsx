@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import type { FormResponse } from "@/types/form-response";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,25 @@ import { X, Send, User, Bot } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useChatMessages } from "@/hooks/use-chat-messages";
+import { useTicketHistories } from "@/hooks/use-ticket-histories";
 import { cn } from "@/lib/utils";
+import type { TicketHistory } from "@/types";
+
+type TimelineItem =
+  | {
+      type: "message";
+      data: {
+        id: string;
+        message: string;
+        senderName: string;
+        senderType: "staff" | "respondent";
+        timestamp: Date;
+      };
+    }
+  | {
+      type: "history";
+      data: TicketHistory;
+    };
 
 type ResponseDetailProps = {
   response: FormResponse;
@@ -29,6 +47,7 @@ export function ResponseDetail({
   currentUserName,
 }: ResponseDetailProps) {
   const { messages, sendMessage } = useChatMessages(response.id);
+  const { histories } = useTicketHistories(response.id);
   const [inputValue, setInputValue] = useState("");
   const [memoValue, setMemoValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,9 +56,44 @@ export function ResponseDetail({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const timelineItems = useMemo(() => {
+    const items: TimelineItem[] = [
+      ...messages.map(
+        (msg): TimelineItem => ({
+          type: "message",
+          data: {
+            id: msg.id,
+            message: msg.message,
+            senderName: msg.senderName,
+            senderType: msg.senderType,
+            timestamp: msg.timestamp,
+          },
+        })
+      ),
+      ...histories.map(
+        (history): TimelineItem => ({
+          type: "history",
+          data: history,
+        })
+      ),
+    ];
+
+    return items.sort((a, b) => {
+      const timeA =
+        a.type === "message"
+          ? a.data.timestamp.getTime()
+          : new Date(a.data.created_at).getTime();
+      const timeB =
+        b.type === "message"
+          ? b.data.timestamp.getTime()
+          : new Date(b.data.created_at).getTime();
+      return timeA - timeB;
+    });
+  }, [messages, histories]);
+
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [timelineItems]);
 
   const handleSend = () => {
     if (inputValue.trim()) {
@@ -58,6 +112,48 @@ export function ResponseDetail({
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const getFieldLabel = (fieldName: string): string => {
+    switch (fieldName) {
+      case "status":
+        return "ステータス";
+      case "assignee":
+        return "担当者";
+      case "priority":
+        return "優先度";
+      default:
+        return fieldName;
+    }
+  };
+
+  const getPriorityLabel = (priority: string): string => {
+    switch (priority) {
+      case "high":
+        return "高";
+      case "medium":
+        return "中";
+      case "low":
+        return "低";
+      default:
+        return priority;
+    }
+  };
+
+  const formatHistoryChange = (history: TicketHistory): string => {
+    const fieldLabel = getFieldLabel(history.field_name);
+    const oldValue = history.old_value
+      ? history.field_name === "priority"
+        ? getPriorityLabel(history.old_value)
+        : history.old_value
+      : "なし";
+    const newValue = history.new_value
+      ? history.field_name === "priority"
+        ? getPriorityLabel(history.new_value)
+        : history.new_value
+      : "なし";
+
+    return `${fieldLabel}を「${oldValue}」から「${newValue}」に変更しました`;
   };
 
   return (
@@ -125,7 +221,7 @@ export function ResponseDetail({
           <div className="w-1/2 flex flex-col">
             {/* チャットメッセージエリア */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.length === 0 ? (
+              {timelineItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <Bot className="h-12 w-12 text-muted-foreground mb-3" />
                   <p className="text-muted-foreground">
@@ -136,71 +232,104 @@ export function ResponseDetail({
                   </p>
                 </div>
               ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      "flex gap-3",
-                      message.senderType === "staff"
-                        ? "justify-end"
-                        : "justify-start"
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "flex gap-3 max-w-[80%]",
-                        message.senderType === "staff"
-                          ? "flex-row-reverse"
-                          : "flex-row"
-                      )}
-                    >
+                timelineItems.map((item, index) => {
+                  if (item.type === "message") {
+                    const message = item.data;
+                    return (
                       <div
+                        key={`message-${message.id}`}
                         className={cn(
-                          "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
+                          "flex gap-3",
                           message.senderType === "staff"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
+                            ? "justify-end"
+                            : "justify-start"
                         )}
                       >
-                        {message.senderType === "staff" ? (
-                          <User className="h-4 w-4" />
-                        ) : (
-                          <Bot className="h-4 w-4" />
-                        )}
-                      </div>
+                        <div
+                          className={cn(
+                            "flex gap-3 max-w-[80%]",
+                            message.senderType === "staff"
+                              ? "flex-row-reverse"
+                              : "flex-row"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
+                              message.senderType === "staff"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted"
+                            )}
+                          >
+                            {message.senderType === "staff" ? (
+                              <User className="h-4 w-4" />
+                            ) : (
+                              <Bot className="h-4 w-4" />
+                            )}
+                          </div>
 
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium">
-                            {message.senderName}
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium">
+                                {message.senderName}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(message.timestamp, {
+                                  addSuffix: true,
+                                  locale: ja,
+                                })}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                ({format(message.timestamp, "yyyy/MM/dd HH:mm")})
+                              </span>
+                            </div>
+
+                            <div
+                              className={cn(
+                                "rounded-lg p-3",
+                                message.senderType === "staff"
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted"
+                              )}
+                            >
+                              <p className="text-sm whitespace-pre-wrap">
+                                {message.message}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const history = item.data;
+                  return (
+                    <div
+                      key={`history-${history.id}`}
+                      className="flex justify-center"
+                    >
+                      <div className="bg-muted/30 border border-muted rounded-lg px-4 py-2 max-w-[90%]">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                          <span className="font-medium">
+                            {history.changed_by_name}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(message.timestamp, {
+                          <span>
+                            {formatDistanceToNow(new Date(history.created_at), {
                               addSuffix: true,
                               locale: ja,
                             })}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            ({format(message.timestamp, "yyyy/MM/dd HH:mm")})
+                          <span>
+                            ({format(new Date(history.created_at), "yyyy/MM/dd HH:mm")})
                           </span>
                         </div>
-
-                        <div
-                          className={cn(
-                            "rounded-lg p-3",
-                            message.senderType === "staff"
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          )}
-                        >
-                          <p className="text-sm whitespace-pre-wrap">
-                            {message.message}
-                          </p>
-                        </div>
+                        <p className="text-sm text-center">
+                          {formatHistoryChange(history)}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
               <div ref={messagesEndRef} />
             </div>
