@@ -2,10 +2,9 @@
 
 import { useState } from "react"
 import type { ChatMessage } from "@/types/form-response"
-import { mockChatMessages } from "@/lib/mock-data"
 
 export function useChatMessages(responseId: string) {
-  const [messages, setMessages] = useState<ChatMessage[]>(mockChatMessages.filter((m) => m.responseId === responseId))
+  const [messages, setMessages] = useState<ChatMessage[]>([])
 
   const sendMessage = async (message: string, senderId: string, senderName: string, respondentEmail?: string) => {
     const newMessage: ChatMessage = {

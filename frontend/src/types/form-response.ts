@@ -3,7 +3,6 @@ export type FormResponse = {
   formId: string
   formTitle: string
   respondentEmail: string
-  respondentName: string
   submittedAt: Date
   status: string
   statusName: string

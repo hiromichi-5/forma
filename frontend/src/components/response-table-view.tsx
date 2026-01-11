@@ -97,9 +97,6 @@ export function ResponseTableView({
                 <TableCell>
                   <div>
                     <p className="font-medium text-foreground">
-                      {response.respondentName}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
                       {response.respondentEmail}
                     </p>
                   </div>

@@ -66,11 +66,8 @@ export function ChatInterface({
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex-1">
             <h3 className="text-lg font-semibold">
-              {response.respondentName}さんとのチャット
+              {response.respondentEmail}とのチャット
             </h3>
-            <p className="text-sm text-muted-foreground">
-              {response.respondentEmail}
-            </p>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />

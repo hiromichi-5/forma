@@ -4,12 +4,6 @@ import { useEffect, useState } from "react"
 import type { FormResponse } from "@/types/form-response"
 import type { TicketAnswer, TicketDetail, TicketSummary } from "@/types"
 import { apiClient } from "@/lib/api"
-import { mockTicketRespondents } from "@/lib/mock-data"
-
-type TicketRespondent = {
-  name: string
-  email: string
-}
 
 const buildResponsesMap = (answers: TicketAnswer[]): Record<string, string> =>
   answers.reduce<Record<string, string>>((acc, answer) => {
@@ -17,31 +11,15 @@ const buildResponsesMap = (answers: TicketAnswer[]): Record<string, string> =>
     return acc
   }, {})
 
-const fallbackRespondents: TicketRespondent[] = [
-  { name: "山田 次郎", email: "yamada@example.com" },
-  { name: "佐藤 花子", email: "sato@example.com" },
-  { name: "鈴木 一郎", email: "suzuki@example.com" },
-  { name: "高橋 健太", email: "takahashi@example.com" },
-  { name: "伊藤 美咲", email: "ito@example.com" },
-]
-
-const pickFallbackRespondent = (ticketId: string): TicketRespondent => {
-  const total = Array.from(ticketId).reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
-  const index = total % fallbackRespondents.length
-  return fallbackRespondents[index]
-}
-
-const getRespondentInfo = (ticketId: string): TicketRespondent =>
-  mockTicketRespondents[ticketId] ?? pickFallbackRespondent(ticketId)
+const normalizeRespondentEmail = (email: string | null): string =>
+  email ?? "メールアドレス未登録"
 
 const mapTicketDetailToFormResponse = (ticket: TicketDetail): FormResponse => {
-  const respondent = getRespondentInfo(ticket.id)
   return {
     id: ticket.id,
     formId: ticket.form_id,
     formTitle: ticket.form_title,
-    respondentEmail: ticket.respondent_email ?? respondent.email,
-    respondentName: respondent.name,
+    respondentEmail: normalizeRespondentEmail(ticket.respondent_email),
     submittedAt: new Date(ticket.submitted_at),
     status: ticket.status.id,
     statusName: ticket.status.name,
@@ -53,13 +31,11 @@ const mapTicketDetailToFormResponse = (ticket: TicketDetail): FormResponse => {
 }
 
 const mapSummaryToFormResponse = (ticket: TicketSummary): FormResponse => {
-  const respondent = getRespondentInfo(ticket.id)
   return {
     id: ticket.id,
     formId: ticket.form_id,
     formTitle: ticket.form_title,
-    respondentEmail: ticket.respondent_email ?? respondent.email,
-    respondentName: respondent.name,
+    respondentEmail: normalizeRespondentEmail(ticket.respondent_email),
     submittedAt: new Date(ticket.submitted_at),
     status: ticket.status.id,
     statusName: ticket.status.name,
