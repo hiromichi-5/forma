@@ -36,7 +36,7 @@ type ResponseKanbanViewProps = {
   onStatusChange: (id: string, statusId: string) => void;
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
-  onOpenChat: (response: FormResponse) => void;
+  onOpenDetail: (response: FormResponse) => void;
 };
 
 const priorityConfig = {
@@ -65,7 +65,7 @@ type DraggableCardProps = {
   users: User[];
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
-  onOpenChat: (response: FormResponse) => void;
+  onOpenDetail: (response: FormResponse) => void;
 };
 
 function DraggableCard({
@@ -73,7 +73,7 @@ function DraggableCard({
   users,
   onAssignChange,
   onPriorityChange,
-  onOpenChat,
+  onOpenDetail,
 }: DraggableCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -94,9 +94,10 @@ function DraggableCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "p-4 border hover:bg-muted/30 transition-colors cursor-grab active:cursor-grabbing",
+        "p-4 border hover:bg-muted/30 transition-colors cursor-pointer",
         isDragging && "opacity-50"
       )}
+      onClick={() => onOpenDetail(response)}
       {...attributes}
       {...listeners}
     >
@@ -182,7 +183,7 @@ function DraggableCard({
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              onOpenChat(response);
+              onOpenDetail(response);
             }}
             className="gap-1 h-7 px-2"
           >
@@ -257,7 +258,7 @@ export function ResponseKanbanView({
   onStatusChange,
   onAssignChange,
   onPriorityChange,
-  onOpenChat,
+  onOpenDetail,
 }: ResponseKanbanViewProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -325,7 +326,7 @@ export function ResponseKanbanView({
                   users={users}
                   onAssignChange={onAssignChange}
                   onPriorityChange={onPriorityChange}
-                  onOpenChat={onOpenChat}
+                  onOpenDetail={onOpenDetail}
                 />
               ))}
           </DroppableColumn>

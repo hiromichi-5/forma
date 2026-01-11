@@ -22,7 +22,6 @@ import {
 import { MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 
 type ResponseTableViewProps = {
   responses: FormResponse[];
@@ -31,7 +30,7 @@ type ResponseTableViewProps = {
   onStatusChange: (id: string, statusId: string) => void;
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
-  onOpenChat: (response: FormResponse) => void;
+  onOpenDetail: (response: FormResponse) => void;
 };
 
 const priorityConfig = {
@@ -62,7 +61,7 @@ export function ResponseTableView({
   onStatusChange,
   onAssignChange,
   onPriorityChange,
-  onOpenChat,
+  onOpenDetail,
 }: ResponseTableViewProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -202,7 +201,7 @@ export function ResponseTableView({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onOpenChat(response)}
+                    onClick={() => onOpenDetail(response)}
                     className="gap-2 h-8"
                   >
                     <MessageSquare className="h-4 w-4" />
