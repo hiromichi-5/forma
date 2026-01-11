@@ -104,11 +104,8 @@ function DraggableCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
             <h4 className="font-semibold text-sm text-foreground mb-1">
-              {response.respondentName}
-            </h4>
-            <p className="text-xs text-muted-foreground truncate">
               {response.respondentEmail}
-            </p>
+            </h4>
           </div>
           <Select
             value={response.priority}
@@ -342,11 +339,8 @@ export function ResponseKanbanView({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                   <h4 className="font-semibold text-sm text-foreground mb-1">
-                    {activeResponse.respondentName}
-                  </h4>
-                  <p className="text-xs text-muted-foreground truncate">
                     {activeResponse.respondentEmail}
-                  </p>
+                  </h4>
                 </div>
                 <span
                   className={cn(

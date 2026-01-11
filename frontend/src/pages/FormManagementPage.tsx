@@ -28,7 +28,6 @@ export default function FormManagementPage() {
 
   const filteredResponses = formResponses.filter((response) => {
     const matchesSearch =
-      response.respondentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       response.respondentEmail.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || response.status === statusFilter
