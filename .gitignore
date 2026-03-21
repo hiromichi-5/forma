@@ -6,3 +6,4 @@ secrets/*
 internal-docs
 .gocache
 old-ai-context/*
+!.claude/*
