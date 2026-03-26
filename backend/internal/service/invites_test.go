@@ -27,7 +27,7 @@ func (f *fakeInvitesStore) CreateFormInvite(
 		ID:        arg.ID,
 		FormID:    arg.FormID,
 		Email:     arg.Email,
-		Role:      db.FormRole(arg.Role),
+		Role:      arg.Role,
 		InvitedBy: arg.InvitedBy,
 		ExpiresAt: arg.ExpiresAt,
 		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},

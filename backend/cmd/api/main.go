@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -58,6 +59,12 @@ func healthz(c *gin.Context) {
 }
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	viper.AutomaticEnv()
 	appEnv := viper.GetString("APP_ENV")
 	if appEnv == "" {
@@ -69,7 +76,7 @@ func main() {
 	}
 	pgDSN := viper.GetString("PG_DSN")
 	if pgDSN == "" {
-		log.Fatal("PG_DSN required")
+		return fmt.Errorf("PG_DSN required")
 	}
 	saPath := os.Getenv("GOOGLE_SERVICE_ACCOUNT_PATH")
 	if saPath == "" {
@@ -82,15 +89,16 @@ func main() {
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, pgDSN)
 	if err != nil {
-		log.Fatalf("pgxpool: %v", err)
+		return fmt.Errorf("pgxpool: %w", err)
 	}
 	defer pool.Close()
-	q := db.New(pool)
 
 	gf, err := gforms.NewRealFormsClient(ctx, saPath)
 	if err != nil {
-		log.Fatalf("forms client: %v", err)
+		return fmt.Errorf("forms client: %w", err)
 	}
+
+	q := db.New(pool)
 
 	svc := service.NewService(q, gf)
 
@@ -184,7 +192,5 @@ func main() {
 		th.GetV1TicketsTicketIdHistories(c, c.Param("ticket_id"))
 	})
 
-	if err := r.Run(addr); err != nil {
-		log.Fatal(err)
-	}
+	return r.Run(addr)
 }

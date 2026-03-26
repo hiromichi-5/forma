@@ -18,7 +18,10 @@ type FormsClient interface {
 type RealFormsClient struct{ svc *forms.Service }
 
 func NewRealFormsClient(ctx context.Context, saJSONPath string) (*RealFormsClient, error) {
-	svc, err := forms.NewService(ctx, option.WithCredentialsFile(saJSONPath))
+	svc, err := forms.NewService(
+		ctx,
+		option.WithAuthCredentialsFile(option.ServiceAccount, saJSONPath),
+	)
 	if err != nil {
 		return nil, err
 	}

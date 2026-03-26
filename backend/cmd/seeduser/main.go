@@ -14,20 +14,25 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	viper.AutomaticEnv()
 
 	pgDSN := viper.GetString("PG_DSN")
 	if pgDSN == "" {
-		log.Fatal("PG_DSN が必要です")
+		return fmt.Errorf("PG_DSN が必要です")
 	}
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, pgDSN)
 	if err != nil {
-		log.Fatalf("pgxpoolの初期化に失敗しました: %v", err)
+		return fmt.Errorf("pgxpoolの初期化に失敗しました: %w", err)
 	}
 	defer pool.Close()
-
 	now := time.Now()
 	seedUsers := []seedUser{
 		{
@@ -53,7 +58,7 @@ func main() {
 	for _, u := range seedUsers {
 		uid, err := upsertUser(ctx, pool, u, now)
 		if err != nil {
-			log.Fatalf("ユーザ作成に失敗しました: %v", err)
+			return fmt.Errorf("ユーザ作成に失敗しました: %w", err)
 		}
 		fmt.Printf("ユーザ作成・更新: %s (id=%s)\n", u.Email, uid.String())
 
@@ -64,10 +69,12 @@ func main() {
 				uid,
 				now.Add(24*time.Hour),
 			); err != nil {
-				log.Fatalf("メール認証トークンの作成に失敗しました: %v", err)
+				return fmt.Errorf("メール認証トークンの作成に失敗しました: %w", err)
 			}
 		}
 	}
+
+	return nil
 }
 
 type seedUser struct {

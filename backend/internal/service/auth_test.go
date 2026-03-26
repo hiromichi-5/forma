@@ -220,8 +220,8 @@ func (f *fakeAuthStore) UpdateUserPasswordHash(
 
 func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
 
-func mustHash(pw string) string {
-	b, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+func mustHash() string {
+	b, err := bcrypt.GenerateFromPassword([]byte("pass123"), bcrypt.DefaultCost)
 	if err != nil {
 		panic(err)
 	}
@@ -235,7 +235,7 @@ func TestAuthenticate_Success(t *testing.T) {
 		"a@example.com": {
 			ID:           pgUUID(uid),
 			Email:        "a@example.com",
-			PasswordHash: mustHash("pass123"),
+			PasswordHash: mustHash(),
 			CreatedAt:    pgtype.Timestamptz{Time: store.now, Valid: true},
 			DisplayName:  "Test User",
 			VerifiedAt:   pgtype.Timestamptz{Time: store.now, Valid: true},
@@ -262,7 +262,7 @@ func TestAuthenticate_EmailNotVerified(t *testing.T) {
 		"a@example.com": {
 			ID:           pgUUID(uid),
 			Email:        "a@example.com",
-			PasswordHash: mustHash("pass123"),
+			PasswordHash: mustHash(),
 			CreatedAt:    pgtype.Timestamptz{Time: store.now, Valid: true},
 			DisplayName:  "Test User",
 			VerifiedAt:   pgtype.Timestamptz{},
@@ -304,7 +304,7 @@ func TestVerifyEmail_SetsVerifiedAt(t *testing.T) {
 		"a@example.com": {
 			ID:           pgUUID(uid),
 			Email:        "a@example.com",
-			PasswordHash: mustHash("pass123"),
+			PasswordHash: mustHash(),
 			CreatedAt:    pgtype.Timestamptz{Time: now, Valid: true},
 			DisplayName:  "Test User",
 			VerifiedAt:   pgtype.Timestamptz{},
@@ -338,7 +338,7 @@ func TestConfirmPasswordReset_UpdatesPassword(t *testing.T) {
 		"a@example.com": {
 			ID:           pgUUID(uid),
 			Email:        "a@example.com",
-			PasswordHash: mustHash("pass123"),
+			PasswordHash: mustHash(),
 			CreatedAt:    pgtype.Timestamptz{Time: now, Valid: true},
 			DisplayName:  "Test User",
 			VerifiedAt:   pgtype.Timestamptz{Time: now, Valid: true},
