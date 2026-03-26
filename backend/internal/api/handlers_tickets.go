@@ -3,11 +3,11 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-
 	"github.com/hiromichi-5/forma/backend/internal/auth"
 	"github.com/hiromichi-5/forma/backend/internal/service"
 )
@@ -29,10 +29,10 @@ func (h *FormsHandler) GetV1Tickets(c *gin.Context) {
 
 	ts, err := h.S.ListTickets(c, formID, statusID, uid)
 	if err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden), errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -56,10 +56,10 @@ func (h *FormsHandler) GetV1TicketsTicketId(c *gin.Context, ticketID string) {
 
 	t, err := h.S.GetTicket(c, ticketID, uid)
 	if err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
-		case service.ErrForbidden:
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -72,7 +72,7 @@ func (h *FormsHandler) GetV1TicketsTicketId(c *gin.Context, ticketID string) {
 type patchTicketReq struct {
 	StatusID *string             `json:"status_id"`
 	Assignee nullableUUIDPayload `json:"assignee_id"`
-	Priority *string             `json:"priority" binding:"omitempty,oneof=high medium low"`
+	Priority *string             `json:"priority"    binding:"omitempty,oneof=high medium low"`
 }
 
 type nullableUUIDPayload struct {
@@ -136,12 +136,20 @@ func (h *FormsHandler) PatchV1TicketsTicketId(c *gin.Context, ticketID string) {
 		}
 	}
 
-	t, err := h.S.UpdateTicket(c, ticketID, req.StatusID, assigneeID, clearAssignee, req.Priority, uid)
+	t, err := h.S.UpdateTicket(
+		c,
+		ticketID,
+		req.StatusID,
+		assigneeID,
+		clearAssignee,
+		req.Priority,
+		uid,
+	)
 	if err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
-		case service.ErrForbidden:
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})

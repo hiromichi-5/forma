@@ -19,7 +19,11 @@ type FormStatus struct {
 	IsDefault    bool    `json:"is_default"`
 }
 
-func (s *Service) ListFormStatuses(ctx context.Context, formID string, actor uuid.UUID) ([]FormStatus, error) {
+func (s *Service) ListFormStatuses(
+	ctx context.Context,
+	formID string,
+	actor uuid.UUID,
+) ([]FormStatus, error) {
 	if err := s.RequireEditor(ctx, formID, actor); err != nil {
 		return nil, err
 	}
@@ -38,7 +42,14 @@ func (s *Service) ListFormStatuses(ctx context.Context, formID string, actor uui
 	return out, nil
 }
 
-func (s *Service) CreateFormStatus(ctx context.Context, formID, name string, color *string, displayOrder int32, isDefault bool, actor uuid.UUID) (FormStatus, error) {
+func (s *Service) CreateFormStatus(
+	ctx context.Context,
+	formID, name string,
+	color *string,
+	displayOrder int32,
+	isDefault bool,
+	actor uuid.UUID,
+) (FormStatus, error) {
 	if err := s.RequireEditor(ctx, formID, actor); err != nil {
 		return FormStatus{}, err
 	}
@@ -80,7 +91,13 @@ func (s *Service) CreateFormStatus(ctx context.Context, formID, name string, col
 	return formStatusFromRow(row), nil
 }
 
-func (s *Service) UpdateFormStatus(ctx context.Context, formID, statusID string, name, color *string, displayOrder *int32, actor uuid.UUID) (FormStatus, error) {
+func (s *Service) UpdateFormStatus(
+	ctx context.Context,
+	formID, statusID string,
+	name, color *string,
+	displayOrder *int32,
+	actor uuid.UUID,
+) (FormStatus, error) {
 	if err := s.RequireEditor(ctx, formID, actor); err != nil {
 		return FormStatus{}, err
 	}
@@ -146,7 +163,11 @@ func (s *Service) UpdateFormStatus(ctx context.Context, formID, statusID string,
 	return formStatusFromRow(row), nil
 }
 
-func (s *Service) SetDefaultFormStatus(ctx context.Context, formID, statusID string, actor uuid.UUID) (FormStatus, error) {
+func (s *Service) SetDefaultFormStatus(
+	ctx context.Context,
+	formID, statusID string,
+	actor uuid.UUID,
+) (FormStatus, error) {
 	if err := s.RequireEditor(ctx, formID, actor); err != nil {
 		return FormStatus{}, err
 	}
@@ -175,7 +196,11 @@ func (s *Service) SetDefaultFormStatus(ctx context.Context, formID, statusID str
 	return formStatusFromRow(row), nil
 }
 
-func (s *Service) DeleteFormStatus(ctx context.Context, formID, statusID string, actor uuid.UUID) error {
+func (s *Service) DeleteFormStatus(
+	ctx context.Context,
+	formID, statusID string,
+	actor uuid.UUID,
+) error {
 	if err := s.RequireEditor(ctx, formID, actor); err != nil {
 		return err
 	}

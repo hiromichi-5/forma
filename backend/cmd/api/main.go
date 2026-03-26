@@ -9,16 +9,15 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/spf13/viper"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-
 	"github.com/hiromichi-5/forma/backend/internal/api"
 	"github.com/hiromichi-5/forma/backend/internal/auth"
 	"github.com/hiromichi-5/forma/backend/internal/db"
 	gforms "github.com/hiromichi-5/forma/backend/internal/google"
 	"github.com/hiromichi-5/forma/backend/internal/service"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/spf13/viper"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func NewRouter() *gin.Engine {

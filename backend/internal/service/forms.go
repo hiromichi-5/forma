@@ -61,7 +61,11 @@ func extractFormID(u string) (string, error) {
 	return "", ErrValidation
 }
 
-func (s *Service) RegisterForm(ctx context.Context, formURL string, creator uuid.UUID) (uuid.UUID, error) {
+func (s *Service) RegisterForm(
+	ctx context.Context,
+	formURL string,
+	creator uuid.UUID,
+) (uuid.UUID, error) {
 	formID, err := extractFormID(formURL)
 	if err != nil {
 		return uuid.UUID{}, ErrValidation
@@ -186,7 +190,12 @@ func (s *Service) GetForm(ctx context.Context, formID string, actor uuid.UUID) (
 	}, nil
 }
 
-func (s *Service) UpdateFormTitleQuestion(ctx context.Context, formID string, titleQuestionID *string, actor uuid.UUID) error {
+func (s *Service) UpdateFormTitleQuestion(
+	ctx context.Context,
+	formID string,
+	titleQuestionID *string,
+	actor uuid.UUID,
+) error {
 	if err := s.RequireEditor(ctx, formID, actor); err != nil {
 		return err
 	}
@@ -220,7 +229,11 @@ func (s *Service) UpdateFormTitleQuestion(ctx context.Context, formID string, ti
 	})
 }
 
-func (s *Service) ListFormQuestions(ctx context.Context, formID string, actor uuid.UUID) ([]FormQuestion, error) {
+func (s *Service) ListFormQuestions(
+	ctx context.Context,
+	formID string,
+	actor uuid.UUID,
+) ([]FormQuestion, error) {
 	if err := s.RequireEditor(ctx, formID, actor); err != nil {
 		return nil, err
 	}

@@ -25,15 +25,30 @@ type fakeInvitesService struct {
 	acceptErr    error
 }
 
-func (f *fakeInvitesService) CreateInvite(_ context.Context, _ string, _ string, _ string, _ uuid.UUID) (db.FormInvite, error) {
+func (f *fakeInvitesService) CreateInvite(
+	_ context.Context,
+	_ string,
+	_ string,
+	_ string,
+	_ uuid.UUID,
+) (db.FormInvite, error) {
 	return f.createInvite, f.createErr
 }
 
-func (f *fakeInvitesService) ListInvites(_ context.Context, _ string, _ uuid.UUID) ([]db.FormInvite, error) {
+func (f *fakeInvitesService) ListInvites(
+	_ context.Context,
+	_ string,
+	_ uuid.UUID,
+) ([]db.FormInvite, error) {
 	return f.listInvites, f.listErr
 }
 
-func (f *fakeInvitesService) DeleteInvite(_ context.Context, _ string, _ string, _ uuid.UUID) error {
+func (f *fakeInvitesService) DeleteInvite(
+	_ context.Context,
+	_ string,
+	_ string,
+	_ uuid.UUID,
+) error {
 	return f.deleteErr
 }
 
@@ -70,7 +85,11 @@ func TestInvites_Create_Success(t *testing.T) {
 	r := invitesRouter(h, true)
 
 	body, _ := json.Marshal(map[string]string{"email": "a@example.com", "role": "admin"})
-	req := httptest.NewRequest(http.MethodPost, "/v1/forms/00000000-0000-0000-0000-000000000020/invites", bytes.NewReader(body))
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/v1/forms/00000000-0000-0000-0000-000000000020/invites",
+		bytes.NewReader(body),
+	)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -83,7 +102,11 @@ func TestInvites_Create_Unauthorized(t *testing.T) {
 	h := &InvitesHandler{Svc: &fakeInvitesService{}}
 	r := invitesRouter(h, false)
 	body, _ := json.Marshal(map[string]string{"email": "a@example.com", "role": "admin"})
-	req := httptest.NewRequest(http.MethodPost, "/v1/forms/00000000-0000-0000-0000-000000000020/invites", bytes.NewReader(body))
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/v1/forms/00000000-0000-0000-0000-000000000020/invites",
+		bytes.NewReader(body),
+	)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -107,7 +130,11 @@ func TestInvites_List_Success(t *testing.T) {
 	h := &InvitesHandler{Svc: svc}
 	r := invitesRouter(h, true)
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/forms/00000000-0000-0000-0000-000000000020/invites", nil)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/v1/forms/00000000-0000-0000-0000-000000000020/invites",
+		nil,
+	)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -120,7 +147,11 @@ func TestInvites_Delete_NotFound(t *testing.T) {
 	h := &InvitesHandler{Svc: svc}
 	r := invitesRouter(h, true)
 
-	req := httptest.NewRequest(http.MethodDelete, "/v1/forms/00000000-0000-0000-0000-000000000020/invites/00000000-0000-0000-0000-000000000010", nil)
+	req := httptest.NewRequest(
+		http.MethodDelete,
+		"/v1/forms/00000000-0000-0000-0000-000000000020/invites/00000000-0000-0000-0000-000000000010",
+		nil,
+	)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
@@ -133,7 +164,11 @@ func TestInvites_Accept_Success(t *testing.T) {
 	h := &InvitesHandler{Svc: svc}
 	r := invitesRouter(h, true)
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/invites/00000000-0000-0000-0000-000000000010/accept", nil)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/v1/invites/00000000-0000-0000-0000-000000000010/accept",
+		nil,
+	)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusNoContent {

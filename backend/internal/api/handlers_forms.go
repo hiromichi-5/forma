@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -34,14 +35,14 @@ func (h *FormsHandler) PostV1Forms(c *gin.Context) {
 
 	formID, err := h.S.RegisterForm(c, req.URL, uid)
 	if err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
-		case service.ErrFormsNotShared:
+		case errors.Is(err, service.ErrFormsNotShared):
 			c.JSON(http.StatusNotFound, gin.H{"code": "FORMS_NOT_FOUND"})
 			return
-		case service.ErrFormsNotFound:
+		case errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "FORMS_NOT_FOUND"})
 			return
 		default:
@@ -85,10 +86,10 @@ func (h *FormsHandler) GetV1FormsId(c *gin.Context, formID string) {
 
 	form, err := h.S.GetForm(c, formID, uid)
 	if err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden), errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -122,10 +123,10 @@ func (h *FormsHandler) PatchV1FormsId(c *gin.Context, formID string) {
 	}
 
 	if err := h.S.UpdateFormTitleQuestion(c, formID, req.TitleQuestionID, uid); err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden), errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -150,10 +151,10 @@ func (h *FormsHandler) GetV1FormsFormIdQuestions(c *gin.Context, formID string) 
 
 	questions, err := h.S.ListFormQuestions(c, formID, uid)
 	if err != nil {
-		switch err {
-		case service.ErrForbidden:
+		switch {
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -187,10 +188,10 @@ func (h *FormsHandler) PatchV1FormsFormIdTitleQuestion(c *gin.Context, formID st
 	}
 
 	if err := h.S.UpdateFormTitleQuestion(c, formID, questionID, uid); err != nil {
-		switch err {
-		case service.ErrForbidden:
+		switch {
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(404, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(400, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(500, gin.H{"code": "INTERNAL"})

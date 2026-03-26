@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -23,7 +24,7 @@ type MembersHandler struct {
 
 type memberAddReq struct {
 	Email string `json:"email" binding:"required,email"`
-	Role  string `json:"role" binding:"required,oneof=admin editor"`
+	Role  string `json:"role"  binding:"required,oneof=admin editor"`
 }
 type memberRoleUpdateReq struct {
 	Role string `json:"role" binding:"required,oneof=admin editor"`
@@ -42,10 +43,10 @@ func (h *MembersHandler) GetV1FormsFormIdMembers(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.RequireEditor(c, formID, uid); err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden), errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -73,10 +74,10 @@ func (h *MembersHandler) PostV1FormsFormIdMembers(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.RequireAdmin(c, formID, uid); err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden), errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -89,10 +90,10 @@ func (h *MembersHandler) PostV1FormsFormIdMembers(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.AddMember(c, formID, req.Email, req.Role); err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
-		case service.ErrUserNotFound, service.ErrForbidden:
+		case errors.Is(err, service.ErrUserNotFound), errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -116,10 +117,10 @@ func (h *MembersHandler) PutV1FormsFormIdMembersUserId(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.RequireAdmin(c, formID, uid); err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden), errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -137,10 +138,10 @@ func (h *MembersHandler) PutV1FormsFormIdMembersUserId(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.ChangeRole(c, formID, userUUID.String(), req.Role); err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
-		case service.ErrForbidden:
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -164,10 +165,10 @@ func (h *MembersHandler) DeleteV1FormsFormIdMembersUserId(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.RequireAdmin(c, formID, uid); err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden), errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -180,10 +181,10 @@ func (h *MembersHandler) DeleteV1FormsFormIdMembersUserId(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.RemoveMember(c, formID, userUUID.String()); err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
-		case service.ErrForbidden:
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})

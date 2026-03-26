@@ -2,27 +2,48 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-
 	"github.com/hiromichi-5/forma/backend/internal/auth"
 	"github.com/hiromichi-5/forma/backend/internal/service"
 )
 
 type statusesService interface {
-	ListFormStatuses(ctx context.Context, formID string, actor uuid.UUID) ([]service.FormStatus, error)
-	CreateFormStatus(ctx context.Context, formID, name string, color *string, displayOrder int32, isDefault bool, actor uuid.UUID) (service.FormStatus, error)
-	UpdateFormStatus(ctx context.Context, formID, statusID string, name, color *string, displayOrder *int32, actor uuid.UUID) (service.FormStatus, error)
-	SetDefaultFormStatus(ctx context.Context, formID, statusID string, actor uuid.UUID) (service.FormStatus, error)
+	ListFormStatuses(
+		ctx context.Context,
+		formID string,
+		actor uuid.UUID,
+	) ([]service.FormStatus, error)
+	CreateFormStatus(
+		ctx context.Context,
+		formID, name string,
+		color *string,
+		displayOrder int32,
+		isDefault bool,
+		actor uuid.UUID,
+	) (service.FormStatus, error)
+	UpdateFormStatus(
+		ctx context.Context,
+		formID, statusID string,
+		name, color *string,
+		displayOrder *int32,
+		actor uuid.UUID,
+	) (service.FormStatus, error)
+	SetDefaultFormStatus(
+		ctx context.Context,
+		formID, statusID string,
+		actor uuid.UUID,
+	) (service.FormStatus, error)
 	DeleteFormStatus(ctx context.Context, formID, statusID string, actor uuid.UUID) error
 }
 
 type StatusesHandler struct{ Svc statusesService }
 
 type createStatusReq struct {
-	Name         string  `json:"name" binding:"required"`
+	Name         string  `json:"name"          binding:"required"`
 	Color        *string `json:"color"`
 	DisplayOrder int32   `json:"display_order" binding:"required"`
 	IsDefault    bool    `json:"is_default"`
@@ -48,10 +69,10 @@ func (h *StatusesHandler) GetV1FormsIdStatuses(c *gin.Context, formID string) {
 
 	statuses, err := h.Svc.ListFormStatuses(c, formID, uid)
 	if err != nil {
-		switch err {
-		case service.ErrForbidden:
+		switch {
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -79,12 +100,20 @@ func (h *StatusesHandler) PostV1FormsIdStatuses(c *gin.Context, formID string) {
 		return
 	}
 
-	status, err := h.Svc.CreateFormStatus(c, formID, req.Name, req.Color, req.DisplayOrder, req.IsDefault, uid)
+	status, err := h.Svc.CreateFormStatus(
+		c,
+		formID,
+		req.Name,
+		req.Color,
+		req.DisplayOrder,
+		req.IsDefault,
+		uid,
+	)
 	if err != nil {
-		switch err {
-		case service.ErrForbidden:
+		switch {
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -112,12 +141,20 @@ func (h *StatusesHandler) PatchV1FormsIdStatusesStatusId(c *gin.Context, formID,
 		return
 	}
 
-	status, err := h.Svc.UpdateFormStatus(c, formID, statusID, req.Name, req.Color, req.DisplayOrder, uid)
+	status, err := h.Svc.UpdateFormStatus(
+		c,
+		formID,
+		statusID,
+		req.Name,
+		req.Color,
+		req.DisplayOrder,
+		uid,
+	)
 	if err != nil {
-		switch err {
-		case service.ErrForbidden:
+		switch {
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -127,7 +164,10 @@ func (h *StatusesHandler) PatchV1FormsIdStatusesStatusId(c *gin.Context, formID,
 	c.JSON(http.StatusOK, status)
 }
 
-func (h *StatusesHandler) PostV1FormsIdStatusesStatusIdDefault(c *gin.Context, formID, statusID string) {
+func (h *StatusesHandler) PostV1FormsIdStatusesStatusIdDefault(
+	c *gin.Context,
+	formID, statusID string,
+) {
 	uidStr, ok := auth.UserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
@@ -141,10 +181,10 @@ func (h *StatusesHandler) PostV1FormsIdStatusesStatusIdDefault(c *gin.Context, f
 
 	status, err := h.Svc.SetDefaultFormStatus(c, formID, statusID, uid)
 	if err != nil {
-		switch err {
-		case service.ErrForbidden:
+		switch {
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -167,12 +207,12 @@ func (h *StatusesHandler) DeleteV1FormsIdStatusesStatusId(c *gin.Context, formID
 	}
 
 	if err := h.Svc.DeleteFormStatus(c, formID, statusID, uid); err != nil {
-		switch err {
-		case service.ErrForbidden:
+		switch {
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
-		case service.ErrConflict:
+		case errors.Is(err, service.ErrConflict):
 			c.JSON(http.StatusConflict, gin.H{"code": "CONFLICT"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})

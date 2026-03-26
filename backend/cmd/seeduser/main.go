@@ -58,7 +58,12 @@ func main() {
 		fmt.Printf("ユーザ作成・更新: %s (id=%s)\n", u.Email, uid.String())
 
 		if !u.Verified {
-			if err := resetEmailVerificationToken(ctx, pool, uid, now.Add(24*time.Hour)); err != nil {
+			if err := resetEmailVerificationToken(
+				ctx,
+				pool,
+				uid,
+				now.Add(24*time.Hour),
+			); err != nil {
 				log.Fatalf("メール認証トークンの作成に失敗しました: %v", err)
 			}
 		}
@@ -72,7 +77,12 @@ type seedUser struct {
 	Verified    bool
 }
 
-func upsertUser(ctx context.Context, pool *pgxpool.Pool, user seedUser, now time.Time) (uuid.UUID, error) {
+func upsertUser(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	user seedUser,
+	now time.Time,
+) (uuid.UUID, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("bcryptに失敗しました: %w", err)
@@ -101,7 +111,12 @@ func upsertUser(ctx context.Context, pool *pgxpool.Pool, user seedUser, now time
 	return id, nil
 }
 
-func resetEmailVerificationToken(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, expiresAt time.Time) error {
+func resetEmailVerificationToken(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	userID uuid.UUID,
+	expiresAt time.Time,
+) error {
 	_, err := pool.Exec(ctx, `DELETE FROM email_verification_tokens WHERE user_id = $1`, userID)
 	if err != nil {
 		return fmt.Errorf("既存トークンの削除に失敗しました: %w", err)

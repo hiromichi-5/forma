@@ -9,7 +9,10 @@ import (
 
 type FormsClient interface {
 	GetForm(ctx context.Context, formID string) (*forms.Form, error)
-	ListResponses(ctx context.Context, formID, filter, pageToken string) (*forms.ListFormResponsesResponse, error)
+	ListResponses(
+		ctx context.Context,
+		formID, filter, pageToken string,
+	) (*forms.ListFormResponsesResponse, error)
 }
 
 type RealFormsClient struct{ svc *forms.Service }
@@ -26,7 +29,10 @@ func (c *RealFormsClient) GetForm(ctx context.Context, formID string) (*forms.Fo
 	return c.svc.Forms.Get(formID).Context(ctx).Do()
 }
 
-func (c *RealFormsClient) ListResponses(ctx context.Context, formID, filter, pageToken string) (*forms.ListFormResponsesResponse, error) {
+func (c *RealFormsClient) ListResponses(
+	ctx context.Context,
+	formID, filter, pageToken string,
+) (*forms.ListFormResponsesResponse, error) {
 	call := c.svc.Forms.Responses.List(formID).Context(ctx)
 	if filter != "" {
 		call = call.Filter(filter)

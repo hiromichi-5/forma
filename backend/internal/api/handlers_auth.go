@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +32,7 @@ type AuthCookieConfig struct {
 }
 
 type loginReq struct {
-	Email    string `json:"email" binding:"required,email"`
+	Email    string `json:"email"    binding:"required,email"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -47,14 +48,17 @@ func (h *AuthHandler) PostV1AuthLogin(c *gin.Context) {
 	}
 	sid, err := h.Svc.Authenticate(c, req.Email, req.Password)
 	if err != nil {
-		switch err {
-		case service.ErrInvalidCredentials:
-			c.JSON(http.StatusUnauthorized, gin.H{"code": "AUTH_INVALID_CREDENTIALS", "message": "invalid credentials"})
+		switch {
+		case errors.Is(err, service.ErrInvalidCredentials):
+			c.JSON(
+				http.StatusUnauthorized,
+				gin.H{"code": "AUTH_INVALID_CREDENTIALS", "message": "invalid credentials"},
+			)
 			return
-		case service.ErrEmailNotVerified:
+		case errors.Is(err, service.ErrEmailNotVerified):
 			c.JSON(http.StatusForbidden, gin.H{"code": "EMAIL_NOT_VERIFIED"})
 			return
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
 		default:
@@ -67,8 +71,8 @@ func (h *AuthHandler) PostV1AuthLogin(c *gin.Context) {
 }
 
 type signupReq struct {
-	Email       string `json:"email" binding:"required,email"`
-	Password    string `json:"password" binding:"required,min=8"`
+	Email       string `json:"email"        binding:"required,email"`
+	Password    string `json:"password"     binding:"required,min=8"`
 	DisplayName string `json:"display_name" binding:"required,min=1"`
 }
 
@@ -84,12 +88,15 @@ func (h *AuthHandler) PostV1AuthSignup(c *gin.Context) {
 	}
 	uid, err := h.Svc.Signup(c, req.Email, req.Password, req.DisplayName)
 	if err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
-		case service.ErrConflict:
-			c.JSON(http.StatusConflict, gin.H{"code": "CONFLICT", "message": "email already exists"})
+		case errors.Is(err, service.ErrConflict):
+			c.JSON(
+				http.StatusConflict,
+				gin.H{"code": "CONFLICT", "message": "email already exists"},
+			)
 			return
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -110,8 +117,8 @@ func (h *AuthHandler) PostV1AuthLogout(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.Logout(c, sid); err != nil {
-		switch err {
-		case service.ErrValidation, service.ErrInvalidCredentials:
+		switch {
+		case errors.Is(err, service.ErrValidation), errors.Is(err, service.ErrInvalidCredentials):
 			c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED"})
 			return
 		default:
@@ -134,11 +141,11 @@ func (h *AuthHandler) PostV1AuthVerifyEmail(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.VerifyEmail(c, req.Token); err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
-		case service.ErrTokenNotFound:
+		case errors.Is(err, service.ErrTokenNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "TOKEN_NOT_FOUND"})
 			return
 		default:
@@ -160,8 +167,8 @@ func (h *AuthHandler) PostV1AuthVerifyEmailResend(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.ResendEmailVerification(c, req.Email); err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
 		default:
@@ -183,8 +190,8 @@ func (h *AuthHandler) PostV1AuthPasswordReset(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.RequestPasswordReset(c, req.Email); err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
 		default:
@@ -196,7 +203,7 @@ func (h *AuthHandler) PostV1AuthPasswordReset(c *gin.Context) {
 }
 
 type passwordResetConfirmReq struct {
-	Token       string `json:"token" binding:"required"`
+	Token       string `json:"token"        binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=8"`
 }
 
@@ -207,11 +214,11 @@ func (h *AuthHandler) PostV1AuthPasswordResetConfirm(c *gin.Context) {
 		return
 	}
 	if err := h.Svc.ConfirmPasswordReset(c, req.Token, req.NewPassword); err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
-		case service.ErrTokenNotFound:
+		case errors.Is(err, service.ErrTokenNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "TOKEN_NOT_FOUND"})
 			return
 		default:

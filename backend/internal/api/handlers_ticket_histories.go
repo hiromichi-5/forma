@@ -2,17 +2,21 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-
 	"github.com/hiromichi-5/forma/backend/internal/auth"
 	"github.com/hiromichi-5/forma/backend/internal/service"
 )
 
 type ticketHistoriesService interface {
-	ListTicketHistories(ctx context.Context, ticketID string, actor uuid.UUID) ([]service.TicketHistoryView, error)
+	ListTicketHistories(
+		ctx context.Context,
+		ticketID string,
+		actor uuid.UUID,
+	) ([]service.TicketHistoryView, error)
 }
 
 type TicketHistoriesHandler struct{ Svc ticketHistoriesService }
@@ -31,10 +35,10 @@ func (h *TicketHistoriesHandler) GetV1TicketsTicketIdHistories(c *gin.Context, t
 
 	histories, err := h.Svc.ListTicketHistories(c, ticketID, uid)
 	if err != nil {
-		switch err {
-		case service.ErrValidation:
+		switch {
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
-		case service.ErrForbidden:
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})

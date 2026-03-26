@@ -13,7 +13,11 @@ import (
 
 const inviteTTL = 7 * 24 * time.Hour
 
-func (s *Service) CreateInvite(ctx context.Context, formID, email, role string, actor uuid.UUID) (db.FormInvite, error) {
+func (s *Service) CreateInvite(
+	ctx context.Context,
+	formID, email, role string,
+	actor uuid.UUID,
+) (db.FormInvite, error) {
 	if role != "admin" && role != "editor" {
 		return db.FormInvite{}, ErrValidation
 	}
@@ -42,7 +46,11 @@ func (s *Service) CreateInvite(ctx context.Context, formID, email, role string, 
 	return invite, nil
 }
 
-func (s *Service) ListInvites(ctx context.Context, formID string, actor uuid.UUID) ([]db.FormInvite, error) {
+func (s *Service) ListInvites(
+	ctx context.Context,
+	formID string,
+	actor uuid.UUID,
+) ([]db.FormInvite, error) {
 	if err := s.RequireAdmin(ctx, formID, actor); err != nil {
 		return nil, err
 	}
@@ -54,7 +62,11 @@ func (s *Service) ListInvites(ctx context.Context, formID string, actor uuid.UUI
 	return s.Invites.ListActiveFormInvites(ctx, dbUUID(fid))
 }
 
-func (s *Service) DeleteInvite(ctx context.Context, formID, inviteID string, actor uuid.UUID) error {
+func (s *Service) DeleteInvite(
+	ctx context.Context,
+	formID, inviteID string,
+	actor uuid.UUID,
+) error {
 	if err := s.RequireAdmin(ctx, formID, actor); err != nil {
 		return err
 	}

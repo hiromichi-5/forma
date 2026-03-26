@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -23,7 +24,7 @@ type InvitesHandler struct {
 
 type createInviteReq struct {
 	Email string `json:"email" binding:"required,email"`
-	Role  string `json:"role" binding:"required,oneof=admin editor"`
+	Role  string `json:"role"  binding:"required,oneof=admin editor"`
 }
 
 type createInviteResp struct {
@@ -61,10 +62,10 @@ func (h *InvitesHandler) PostV1FormsFormIdInvites(c *gin.Context) {
 
 	invite, err := h.Svc.CreateInvite(c, formID, req.Email, req.Role, actor)
 	if err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden), errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -97,10 +98,10 @@ func (h *InvitesHandler) GetV1FormsFormIdInvites(c *gin.Context) {
 
 	invites, err := h.Svc.ListInvites(c, formID, actor)
 	if err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden), errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -142,10 +143,12 @@ func (h *InvitesHandler) DeleteV1FormsFormIdInvitesInviteId(c *gin.Context) {
 	}
 
 	if err := h.Svc.DeleteInvite(c, formID, inviteID, actor); err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrInviteNotFound, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden),
+			errors.Is(err, service.ErrInviteNotFound),
+			errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
@@ -170,10 +173,14 @@ func (h *InvitesHandler) PostV1InvitesInviteIdAccept(c *gin.Context, inviteID st
 
 	err = h.Svc.AcceptInvite(c, inviteID, actor)
 	if err != nil {
-		switch err {
-		case service.ErrInviteNotFound, service.ErrInviteExpired, service.ErrForbidden, service.ErrUserNotFound, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrInviteNotFound),
+			errors.Is(err, service.ErrInviteExpired),
+			errors.Is(err, service.ErrForbidden),
+			errors.Is(err, service.ErrUserNotFound),
+			errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})

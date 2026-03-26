@@ -22,7 +22,10 @@ type fakeAuthStore struct {
 	now         time.Time
 }
 
-func (f *fakeAuthStore) GetUserByEmail(_ context.Context, email string) (db.GetUserByEmailRow, error) {
+func (f *fakeAuthStore) GetUserByEmail(
+	_ context.Context,
+	email string,
+) (db.GetUserByEmailRow, error) {
 	u, ok := f.users[email]
 	if !ok {
 		return db.GetUserByEmailRow{}, pgx.ErrNoRows
@@ -30,7 +33,10 @@ func (f *fakeAuthStore) GetUserByEmail(_ context.Context, email string) (db.GetU
 	return u, nil
 }
 
-func (f *fakeAuthStore) CreateUser(_ context.Context, arg db.CreateUserParams) (db.CreateUserRow, error) {
+func (f *fakeAuthStore) CreateUser(
+	_ context.Context,
+	arg db.CreateUserParams,
+) (db.CreateUserRow, error) {
 	if f.users == nil {
 		f.users = map[string]db.GetUserByEmailRow{}
 	}
@@ -50,21 +56,21 @@ func (f *fakeAuthStore) CreateUser(_ context.Context, arg db.CreateUserParams) (
 	}
 	f.users[arg.Email] = u
 	f.usersByID[arg.ID.Bytes] = u
-	return db.CreateUserRow{
-		ID:           u.ID,
-		Email:        u.Email,
-		PasswordHash: u.PasswordHash,
-		CreatedAt:    u.CreatedAt,
-		DisplayName:  u.DisplayName,
-		VerifiedAt:   u.VerifiedAt,
-	}, nil
+	return db.CreateUserRow(u), nil
 }
 
-func (f *fakeAuthStore) CreateSession(_ context.Context, arg db.CreateSessionParams) (db.Session, error) {
+func (f *fakeAuthStore) CreateSession(
+	_ context.Context,
+	arg db.CreateSessionParams,
+) (db.Session, error) {
 	if f.sessions == nil {
 		f.sessions = map[uuid.UUID]db.Session{}
 	}
-	s := db.Session{ID: arg.ID, UserID: arg.UserID, CreatedAt: pgtype.Timestamptz{Time: f.now, Valid: true}}
+	s := db.Session{
+		ID:        arg.ID,
+		UserID:    arg.UserID,
+		CreatedAt: pgtype.Timestamptz{Time: f.now, Valid: true},
+	}
 	f.sessions[arg.ID.Bytes] = s
 	return s, nil
 }
@@ -80,7 +86,10 @@ func (f *fakeAuthStore) DeleteSession(_ context.Context, id pgtype.UUID) (int64,
 	return 1, nil
 }
 
-func (f *fakeAuthStore) CreateEmailVerificationToken(_ context.Context, arg db.CreateEmailVerificationTokenParams) (db.EmailVerificationToken, error) {
+func (f *fakeAuthStore) CreateEmailVerificationToken(
+	_ context.Context,
+	arg db.CreateEmailVerificationTokenParams,
+) (db.EmailVerificationToken, error) {
 	if f.emailTokens == nil {
 		f.emailTokens = map[string]db.EmailVerificationToken{}
 	}
@@ -95,7 +104,10 @@ func (f *fakeAuthStore) CreateEmailVerificationToken(_ context.Context, arg db.C
 	return t, nil
 }
 
-func (f *fakeAuthStore) GetEmailVerificationTokenByToken(_ context.Context, token string) (db.EmailVerificationToken, error) {
+func (f *fakeAuthStore) GetEmailVerificationTokenByToken(
+	_ context.Context,
+	token string,
+) (db.EmailVerificationToken, error) {
 	t, ok := f.emailTokens[token]
 	if !ok {
 		return db.EmailVerificationToken{}, pgx.ErrNoRows
@@ -103,7 +115,10 @@ func (f *fakeAuthStore) GetEmailVerificationTokenByToken(_ context.Context, toke
 	return t, nil
 }
 
-func (f *fakeAuthStore) UseEmailVerificationToken(_ context.Context, id pgtype.UUID) (int64, error) {
+func (f *fakeAuthStore) UseEmailVerificationToken(
+	_ context.Context,
+	id pgtype.UUID,
+) (int64, error) {
 	for k, t := range f.emailTokens {
 		if t.ID == id {
 			t.UsedAt = pgtype.Timestamptz{Time: f.now, Valid: true}
@@ -114,7 +129,10 @@ func (f *fakeAuthStore) UseEmailVerificationToken(_ context.Context, id pgtype.U
 	return 0, nil
 }
 
-func (f *fakeAuthStore) DeleteEmailVerificationTokensByUser(_ context.Context, userID pgtype.UUID) error {
+func (f *fakeAuthStore) DeleteEmailVerificationTokensByUser(
+	_ context.Context,
+	userID pgtype.UUID,
+) error {
 	for k, t := range f.emailTokens {
 		if t.UserID == userID {
 			delete(f.emailTokens, k)
@@ -134,7 +152,10 @@ func (f *fakeAuthStore) SetUserVerifiedAt(_ context.Context, arg db.SetUserVerif
 	return nil
 }
 
-func (f *fakeAuthStore) CreatePasswordResetToken(_ context.Context, arg db.CreatePasswordResetTokenParams) (db.PasswordResetToken, error) {
+func (f *fakeAuthStore) CreatePasswordResetToken(
+	_ context.Context,
+	arg db.CreatePasswordResetTokenParams,
+) (db.PasswordResetToken, error) {
 	if f.resetTokens == nil {
 		f.resetTokens = map[string]db.PasswordResetToken{}
 	}
@@ -149,7 +170,10 @@ func (f *fakeAuthStore) CreatePasswordResetToken(_ context.Context, arg db.Creat
 	return t, nil
 }
 
-func (f *fakeAuthStore) GetPasswordResetTokenByToken(_ context.Context, token string) (db.PasswordResetToken, error) {
+func (f *fakeAuthStore) GetPasswordResetTokenByToken(
+	_ context.Context,
+	token string,
+) (db.PasswordResetToken, error) {
 	t, ok := f.resetTokens[token]
 	if !ok {
 		return db.PasswordResetToken{}, pgx.ErrNoRows
@@ -168,7 +192,10 @@ func (f *fakeAuthStore) UsePasswordResetToken(_ context.Context, id pgtype.UUID)
 	return 0, nil
 }
 
-func (f *fakeAuthStore) DeletePasswordResetTokensByUser(_ context.Context, userID pgtype.UUID) error {
+func (f *fakeAuthStore) DeletePasswordResetTokensByUser(
+	_ context.Context,
+	userID pgtype.UUID,
+) error {
 	for k, t := range f.resetTokens {
 		if t.UserID == userID {
 			delete(f.resetTokens, k)
@@ -177,7 +204,10 @@ func (f *fakeAuthStore) DeletePasswordResetTokensByUser(_ context.Context, userI
 	return nil
 }
 
-func (f *fakeAuthStore) UpdateUserPasswordHash(_ context.Context, arg db.UpdateUserPasswordHashParams) error {
+func (f *fakeAuthStore) UpdateUserPasswordHash(
+	_ context.Context,
+	arg db.UpdateUserPasswordHashParams,
+) error {
 	u, ok := f.usersByID[arg.ID.Bytes]
 	if !ok {
 		return pgx.ErrNoRows

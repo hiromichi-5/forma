@@ -32,7 +32,10 @@ func (f *fakeProfileService) GetProfile(_ context.Context, userID string) (db.Us
 	return u, nil
 }
 
-func (f *fakeProfileService) UpdateDisplayName(_ context.Context, userID, displayName string) (db.User, error) {
+func (f *fakeProfileService) UpdateDisplayName(
+	_ context.Context,
+	userID, displayName string,
+) (db.User, error) {
 	if f.err != nil {
 		return db.User{}, f.err
 	}
@@ -59,7 +62,10 @@ func (f *fakeProfileService) DeleteProfile(_ context.Context, userID string) err
 	return nil
 }
 
-func (f *fakeProfileService) ChangePassword(_ context.Context, userID, currentPassword, newPassword string) error {
+func (f *fakeProfileService) ChangePassword(
+	_ context.Context,
+	userID, currentPassword, newPassword string,
+) error {
 	if f.err != nil {
 		return f.err
 	}
@@ -249,6 +255,7 @@ func TestPatchV1MePassword_Unauthorized(t *testing.T) {
 		t.Fatalf("want 401, got %d", w.Code)
 	}
 }
+
 func TestDeleteV1Me_Success(t *testing.T) {
 	svc := &fakeProfileService{
 		users: map[string]db.User{

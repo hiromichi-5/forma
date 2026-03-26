@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/api"
 	"github.com/hiromichi-5/forma/backend/internal/auth"
@@ -83,7 +82,10 @@ func TestLogin_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := NewRouter()
-	h := &api.AuthHandler{Svc: &fakeAuth{"a@example.com", "pass123", "session-1"}, Cookie: api.AuthCookieConfig{Name: "forma_token"}}
+	h := &api.AuthHandler{
+		Svc:    &fakeAuth{"a@example.com", "pass123", "session-1"},
+		Cookie: api.AuthCookieConfig{Name: "forma_token"},
+	}
 	r.POST("/v1/auth/login", h.PostV1AuthLogin)
 
 	body, _ := json.Marshal(map[string]string{"email": "a@example.com", "password": "pass123"})
@@ -109,7 +111,10 @@ func TestWhoAmI_AuthFlow(t *testing.T) {
 
 	r := NewRouter()
 	cookieCfg := api.AuthCookieConfig{Name: "forma_token"}
-	h := &api.AuthHandler{Svc: &fakeAuth{"a@example.com", "pass123", "session-42"}, Cookie: cookieCfg}
+	h := &api.AuthHandler{
+		Svc:    &fakeAuth{"a@example.com", "pass123", "session-42"},
+		Cookie: cookieCfg,
+	}
 
 	r.POST("/v1/auth/login", h.PostV1AuthLogin)
 	authz := r.Group("/v1")
@@ -117,7 +122,10 @@ func TestWhoAmI_AuthFlow(t *testing.T) {
 	sid, _ := uuid.Parse("00000000-0000-0000-0000-000000000042")
 	uid, _ := uuid.Parse("00000000-0000-0000-0000-000000000043")
 	store.sessions = map[uuid.UUID]db.Session{
-		sid: {ID: pgtype.UUID{Bytes: sid, Valid: true}, UserID: pgtype.UUID{Bytes: uid, Valid: true}},
+		sid: {
+			ID:     pgtype.UUID{Bytes: sid, Valid: true},
+			UserID: pgtype.UUID{Bytes: uid, Valid: true},
+		},
 	}
 	authz.Use(auth.SessionMiddleware(store, cookieCfg.Name))
 	authz.GET("/whoami", func(c *gin.Context) {

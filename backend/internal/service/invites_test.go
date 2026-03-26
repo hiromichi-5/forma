@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -15,7 +16,10 @@ type fakeInvitesStore struct {
 	invites map[uuid.UUID]db.FormInvite
 }
 
-func (f *fakeInvitesStore) CreateFormInvite(_ context.Context, arg db.CreateFormInviteParams) (db.FormInvite, error) {
+func (f *fakeInvitesStore) CreateFormInvite(
+	_ context.Context,
+	arg db.CreateFormInviteParams,
+) (db.FormInvite, error) {
 	if f.invites == nil {
 		f.invites = map[uuid.UUID]db.FormInvite{}
 	}
@@ -32,17 +36,24 @@ func (f *fakeInvitesStore) CreateFormInvite(_ context.Context, arg db.CreateForm
 	return inv, nil
 }
 
-func (f *fakeInvitesStore) ListActiveFormInvites(_ context.Context, formID pgtype.UUID) ([]db.FormInvite, error) {
+func (f *fakeInvitesStore) ListActiveFormInvites(
+	_ context.Context,
+	formID pgtype.UUID,
+) ([]db.FormInvite, error) {
 	out := []db.FormInvite{}
 	for _, inv := range f.invites {
-		if inv.FormID == formID && !inv.AcceptedAt.Valid && inv.ExpiresAt.Valid && inv.ExpiresAt.Time.After(time.Now()) {
+		if inv.FormID == formID && !inv.AcceptedAt.Valid && inv.ExpiresAt.Valid &&
+			inv.ExpiresAt.Time.After(time.Now()) {
 			out = append(out, inv)
 		}
 	}
 	return out, nil
 }
 
-func (f *fakeInvitesStore) GetFormInviteForUpdate(_ context.Context, id pgtype.UUID) (db.FormInvite, error) {
+func (f *fakeInvitesStore) GetFormInviteForUpdate(
+	_ context.Context,
+	id pgtype.UUID,
+) (db.FormInvite, error) {
 	inv, ok := f.invites[id.Bytes]
 	if !ok {
 		return db.FormInvite{}, pgx.ErrNoRows
@@ -50,7 +61,10 @@ func (f *fakeInvitesStore) GetFormInviteForUpdate(_ context.Context, id pgtype.U
 	return inv, nil
 }
 
-func (f *fakeInvitesStore) AcceptFormInvite(_ context.Context, id pgtype.UUID) (db.FormInvite, error) {
+func (f *fakeInvitesStore) AcceptFormInvite(
+	_ context.Context,
+	id pgtype.UUID,
+) (db.FormInvite, error) {
 	inv, ok := f.invites[id.Bytes]
 	if !ok {
 		return db.FormInvite{}, pgx.ErrNoRows
@@ -69,7 +83,10 @@ type fakeRolesStore struct {
 	roles map[uuid.UUID]db.FormRole
 }
 
-func (f *fakeRolesStore) GetFormMemberRole(_ context.Context, arg db.GetFormMemberRoleParams) (db.FormRole, error) {
+func (f *fakeRolesStore) GetFormMemberRole(
+	_ context.Context,
+	arg db.GetFormMemberRoleParams,
+) (db.FormRole, error) {
 	role, ok := f.roles[arg.UserID.Bytes]
 	if !ok {
 		return "", pgx.ErrNoRows
@@ -85,11 +102,17 @@ func (f *fakeRolesStore) DeleteFormMember(_ context.Context, _ db.DeleteFormMemb
 	return nil
 }
 
-func (f *fakeRolesStore) ListFormMembers(_ context.Context, _ pgtype.UUID) ([]db.ListFormMembersRow, error) {
+func (f *fakeRolesStore) ListFormMembers(
+	_ context.Context,
+	_ pgtype.UUID,
+) ([]db.ListFormMembersRow, error) {
 	return nil, nil
 }
 
-func (f *fakeRolesStore) ListUserAccessibleForms(_ context.Context, _ pgtype.UUID) ([]db.ListUserAccessibleFormsRow, error) {
+func (f *fakeRolesStore) ListUserAccessibleForms(
+	_ context.Context,
+	_ pgtype.UUID,
+) ([]db.ListUserAccessibleFormsRow, error) {
 	return nil, nil
 }
 
@@ -116,7 +139,13 @@ func TestCreateInvite_Success(t *testing.T) {
 	roles := &fakeRolesStore{roles: map[uuid.UUID]db.FormRole{actor: db.FormRoleAdmin}}
 	svc := &Service{Invites: invites, Roles: roles}
 
-	inv, err := svc.CreateInvite(context.Background(), formID.String(), "a@example.com", "editor", actor)
+	inv, err := svc.CreateInvite(
+		context.Background(),
+		formID.String(),
+		"a@example.com",
+		"editor",
+		actor,
+	)
 	if err != nil {
 		t.Fatalf("want nil err, got %v", err)
 	}
@@ -133,7 +162,7 @@ func TestListInvites_Forbidden(t *testing.T) {
 	svc := &Service{Invites: invites, Roles: roles}
 
 	_, err := svc.ListInvites(context.Background(), formID.String(), actor)
-	if err != ErrForbidden {
+	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("want ErrForbidden, got %v", err)
 	}
 }
@@ -146,7 +175,7 @@ func TestDeleteInvite_NotFound(t *testing.T) {
 	svc := &Service{Invites: invites, Roles: roles}
 
 	err := svc.DeleteInvite(context.Background(), formID.String(), uuid.New().String(), actor)
-	if err != ErrInviteNotFound {
+	if !errors.Is(err, ErrInviteNotFound) {
 		t.Fatalf("want ErrInviteNotFound, got %v", err)
 	}
 }
@@ -171,7 +200,14 @@ func TestAcceptInvite_EmailMismatch(t *testing.T) {
 	}}
 	svc := &Service{Invites: invites, Roles: roles, Users: users}
 
-	if err := svc.AcceptInvite(context.Background(), invID.String(), actor); err != ErrForbidden {
+	if err := svc.AcceptInvite(
+		context.Background(),
+		invID.String(),
+		actor,
+	); !errors.Is(
+		err,
+		ErrForbidden,
+	) {
 		t.Fatalf("want ErrForbidden, got %v", err)
 	}
 }

@@ -22,7 +22,11 @@ type TicketHistoryView struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
-func (s *Service) ListTicketHistories(ctx context.Context, ticketID string, actor uuid.UUID) ([]TicketHistoryView, error) {
+func (s *Service) ListTicketHistories(
+	ctx context.Context,
+	ticketID string,
+	actor uuid.UUID,
+) ([]TicketHistoryView, error) {
 	if err := s.RequireFormAccessForTicket(ctx, ticketID, actor); err != nil {
 		return nil, err
 	}
