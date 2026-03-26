@@ -13,7 +13,10 @@ import (
 
 type ProfileStore interface {
 	GetUserByID(ctx context.Context, id pgtype.UUID) (db.GetUserByIDRow, error)
-	UpdateUserDisplayName(ctx context.Context, arg db.UpdateUserDisplayNameParams) (db.UpdateUserDisplayNameRow, error)
+	UpdateUserDisplayName(
+		ctx context.Context,
+		arg db.UpdateUserDisplayNameParams,
+	) (db.UpdateUserDisplayNameRow, error)
 	DeleteUser(ctx context.Context, id pgtype.UUID) (int64, error)
 	UpdateUserPasswordHash(ctx context.Context, arg db.UpdateUserPasswordHashParams) error
 }
@@ -43,7 +46,10 @@ func (s *ProfileService) GetProfile(ctx context.Context, userID string) (db.User
 	return userFromGetUserByIDRow(row), nil
 }
 
-func (s *ProfileService) UpdateDisplayName(ctx context.Context, userID, displayName string) (db.User, error) {
+func (s *ProfileService) UpdateDisplayName(
+	ctx context.Context,
+	userID, displayName string,
+) (db.User, error) {
 	if displayName == "" {
 		return db.User{}, ErrValidation
 	}
@@ -88,7 +94,10 @@ func (s *ProfileService) DeleteProfile(ctx context.Context, userID string) error
 	return nil
 }
 
-func (s *ProfileService) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+func (s *ProfileService) ChangePassword(
+	ctx context.Context,
+	userID, currentPassword, newPassword string,
+) error {
 	if currentPassword == "" || newPassword == "" {
 		return ErrValidation
 	}

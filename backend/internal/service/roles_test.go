@@ -20,28 +20,43 @@ type rolesStoreStub struct {
 	countCalled int
 }
 
-func (s *rolesStoreStub) GetFormMemberRole(ctx context.Context, arg db.GetFormMemberRoleParams) (db.FormRole, error) {
+func (s *rolesStoreStub) GetFormMemberRole(
+	ctx context.Context,
+	arg db.GetFormMemberRoleParams,
+) (db.FormRole, error) {
 	if s.getErr != nil {
 		return "", s.getErr
 	}
 	return s.role, nil
 }
 
-func (s *rolesStoreStub) UpsertFormMember(ctx context.Context, arg db.UpsertFormMemberParams) error {
+func (s *rolesStoreStub) UpsertFormMember(
+	ctx context.Context,
+	arg db.UpsertFormMemberParams,
+) error {
 	s.upsertArgs = append(s.upsertArgs, arg)
 	return nil
 }
 
-func (s *rolesStoreStub) DeleteFormMember(ctx context.Context, arg db.DeleteFormMemberParams) error {
+func (s *rolesStoreStub) DeleteFormMember(
+	ctx context.Context,
+	arg db.DeleteFormMemberParams,
+) error {
 	s.deleteArgs = append(s.deleteArgs, arg)
 	return nil
 }
 
-func (s *rolesStoreStub) ListFormMembers(ctx context.Context, formID pgtype.UUID) ([]db.ListFormMembersRow, error) {
+func (s *rolesStoreStub) ListFormMembers(
+	ctx context.Context,
+	formID pgtype.UUID,
+) ([]db.ListFormMembersRow, error) {
 	return nil, nil
 }
 
-func (s *rolesStoreStub) ListUserAccessibleForms(ctx context.Context, userID pgtype.UUID) ([]db.ListUserAccessibleFormsRow, error) {
+func (s *rolesStoreStub) ListUserAccessibleForms(
+	ctx context.Context,
+	userID pgtype.UUID,
+) ([]db.ListUserAccessibleFormsRow, error) {
 	return nil, nil
 }
 
@@ -74,7 +89,12 @@ func TestChangeRole_AllowsDemoteWhenAnotherAdminExists(t *testing.T) {
 	stub := &rolesStoreStub{role: db.FormRoleAdmin, adminCount: 2}
 	svc := &Service{Roles: stub}
 
-	if err := svc.ChangeRole(context.Background(), formID.String(), uid.String(), "editor"); err != nil {
+	if err := svc.ChangeRole(
+		context.Background(),
+		formID.String(),
+		uid.String(),
+		"editor",
+	); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(stub.upsertArgs) != 1 {

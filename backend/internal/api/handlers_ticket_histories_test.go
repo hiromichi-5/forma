@@ -16,7 +16,11 @@ type fakeTicketHistoriesService struct {
 	histories []service.TicketHistoryView
 }
 
-func (f *fakeTicketHistoriesService) ListTicketHistories(_ context.Context, _ string, _ uuid.UUID) ([]service.TicketHistoryView, error) {
+func (f *fakeTicketHistoriesService) ListTicketHistories(
+	_ context.Context,
+	_ string,
+	_ uuid.UUID,
+) ([]service.TicketHistoryView, error) {
 	return f.histories, f.err
 }
 
@@ -36,12 +40,21 @@ func ticketHistoriesRouter(handler *TicketHistoriesHandler, withAuth bool) *gin.
 }
 
 func TestTicketHistories_Get_Success(t *testing.T) {
-	svc := &fakeTicketHistoriesService{histories: []service.TicketHistoryView{{FieldName: "status"}}}
+	svc := &fakeTicketHistoriesService{
+		histories: []service.TicketHistoryView{{FieldName: "status"}},
+	}
 	h := &TicketHistoriesHandler{Svc: svc}
 	r := ticketHistoriesRouter(h, true)
 
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v1/tickets/00000000-0000-0000-0000-000000000010/histories", nil))
+	r.ServeHTTP(
+		w,
+		httptest.NewRequest(
+			http.MethodGet,
+			"/v1/tickets/00000000-0000-0000-0000-000000000010/histories",
+			nil,
+		),
+	)
 	if w.Code != http.StatusOK {
 		t.Fatalf("want 200, got %d", w.Code)
 	}
@@ -51,7 +64,14 @@ func TestTicketHistories_Get_Unauthorized(t *testing.T) {
 	h := &TicketHistoriesHandler{Svc: &fakeTicketHistoriesService{}}
 	r := ticketHistoriesRouter(h, false)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v1/tickets/00000000-0000-0000-0000-000000000010/histories", nil))
+	r.ServeHTTP(
+		w,
+		httptest.NewRequest(
+			http.MethodGet,
+			"/v1/tickets/00000000-0000-0000-0000-000000000010/histories",
+			nil,
+		),
+	)
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d", w.Code)
 	}
@@ -61,7 +81,14 @@ func TestTicketHistories_Get_NotFound(t *testing.T) {
 	h := &TicketHistoriesHandler{Svc: &fakeTicketHistoriesService{err: service.ErrForbidden}}
 	r := ticketHistoriesRouter(h, true)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v1/tickets/00000000-0000-0000-0000-000000000010/histories", nil))
+	r.ServeHTTP(
+		w,
+		httptest.NewRequest(
+			http.MethodGet,
+			"/v1/tickets/00000000-0000-0000-0000-000000000010/histories",
+			nil,
+		),
+	)
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("want 404, got %d", w.Code)
 	}

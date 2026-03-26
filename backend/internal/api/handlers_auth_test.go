@@ -133,10 +133,19 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 
 func TestSignup_Success(t *testing.T) {
 	uid := uuid.New().String()
-	h := &AuthHandler{Svc: &fakeAuthService{signupID: uid}, Cookie: AuthCookieConfig{Name: "forma_token"}}
+	h := &AuthHandler{
+		Svc:    &fakeAuthService{signupID: uid},
+		Cookie: AuthCookieConfig{Name: "forma_token"},
+	}
 	r := router(h)
 
-	body, _ := json.Marshal(map[string]string{"email": "new@example.com", "password": "password123", "display_name": "TestUser"})
+	body, _ := json.Marshal(
+		map[string]string{
+			"email":        "new@example.com",
+			"password":     "password123",
+			"display_name": "TestUser",
+		},
+	)
 	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -159,7 +168,13 @@ func TestSignup_Success(t *testing.T) {
 func TestSignup_Conflict(t *testing.T) {
 	h := &AuthHandler{Svc: &fakeAuthService{signupErr: service.ErrConflict}}
 	r := router(h)
-	body, _ := json.Marshal(map[string]string{"email": "dup@example.com", "password": "password123", "display_name": "TestUser"})
+	body, _ := json.Marshal(
+		map[string]string{
+			"email":        "dup@example.com",
+			"password":     "password123",
+			"display_name": "TestUser",
+		},
+	)
 	req := httptest.NewRequest("POST", "/v1/auth/signup", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

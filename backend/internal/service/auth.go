@@ -22,12 +22,21 @@ type AuthStore interface {
 	CreateUser(ctx context.Context, arg db.CreateUserParams) (db.CreateUserRow, error)
 	CreateSession(ctx context.Context, arg db.CreateSessionParams) (db.Session, error)
 	DeleteSession(ctx context.Context, id pgtype.UUID) (int64, error)
-	CreateEmailVerificationToken(ctx context.Context, arg db.CreateEmailVerificationTokenParams) (db.EmailVerificationToken, error)
-	GetEmailVerificationTokenByToken(ctx context.Context, token string) (db.EmailVerificationToken, error)
+	CreateEmailVerificationToken(
+		ctx context.Context,
+		arg db.CreateEmailVerificationTokenParams,
+	) (db.EmailVerificationToken, error)
+	GetEmailVerificationTokenByToken(
+		ctx context.Context,
+		token string,
+	) (db.EmailVerificationToken, error)
 	UseEmailVerificationToken(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeleteEmailVerificationTokensByUser(ctx context.Context, userID pgtype.UUID) error
 	SetUserVerifiedAt(ctx context.Context, arg db.SetUserVerifiedAtParams) error
-	CreatePasswordResetToken(ctx context.Context, arg db.CreatePasswordResetTokenParams) (db.PasswordResetToken, error)
+	CreatePasswordResetToken(
+		ctx context.Context,
+		arg db.CreatePasswordResetTokenParams,
+	) (db.PasswordResetToken, error)
 	GetPasswordResetTokenByToken(ctx context.Context, token string) (db.PasswordResetToken, error)
 	UsePasswordResetToken(ctx context.Context, id pgtype.UUID) (int64, error)
 	DeletePasswordResetTokensByUser(ctx context.Context, userID pgtype.UUID) error
@@ -102,7 +111,10 @@ func (s *AuthService) Authenticate(ctx context.Context, email, password string) 
 	return sid.String(), nil
 }
 
-func (s *AuthService) Signup(ctx context.Context, email, password, displayName string) (string, error) {
+func (s *AuthService) Signup(
+	ctx context.Context,
+	email, password, displayName string,
+) (string, error) {
 	if email == "" || password == "" || displayName == "" {
 		return "", ErrValidation
 	}

@@ -17,7 +17,10 @@ type fakeProfileStore struct {
 	users map[string]db.GetUserByIDRow
 }
 
-func (f *fakeProfileStore) GetUserByID(_ context.Context, id pgtype.UUID) (db.GetUserByIDRow, error) {
+func (f *fakeProfileStore) GetUserByID(
+	_ context.Context,
+	id pgtype.UUID,
+) (db.GetUserByIDRow, error) {
 	uid := uuid.UUID(id.Bytes).String()
 	u, ok := f.users[uid]
 	if !ok {
@@ -26,7 +29,10 @@ func (f *fakeProfileStore) GetUserByID(_ context.Context, id pgtype.UUID) (db.Ge
 	return u, nil
 }
 
-func (f *fakeProfileStore) UpdateUserDisplayName(_ context.Context, arg db.UpdateUserDisplayNameParams) (db.UpdateUserDisplayNameRow, error) {
+func (f *fakeProfileStore) UpdateUserDisplayName(
+	_ context.Context,
+	arg db.UpdateUserDisplayNameParams,
+) (db.UpdateUserDisplayNameRow, error) {
 	uid := uuid.UUID(arg.ID.Bytes).String()
 	u, ok := f.users[uid]
 	if !ok {
@@ -34,14 +40,7 @@ func (f *fakeProfileStore) UpdateUserDisplayName(_ context.Context, arg db.Updat
 	}
 	u.DisplayName = arg.DisplayName
 	f.users[uid] = u
-	return db.UpdateUserDisplayNameRow{
-		ID:           u.ID,
-		Email:        u.Email,
-		PasswordHash: u.PasswordHash,
-		CreatedAt:    u.CreatedAt,
-		DisplayName:  u.DisplayName,
-		VerifiedAt:   u.VerifiedAt,
-	}, nil
+	return db.UpdateUserDisplayNameRow(u), nil
 }
 
 func (f *fakeProfileStore) DeleteUser(_ context.Context, id pgtype.UUID) (int64, error) {
@@ -53,7 +52,10 @@ func (f *fakeProfileStore) DeleteUser(_ context.Context, id pgtype.UUID) (int64,
 	return 1, nil
 }
 
-func (f *fakeProfileStore) UpdateUserPasswordHash(_ context.Context, arg db.UpdateUserPasswordHashParams) error {
+func (f *fakeProfileStore) UpdateUserPasswordHash(
+	_ context.Context,
+	arg db.UpdateUserPasswordHashParams,
+) error {
 	uid := uuid.UUID(arg.ID.Bytes).String()
 	u, ok := f.users[uid]
 	if !ok {
@@ -84,7 +86,9 @@ func fakeProfileStoreWith(userID, email, displayName string) *fakeProfileStore {
 	}
 }
 
-func fakeProfileStoreWithPassword(userID, email, displayName, passwordHash string) *fakeProfileStore {
+func fakeProfileStoreWithPassword(
+	userID, email, displayName, passwordHash string,
+) *fakeProfileStore {
 	store := fakeProfileStoreWith(userID, email, displayName)
 	u := store.users[userID]
 	u.PasswordHash = passwordHash
@@ -188,7 +192,12 @@ func TestChangePassword_Success(t *testing.T) {
 	s := NewProfileService(store)
 
 	newPassword := "newpassword"
-	if err := s.ChangePassword(context.Background(), userID, originalPassword, newPassword); err != nil {
+	if err := s.ChangePassword(
+		context.Background(),
+		userID,
+		originalPassword,
+		newPassword,
+	); err != nil {
 		t.Fatalf("want nil err, got %v", err)
 	}
 
@@ -222,13 +231,37 @@ func TestChangePassword_ValidationErrors(t *testing.T) {
 	store := fakeProfileStoreWithPassword(userID, "test@example.com", "Test User", string(hashed))
 	s := NewProfileService(store)
 
-	if err := s.ChangePassword(context.Background(), userID, "", "newpassword"); !errors.Is(err, ErrValidation) {
+	if err := s.ChangePassword(
+		context.Background(),
+		userID,
+		"",
+		"newpassword",
+	); !errors.Is(
+		err,
+		ErrValidation,
+	) {
 		t.Fatalf("empty current password: want ErrValidation, got %v", err)
 	}
-	if err := s.ChangePassword(context.Background(), userID, "correct-pass", "short"); !errors.Is(err, ErrValidation) {
+	if err := s.ChangePassword(
+		context.Background(),
+		userID,
+		"correct-pass",
+		"short",
+	); !errors.Is(
+		err,
+		ErrValidation,
+	) {
 		t.Fatalf("short new password: want ErrValidation, got %v", err)
 	}
-	if err := s.ChangePassword(context.Background(), "not-a-uuid", "correct-pass", "newpassword"); !errors.Is(err, ErrValidation) {
+	if err := s.ChangePassword(
+		context.Background(),
+		"not-a-uuid",
+		"correct-pass",
+		"newpassword",
+	); !errors.Is(
+		err,
+		ErrValidation,
+	) {
 		t.Fatalf("invalid user id: want ErrValidation, got %v", err)
 	}
 }
@@ -237,7 +270,12 @@ func TestChangePassword_UserNotFound(t *testing.T) {
 	store := &fakeProfileStore{users: map[string]db.GetUserByIDRow{}}
 	s := NewProfileService(store)
 
-	err := s.ChangePassword(context.Background(), "00000000-0000-0000-0000-000000000001", "password", "newpassword")
+	err := s.ChangePassword(
+		context.Background(),
+		"00000000-0000-0000-0000-000000000001",
+		"password",
+		"newpassword",
+	)
 	if !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("want ErrUserNotFound, got %v", err)
 	}

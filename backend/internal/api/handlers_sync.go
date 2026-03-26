@@ -1,12 +1,12 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-
 	"github.com/hiromichi-5/forma/backend/internal/auth"
 	"github.com/hiromichi-5/forma/backend/internal/service"
 )
@@ -24,10 +24,10 @@ func (h *FormsHandler) PostV1FormsFormIdSync(c *gin.Context, formID string) {
 	}
 	synced, newTickets, last, err := h.S.SyncFormOnce(c, formID, uid)
 	if err != nil {
-		switch err {
-		case service.ErrForbidden, service.ErrFormsNotFound:
+		switch {
+		case errors.Is(err, service.ErrForbidden), errors.Is(err, service.ErrFormsNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "NOT_FOUND"})
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})

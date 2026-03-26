@@ -9,13 +9,19 @@ import (
 
 type FormsClient interface {
 	GetForm(ctx context.Context, formID string) (*forms.Form, error)
-	ListResponses(ctx context.Context, formID, filter, pageToken string) (*forms.ListFormResponsesResponse, error)
+	ListResponses(
+		ctx context.Context,
+		formID, filter, pageToken string,
+	) (*forms.ListFormResponsesResponse, error)
 }
 
 type RealFormsClient struct{ svc *forms.Service }
 
 func NewRealFormsClient(ctx context.Context, saJSONPath string) (*RealFormsClient, error) {
-	svc, err := forms.NewService(ctx, option.WithCredentialsFile(saJSONPath))
+	svc, err := forms.NewService(
+		ctx,
+		option.WithAuthCredentialsFile(option.ServiceAccount, saJSONPath),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +32,10 @@ func (c *RealFormsClient) GetForm(ctx context.Context, formID string) (*forms.Fo
 	return c.svc.Forms.Get(formID).Context(ctx).Do()
 }
 
-func (c *RealFormsClient) ListResponses(ctx context.Context, formID, filter, pageToken string) (*forms.ListFormResponsesResponse, error) {
+func (c *RealFormsClient) ListResponses(
+	ctx context.Context,
+	formID, filter, pageToken string,
+) (*forms.ListFormResponsesResponse, error) {
 	call := c.svc.Forms.Responses.List(formID).Context(ctx)
 	if filter != "" {
 		call = call.Filter(filter)

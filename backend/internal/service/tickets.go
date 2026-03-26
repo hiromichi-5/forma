@@ -6,10 +6,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/hiromichi-5/forma/backend/internal/db"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/hiromichi-5/forma/backend/internal/db"
 )
 
 var allowedTicketPriorities = map[string]struct{}{
@@ -23,7 +22,11 @@ func isValidTicketPriority(p string) bool {
 	return ok
 }
 
-func (s *Service) ListTickets(ctx context.Context, formID, statusID string, actor uuid.UUID) ([]TicketSummary, error) {
+func (s *Service) ListTickets(
+	ctx context.Context,
+	formID, statusID string,
+	actor uuid.UUID,
+) ([]TicketSummary, error) {
 	if formID == "" {
 		return []TicketSummary{}, nil
 	}
@@ -96,7 +99,15 @@ func (s *Service) GetTicket(ctx context.Context, id string, actor uuid.UUID) (Ti
 	return buildTicketDetail(row, answers, *set), nil
 }
 
-func (s *Service) UpdateTicket(ctx context.Context, id string, statusID *string, assignee *uuid.UUID, clearAssignee bool, priority *string, actor uuid.UUID) (TicketDetail, error) {
+func (s *Service) UpdateTicket(
+	ctx context.Context,
+	id string,
+	statusID *string,
+	assignee *uuid.UUID,
+	clearAssignee bool,
+	priority *string,
+	actor uuid.UUID,
+) (TicketDetail, error) {
 	if err := s.RequireFormAccessForTicket(ctx, id, actor); err != nil {
 		return TicketDetail{}, err
 	}
@@ -267,7 +278,11 @@ func (s *Service) UpdateTicket(ctx context.Context, id string, statusID *string,
 	return buildTicketDetail(updatedRow, answers, *set), nil
 }
 
-func (s *Service) getFormQuestionSet(ctx context.Context, formID string, cache map[string]*formQuestionSet) (*formQuestionSet, error) {
+func (s *Service) getFormQuestionSet(
+	ctx context.Context,
+	formID string,
+	cache map[string]*formQuestionSet,
+) (*formQuestionSet, error) {
 	if cache != nil {
 		if set, ok := cache[formID]; ok {
 			return set, nil
@@ -288,7 +303,11 @@ func (s *Service) getFormQuestionSet(ctx context.Context, formID string, cache m
 	return &set, nil
 }
 
-func (s *Service) validateAssignee(ctx context.Context, formID pgtype.UUID, assignee uuid.UUID) error {
+func (s *Service) validateAssignee(
+	ctx context.Context,
+	formID pgtype.UUID,
+	assignee uuid.UUID,
+) error {
 	_, err := s.Roles.GetFormMemberRole(ctx, db.GetFormMemberRoleParams{
 		UserID: dbUUID(assignee),
 		FormID: formID,

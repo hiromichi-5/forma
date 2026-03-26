@@ -3,12 +3,25 @@ on:
   pull_request:
     branches: [main]
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go mod download
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.11.3
+          args: --config backend/.golangci.yaml
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: { go-version: "1.22" }
+        with:
+          go-version-file: go.mod
       - run: go mod download
       - run: go build ./...
       - run: go test ./...

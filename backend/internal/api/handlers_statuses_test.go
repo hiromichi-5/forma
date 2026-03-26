@@ -23,23 +23,53 @@ type fakeStatusesService struct {
 	status     service.FormStatus
 }
 
-func (f *fakeStatusesService) ListFormStatuses(_ context.Context, _ string, _ uuid.UUID) ([]service.FormStatus, error) {
+func (f *fakeStatusesService) ListFormStatuses(
+	_ context.Context,
+	_ string,
+	_ uuid.UUID,
+) ([]service.FormStatus, error) {
 	return f.statuses, f.listErr
 }
 
-func (f *fakeStatusesService) CreateFormStatus(_ context.Context, _ string, _ string, _ *string, _ int32, _ bool, _ uuid.UUID) (service.FormStatus, error) {
+func (f *fakeStatusesService) CreateFormStatus(
+	_ context.Context,
+	_ string,
+	_ string,
+	_ *string,
+	_ int32,
+	_ bool,
+	_ uuid.UUID,
+) (service.FormStatus, error) {
 	return f.status, f.createErr
 }
 
-func (f *fakeStatusesService) UpdateFormStatus(_ context.Context, _ string, _ string, _ *string, _ *string, _ *int32, _ uuid.UUID) (service.FormStatus, error) {
+func (f *fakeStatusesService) UpdateFormStatus(
+	_ context.Context,
+	_ string,
+	_ string,
+	_ *string,
+	_ *string,
+	_ *int32,
+	_ uuid.UUID,
+) (service.FormStatus, error) {
 	return f.status, f.updateErr
 }
 
-func (f *fakeStatusesService) SetDefaultFormStatus(_ context.Context, _ string, _ string, _ uuid.UUID) (service.FormStatus, error) {
+func (f *fakeStatusesService) SetDefaultFormStatus(
+	_ context.Context,
+	_ string,
+	_ string,
+	_ uuid.UUID,
+) (service.FormStatus, error) {
 	return f.status, f.defaultErr
 }
 
-func (f *fakeStatusesService) DeleteFormStatus(_ context.Context, _ string, _ string, _ uuid.UUID) error {
+func (f *fakeStatusesService) DeleteFormStatus(
+	_ context.Context,
+	_ string,
+	_ string,
+	_ uuid.UUID,
+) error {
 	return f.deleteErr
 }
 
@@ -76,7 +106,14 @@ func TestStatuses_Get_Success(t *testing.T) {
 	r := statusesRouter(h, true)
 
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v1/forms/00000000-0000-0000-0000-000000000010/statuses", nil))
+	r.ServeHTTP(
+		w,
+		httptest.NewRequest(
+			http.MethodGet,
+			"/v1/forms/00000000-0000-0000-0000-000000000010/statuses",
+			nil,
+		),
+	)
 	if w.Code != http.StatusOK {
 		t.Fatalf("want 200, got %d", w.Code)
 	}
@@ -86,20 +123,33 @@ func TestStatuses_Get_Unauthorized(t *testing.T) {
 	h := &StatusesHandler{Svc: &fakeStatusesService{}}
 	r := statusesRouter(h, false)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v1/forms/00000000-0000-0000-0000-000000000010/statuses", nil))
+	r.ServeHTTP(
+		w,
+		httptest.NewRequest(
+			http.MethodGet,
+			"/v1/forms/00000000-0000-0000-0000-000000000010/statuses",
+			nil,
+		),
+	)
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d", w.Code)
 	}
 }
 
 func TestStatuses_Post_Success(t *testing.T) {
-	svc := &fakeStatusesService{status: service.FormStatus{ID: uuid.New().String(), Name: "New", DisplayOrder: 1}}
+	svc := &fakeStatusesService{
+		status: service.FormStatus{ID: uuid.New().String(), Name: "New", DisplayOrder: 1},
+	}
 	h := &StatusesHandler{Svc: svc}
 	r := statusesRouter(h, true)
 	body, _ := json.Marshal(map[string]any{"name": "New", "display_order": 1})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/v1/forms/00000000-0000-0000-0000-000000000010/statuses", bytesReader(body))
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/v1/forms/00000000-0000-0000-0000-000000000010/statuses",
+		bytesReader(body),
+	)
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusCreated {
@@ -113,7 +163,11 @@ func TestStatuses_Post_Validation(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{"name": ""})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/v1/forms/00000000-0000-0000-0000-000000000010/statuses", bytesReader(body))
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/v1/forms/00000000-0000-0000-0000-000000000010/statuses",
+		bytesReader(body),
+	)
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
@@ -122,13 +176,19 @@ func TestStatuses_Post_Validation(t *testing.T) {
 }
 
 func TestStatuses_Patch_Success(t *testing.T) {
-	svc := &fakeStatusesService{status: service.FormStatus{ID: uuid.New().String(), Name: "Edit", DisplayOrder: 2}}
+	svc := &fakeStatusesService{
+		status: service.FormStatus{ID: uuid.New().String(), Name: "Edit", DisplayOrder: 2},
+	}
 	h := &StatusesHandler{Svc: svc}
 	r := statusesRouter(h, true)
 	body, _ := json.Marshal(map[string]any{"name": "Edit"})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPatch, "/v1/forms/00000000-0000-0000-0000-000000000010/statuses/00000000-0000-0000-0000-000000000020", bytesReader(body))
+	req := httptest.NewRequest(
+		http.MethodPatch,
+		"/v1/forms/00000000-0000-0000-0000-000000000010/statuses/00000000-0000-0000-0000-000000000020",
+		bytesReader(body),
+	)
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -142,7 +202,11 @@ func TestStatuses_Post_Default_Conflict(t *testing.T) {
 	r := statusesRouter(h, true)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/v1/forms/00000000-0000-0000-0000-000000000010/statuses/00000000-0000-0000-0000-000000000020/default", nil)
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/v1/forms/00000000-0000-0000-0000-000000000010/statuses/00000000-0000-0000-0000-000000000020/default",
+		nil,
+	)
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("want 404, got %d", w.Code)
@@ -155,7 +219,11 @@ func TestStatuses_Delete_Conflict(t *testing.T) {
 	r := statusesRouter(h, true)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodDelete, "/v1/forms/00000000-0000-0000-0000-000000000010/statuses/00000000-0000-0000-0000-000000000020", nil)
+	req := httptest.NewRequest(
+		http.MethodDelete,
+		"/v1/forms/00000000-0000-0000-0000-000000000010/statuses/00000000-0000-0000-0000-000000000020",
+		nil,
+	)
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusConflict {
 		t.Fatalf("want 409, got %d", w.Code)

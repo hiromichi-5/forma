@@ -14,20 +14,25 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	viper.AutomaticEnv()
 
 	pgDSN := viper.GetString("PG_DSN")
 	if pgDSN == "" {
-		log.Fatal("PG_DSN が必要です")
+		return fmt.Errorf("PG_DSN が必要です")
 	}
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, pgDSN)
 	if err != nil {
-		log.Fatalf("pgxpoolの初期化に失敗しました: %v", err)
+		return fmt.Errorf("pgxpoolの初期化に失敗しました: %w", err)
 	}
 	defer pool.Close()
-
 	now := time.Now()
 	seedUsers := []seedUser{
 		{
@@ -53,16 +58,23 @@ func main() {
 	for _, u := range seedUsers {
 		uid, err := upsertUser(ctx, pool, u, now)
 		if err != nil {
-			log.Fatalf("ユーザ作成に失敗しました: %v", err)
+			return fmt.Errorf("ユーザ作成に失敗しました: %w", err)
 		}
 		fmt.Printf("ユーザ作成・更新: %s (id=%s)\n", u.Email, uid.String())
 
 		if !u.Verified {
-			if err := resetEmailVerificationToken(ctx, pool, uid, now.Add(24*time.Hour)); err != nil {
-				log.Fatalf("メール認証トークンの作成に失敗しました: %v", err)
+			if err := resetEmailVerificationToken(
+				ctx,
+				pool,
+				uid,
+				now.Add(24*time.Hour),
+			); err != nil {
+				return fmt.Errorf("メール認証トークンの作成に失敗しました: %w", err)
 			}
 		}
 	}
+
+	return nil
 }
 
 type seedUser struct {
@@ -72,7 +84,12 @@ type seedUser struct {
 	Verified    bool
 }
 
-func upsertUser(ctx context.Context, pool *pgxpool.Pool, user seedUser, now time.Time) (uuid.UUID, error) {
+func upsertUser(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	user seedUser,
+	now time.Time,
+) (uuid.UUID, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("bcryptに失敗しました: %w", err)
@@ -101,7 +118,12 @@ func upsertUser(ctx context.Context, pool *pgxpool.Pool, user seedUser, now time
 	return id, nil
 }
 
-func resetEmailVerificationToken(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, expiresAt time.Time) error {
+func resetEmailVerificationToken(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	userID uuid.UUID,
+	expiresAt time.Time,
+) error {
 	_, err := pool.Exec(ctx, `DELETE FROM email_verification_tokens WHERE user_id = $1`, userID)
 	if err != nil {
 		return fmt.Errorf("既存トークンの削除に失敗しました: %w", err)

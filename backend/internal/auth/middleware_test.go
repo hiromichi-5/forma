@@ -74,7 +74,10 @@ func TestSession_OK(t *testing.T) {
 	uid := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	sid := uuid.MustParse("00000000-0000-0000-0000-000000000002")
 	store := &fakeSessionStore{sessions: map[uuid.UUID]db.Session{
-		sid: {ID: pgtype.UUID{Bytes: sid, Valid: true}, UserID: pgtype.UUID{Bytes: uid, Valid: true}},
+		sid: {
+			ID:     pgtype.UUID{Bytes: sid, Valid: true},
+			UserID: pgtype.UUID{Bytes: uid, Valid: true},
+		},
 	}}
 	r := routerWith(store)
 	req := httptest.NewRequest("GET", "/p", nil)

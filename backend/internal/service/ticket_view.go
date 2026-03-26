@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
-
 	"github.com/hiromichi-5/forma/backend/internal/db"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type TicketStatus struct {
@@ -142,7 +141,11 @@ func extractAnswerValues(ans storedAnswer) []string {
 	return out
 }
 
-func buildTicketSummary(row db.ListTicketsRow, answers map[string][]string, questions formQuestionSet) TicketSummary {
+func buildTicketSummary(
+	row db.ListTicketsRow,
+	answers map[string][]string,
+	questions formQuestionSet,
+) TicketSummary {
 	titleQuestionID := strings.TrimSpace(row.TitleQuestionID.String)
 	if titleQuestionID == "" {
 		titleQuestionID = questions.defaultTitleID
@@ -163,9 +166,13 @@ func buildTicketSummary(row db.ListTicketsRow, answers map[string][]string, ques
 		Priority:        row.Priority,
 		TitleQuestionID: stringPtr(titleQuestionID),
 		Title:           title,
-		Assignee:        buildAssignee(row.AssigneeID, row.AssigneeDisplayName.String, row.AssigneeEmail),
-		SubmittedAt:     timeFromTimestamptz(row.SubmittedAt),
-		CreatedAt:       timeFromTimestamptz(row.CreatedAt),
+		Assignee: buildAssignee(
+			row.AssigneeID,
+			row.AssigneeDisplayName.String,
+			row.AssigneeEmail,
+		),
+		SubmittedAt: timeFromTimestamptz(row.SubmittedAt),
+		CreatedAt:   timeFromTimestamptz(row.CreatedAt),
 	}
 	if summary.TitleQuestionID != nil && *summary.TitleQuestionID == "" {
 		summary.TitleQuestionID = nil
@@ -173,7 +180,11 @@ func buildTicketSummary(row db.ListTicketsRow, answers map[string][]string, ques
 	return summary
 }
 
-func buildTicketDetail(row db.GetTicketRow, answers map[string][]string, questions formQuestionSet) TicketDetail {
+func buildTicketDetail(
+	row db.GetTicketRow,
+	answers map[string][]string,
+	questions formQuestionSet,
+) TicketDetail {
 	listRow := db.ListTicketsRow(row)
 	summary := buildTicketSummary(listRow, answers, questions)
 	detail := TicketDetail{TicketSummary: summary}
@@ -217,7 +228,12 @@ func buildTicketAnswers(answers map[string][]string, questions formQuestionSet) 
 	return result
 }
 
-func deriveTitle(titleQuestionID string, answers map[string][]string, questions formQuestionSet, formTitle, responseID string) string {
+func deriveTitle(
+	titleQuestionID string,
+	answers map[string][]string,
+	questions formQuestionSet,
+	formTitle, responseID string,
+) string {
 	if values := answers[titleQuestionID]; len(values) > 0 {
 		joined := joinValues(values)
 		if trimmed := strings.TrimSpace(joined); trimmed != "" {

@@ -1,6 +1,7 @@
 BIN=bin/api
+GOLANGCI_CONFIG=backend/.golangci.yaml
 
-.PHONY: dev build test migrate sqlc gen openapi
+.PHONY: dev build test lint lint-fix fmt migrate sqlc gen openapi setup
 dev:
 	go run ./backend/cmd/api
 
@@ -9,6 +10,15 @@ build:
 
 test:
 	go test ./...
+
+lint:
+	golangci-lint run -c $(GOLANGCI_CONFIG)
+
+lint-fix:
+	golangci-lint run -c $(GOLANGCI_CONFIG) --fix
+
+fmt:
+	golangci-lint fmt -c $(GOLANGCI_CONFIG)
 
 migrate:
 	goose -dir backend/migrations postgres "$$PG_DSN" up
@@ -21,3 +31,6 @@ openapi:
 
 seed:
 	go run ./backend/cmd/seeduser
+
+pre-commit-setup:
+	git config core.hooksPath .githooks

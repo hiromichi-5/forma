@@ -15,7 +15,14 @@ type ticketHistoryChange struct {
 	NewValue  *string
 }
 
-func buildTicketHistoryChanges(statusChanged bool, oldStatusName, newStatusName string, assigneeChanged bool, oldAssigneeName, newAssigneeName *string, priorityChanged bool, oldPriority, newPriority string) []ticketHistoryChange {
+func buildTicketHistoryChanges(
+	statusChanged bool,
+	oldStatusName, newStatusName string,
+	assigneeChanged bool,
+	oldAssigneeName, newAssigneeName *string,
+	priorityChanged bool,
+	oldPriority, newPriority string,
+) []ticketHistoryChange {
 	changes := make([]ticketHistoryChange, 0, 3)
 	if statusChanged {
 		oldValue := oldStatusName

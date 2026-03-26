@@ -25,7 +25,10 @@ type rolesStore interface {
 	UpsertFormMember(ctx context.Context, arg db.UpsertFormMemberParams) error
 	DeleteFormMember(ctx context.Context, arg db.DeleteFormMemberParams) error
 	ListFormMembers(ctx context.Context, formID pgtype.UUID) ([]db.ListFormMembersRow, error)
-	ListUserAccessibleForms(ctx context.Context, userID pgtype.UUID) ([]db.ListUserAccessibleFormsRow, error)
+	ListUserAccessibleForms(
+		ctx context.Context,
+		userID pgtype.UUID,
+	) ([]db.ListUserAccessibleFormsRow, error)
 	CountFormAdmins(ctx context.Context, formID pgtype.UUID) (int64, error)
 }
 

@@ -67,7 +67,11 @@ func (s *Service) RequireEditor(ctx context.Context, formID string, actor uuid.U
 	return nil
 }
 
-func (s *Service) RequireFormAccessForTicket(ctx context.Context, ticketID string, actor uuid.UUID) error {
+func (s *Service) RequireFormAccessForTicket(
+	ctx context.Context,
+	ticketID string,
+	actor uuid.UUID,
+) error {
 	uid, err := uuid.Parse(ticketID)
 	if err != nil {
 		return ErrValidation

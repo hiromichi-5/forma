@@ -9,14 +9,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hiromichi-5/forma/backend/internal/db"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/api/forms/v1"
-
-	"github.com/hiromichi-5/forma/backend/internal/db"
 )
 
-func (s *Service) SyncFormOnce(ctx context.Context, formID string, actor uuid.UUID) (synced int, newTickets int, last time.Time, err error) {
+func (s *Service) SyncFormOnce(
+	ctx context.Context,
+	formID string,
+	actor uuid.UUID,
+) (synced int, newTickets int, last time.Time, err error) {
 	if err := s.RequireEditor(ctx, formID, actor); err != nil {
 		return 0, 0, time.Time{}, err
 	}
@@ -140,7 +143,11 @@ func (s *Service) SyncFormOnce(ctx context.Context, formID string, actor uuid.UU
 	return synced, newTickets, maxSubmitted, nil
 }
 
-func (s *Service) refreshFormQuestions(ctx context.Context, formID pgtype.UUID, googleFormID string) error {
+func (s *Service) refreshFormQuestions(
+	ctx context.Context,
+	formID pgtype.UUID,
+	googleFormID string,
+) error {
 	form, err := s.GF.GetForm(ctx, googleFormID)
 	if err != nil {
 		lower := strings.ToLower(err.Error())

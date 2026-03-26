@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -27,7 +28,7 @@ type updateDisplayNameReq struct {
 
 type changePasswordReq struct {
 	CurrentPassword string `json:"current_password" binding:"required"`
-	NewPassword     string `json:"new_password" binding:"required,min=8"`
+	NewPassword     string `json:"new_password"     binding:"required,min=8"`
 }
 
 type userProfileResp struct {
@@ -46,11 +47,11 @@ func (h *ProfileHandler) GetV1Me(c *gin.Context) {
 
 	user, err := h.Svc.GetProfile(c, userID)
 	if err != nil {
-		switch err {
-		case service.ErrUserNotFound:
+		switch {
+		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "USER_NOT_FOUND"})
 			return
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
 		default:
@@ -83,11 +84,11 @@ func (h *ProfileHandler) PatchV1Me(c *gin.Context) {
 
 	user, err := h.Svc.UpdateDisplayName(c, userID, req.DisplayName)
 	if err != nil {
-		switch err {
-		case service.ErrUserNotFound:
+		switch {
+		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "USER_NOT_FOUND"})
 			return
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
 		default:
@@ -114,11 +115,11 @@ func (h *ProfileHandler) DeleteV1Me(c *gin.Context) {
 
 	err := h.Svc.DeleteProfile(c, userID)
 	if err != nil {
-		switch err {
-		case service.ErrUserNotFound:
+		switch {
+		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "USER_NOT_FOUND"})
 			return
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
 		default:
@@ -144,14 +145,14 @@ func (h *ProfileHandler) PatchV1MePassword(c *gin.Context) {
 	}
 
 	if err := h.Svc.ChangePassword(c, userID, req.CurrentPassword, req.NewPassword); err != nil {
-		switch err {
-		case service.ErrUserNotFound:
+		switch {
+		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"code": "USER_NOT_FOUND"})
 			return
-		case service.ErrIncorrectPassword:
+		case errors.Is(err, service.ErrIncorrectPassword):
 			c.JSON(http.StatusForbidden, gin.H{"code": "INCORRECT_PASSWORD"})
 			return
-		case service.ErrValidation:
+		case errors.Is(err, service.ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR"})
 			return
 		default:

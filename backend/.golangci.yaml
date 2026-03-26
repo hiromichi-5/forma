@@ -1,0 +1,46 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - errorlint
+    - gocritic
+    - gosec
+    - modernize
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - unparam
+
+  exclusions:
+    rules:
+      # sqlc生成コード
+      - path: \.sql\.go$
+        linters: ["*"]
+      # oapi-codegen生成コード
+      - path: gen\.go$
+        linters: ["*"]
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+    - swaggo
+  exclusions:
+    rules:
+      # sqlc生成コード
+      - path: \.sql\.go$
+        linters: ["*"]
+      # oapi-codegen生成コード
+      - path: gen\.go$
+        linters: ["*"]
+output:
+  formats:
+    json:
+      path: ./linters-report.json
