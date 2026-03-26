@@ -5,7 +5,7 @@
 - lint が未導入であるため、コード品質の担保が難しい。特に、バグやセキュリティリスクの検出が不十分である。
 
 ## 決定事項 (Decision)
-- golangci-lint v2 を採用し、`default: standard` をベースにlintを適宜追加する構成とした。
+- golangci-lintを採用し、`default: standard` をベースにlintを適宜追加する構成とした。
 
 ### 理由 (Reasons)
 - `default: standard` はノイズが少なく標準的なルールであるため、導入しやすい。
