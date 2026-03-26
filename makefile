@@ -1,7 +1,7 @@
 BIN=bin/api
 GOLANGCI_CONFIG=backend/.golangci.yaml
 
-.PHONY: dev build test lint lint-fix fmt migrate sqlc gen openapi
+.PHONY: dev build test lint lint-fix fmt migrate sqlc gen openapi setup
 dev:
 	go run ./backend/cmd/api
 
@@ -31,3 +31,6 @@ openapi:
 
 seed:
 	go run ./backend/cmd/seeduser
+
+pre-commit-setup:
+	git config core.hooksPath .githooks
