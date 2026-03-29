@@ -20,3 +20,17 @@ type Session struct {
 	UserID    uuid.UUID
 	CreatedAt time.Time
 }
+
+type EmailVerificationToken struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Token     string
+	ExpiresAt time.Time
+}
+
+type PasswordResetToken struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Token     string
+	ExpiresAt time.Time
+}

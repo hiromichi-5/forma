@@ -26,6 +26,7 @@ type FormQuestion struct {
 
 type FormStatus struct {
 	ID           uuid.UUID
+	FormID       uuid.UUID
 	Name         string
 	Color        *string
 	DisplayOrder int32
