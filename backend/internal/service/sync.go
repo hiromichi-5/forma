@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hiromichi-5/forma/backend/internal/db"
+	"github.com/hiromichi-5/forma/backend/internal/infra/db"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/api/forms/v1"

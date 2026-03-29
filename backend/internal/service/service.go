@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hiromichi-5/forma/backend/internal/db"
 	"github.com/hiromichi-5/forma/backend/internal/google"
+	"github.com/hiromichi-5/forma/backend/internal/infra/db"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 

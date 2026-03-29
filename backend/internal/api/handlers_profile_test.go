@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hiromichi-5/forma/backend/internal/db"
+	"github.com/hiromichi-5/forma/backend/internal/infra/db"
 	"github.com/hiromichi-5/forma/backend/internal/service"
 	"github.com/jackc/pgx/v5/pgtype"
 )
