@@ -9,52 +9,6 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/entity"
 )
 
-type ticketHistoryChange struct {
-	fieldName string
-	oldValue  *string
-	newValue  *string
-}
-
-func buildTicketHistoryChanges(
-	statusChanged bool, oldStatusName, newStatusName string,
-	assigneeChanged bool, oldAssigneeName, newAssigneeName *string,
-	priorityChanged bool, oldPriority, newPriority string,
-) []ticketHistoryChange {
-	changes := make([]ticketHistoryChange, 0, 3)
-	if statusChanged {
-		old := oldStatusName
-		new_ := newStatusName
-		changes = append(changes, ticketHistoryChange{
-			fieldName: "status",
-			oldValue:  &old,
-			newValue:  &new_,
-		})
-	}
-	if assigneeChanged {
-		changes = append(changes, ticketHistoryChange{
-			fieldName: "assignee",
-			oldValue:  oldAssigneeName,
-			newValue:  newAssigneeName,
-		})
-	}
-	if priorityChanged {
-		old := oldPriority
-		new_ := newPriority
-		changes = append(changes, ticketHistoryChange{
-			fieldName: "priority",
-			oldValue:  &old,
-			newValue:  &new_,
-		})
-	}
-	return changes
-}
-
-type formQuestionSet struct {
-	ordered        []entity.FormQuestion
-	byID           map[string]entity.FormQuestion
-	defaultTitleID string
-}
-
 type storedResponse struct {
 	Answers map[string]storedAnswer `json:"answers"`
 }
@@ -72,28 +26,19 @@ type storedTextAnswer struct {
 	Value string `json:"value"`
 }
 
-func newFormQuestionSet(questions []entity.FormQuestion) formQuestionSet {
-	set := formQuestionSet{
-		ordered: make([]entity.FormQuestion, len(questions)),
-		byID:    make(map[string]entity.FormQuestion, len(questions)),
-	}
-	copy(set.ordered, questions)
-	for _, q := range questions {
-		set.byID[q.QuestionID] = q
-		if set.defaultTitleID == "" && isPreferredTitleType(q.QuestionType) {
-			set.defaultTitleID = q.QuestionID
-		}
-	}
-	return set
+type formQuestionSet struct {
+	ordered        []entity.FormQuestion
+	defaultTitleID string
 }
 
-func isPreferredTitleType(t string) bool {
-	switch strings.ToLower(t) {
-	case "text", "paragraph", "radio", "choice", "drop_down", "checkbox":
-		return true
-	default:
-		return false
+func newFormQuestionSet(questions []entity.FormQuestion) formQuestionSet {
+	set := formQuestionSet{
+		ordered: questions,
 	}
+	if len(questions) > 0 {
+		set.defaultTitleID = questions[0].QuestionID
+	}
+	return set
 }
 
 func parseResponseAnswers(payload []byte) (map[string][]string, error) {
@@ -102,115 +47,105 @@ func parseResponseAnswers(payload []byte) (map[string][]string, error) {
 	}
 	var wrapper storedResponse
 	if err := json.Unmarshal(payload, &wrapper); err == nil && wrapper.Answers != nil {
-		return extractAnswers(wrapper.Answers), nil
+		return flattenAnswers(wrapper.Answers), nil
 	}
 	var raw map[string]storedAnswer
 	if err := json.Unmarshal(payload, &raw); err != nil {
 		return nil, err
 	}
-	return extractAnswers(raw), nil
+	return flattenAnswers(raw), nil
 }
 
-func extractAnswers(raw map[string]storedAnswer) map[string][]string {
+func flattenAnswers(raw map[string]storedAnswer) map[string][]string {
 	results := make(map[string][]string, len(raw))
 	for key, ans := range raw {
-		values := extractAnswerValues(ans)
-		if len(values) == 0 {
-			results[key] = []string{}
-			continue
-		}
-		results[key] = values
+		results[key] = extractTextValues(ans)
 	}
 	return results
 }
 
-func extractAnswerValues(ans storedAnswer) []string {
+func extractTextValues(ans storedAnswer) []string {
 	if ans.TextAnswers == nil {
-		return nil
+		return []string{}
 	}
 	out := make([]string, 0, len(ans.TextAnswers.Answers))
 	for _, v := range ans.TextAnswers.Answers {
-		trimmed := strings.TrimSpace(v.Value)
-		if trimmed != "" {
-			out = append(out, trimmed)
-		}
+		out = append(out, v.Value)
 	}
 	return out
 }
 
-func buildTicketSummaryWithAnswers(
+func buildSummary(
 	ticket entity.Ticket,
-	form entity.Form,
-	statusMap map[uuid.UUID]entity.FormStatus,
-	memberMap map[uuid.UUID]entity.Member,
-	questions formQuestionSet,
+	fctx formContext,
 	answers map[string][]string,
 ) TicketSummary {
-	titleQuestionID := ""
-	if form.TitleQuestionID != nil {
-		titleQuestionID = *form.TitleQuestionID
-	}
-	if titleQuestionID == "" {
-		titleQuestionID = questions.defaultTitleID
-	}
-	title := deriveTitle(titleQuestionID, answers, questions, form.Title, ticket.ResponseID)
+	titleQID := fctx.titleQuestionID()
+	title := deriveTitle(
+		titleQID,
+		answers,
+		fctx.questions,
+		fctx.form.Title,
+		ticket.ResponseID,
+	)
 
 	status := TicketStatus{}
-	if s, ok := statusMap[ticket.StatusID]; ok {
+	if s, ok := fctx.statuses[ticket.StatusID]; ok {
 		status = TicketStatus{ID: s.ID, Name: s.Name, Color: s.Color}
 	}
 
 	var titleQIDPtr *string
-	if titleQuestionID != "" {
-		titleQIDPtr = &titleQuestionID
+	if titleQID != "" {
+		titleQIDPtr = &titleQID
 	}
 
 	return TicketSummary{
 		ID:              ticket.ID,
 		FormID:          ticket.FormID,
-		FormTitle:       form.Title,
+		FormTitle:       fctx.form.Title,
 		ResponseID:      ticket.ResponseID,
 		RespondentEmail: ticket.RespondentEmail,
 		Status:          status,
 		Priority:        ticket.Priority,
 		TitleQuestionID: titleQIDPtr,
 		Title:           title,
-		Assignee:        buildAssigneeFromMap(ticket.AssigneeID, memberMap),
+		Assignee:        buildAssignee(ticket.AssigneeID, fctx.members),
 		SubmittedAt:     ticket.SubmittedAt,
 		CreatedAt:       ticket.CreatedAt,
 	}
 }
 
-func buildTicketDetail(
+func buildDetail(
 	ticket entity.Ticket,
-	form entity.Form,
-	statusMap map[uuid.UUID]entity.FormStatus,
-	memberMap map[uuid.UUID]entity.Member,
-	questions formQuestionSet,
+	fctx formContext,
 	answers map[string][]string,
 ) TicketDetail {
-	summary := buildTicketSummaryWithAnswers(ticket, form, statusMap, memberMap, questions, answers)
 	return TicketDetail{
-		TicketSummary: summary,
-		Answers:       buildTicketAnswers(answers, questions),
+		TicketSummary: buildSummary(ticket, fctx, answers),
+		Answers:       buildAnswerList(answers, fctx.questions),
 	}
 }
 
-func buildTicketAnswers(answers map[string][]string, questions formQuestionSet) []TicketAnswer {
+func buildAnswerList(answers map[string][]string, questions formQuestionSet) []TicketAnswer {
 	result := make([]TicketAnswer, 0, len(questions.ordered))
 	used := make(map[string]struct{}, len(answers))
+
 	for _, q := range questions.ordered {
 		vals := answers[q.QuestionID]
+		if vals == nil {
+			vals = []string{}
+		}
 		result = append(result, TicketAnswer{
 			QuestionID:    q.QuestionID,
 			QuestionTitle: q.Title,
 			QuestionType:  q.QuestionType,
-			Values:        cloneStrings(vals),
+			Values:        vals,
 			DisplayValue:  joinValues(vals),
 		})
 		used[q.QuestionID] = struct{}{}
 	}
-	extraIDs := make([]string, 0)
+
+	var extraIDs []string
 	for id := range answers {
 		if _, ok := used[id]; !ok {
 			extraIDs = append(extraIDs, id)
@@ -219,63 +154,74 @@ func buildTicketAnswers(answers map[string][]string, questions formQuestionSet) 
 	sort.Strings(extraIDs)
 	for _, id := range extraIDs {
 		vals := answers[id]
+		if vals == nil {
+			vals = []string{}
+		}
 		result = append(result, TicketAnswer{
 			QuestionID:    id,
 			QuestionTitle: id,
 			QuestionType:  "unknown",
-			Values:        cloneStrings(vals),
+			Values:        vals,
 			DisplayValue:  joinValues(vals),
 		})
 	}
+
 	return result
 }
 
 func deriveTitle(
-	titleQuestionID string,
+	titleQID string,
 	answers map[string][]string,
 	questions formQuestionSet,
 	formTitle, responseID string,
 ) string {
-	if values := answers[titleQuestionID]; len(values) > 0 {
-		joined := joinValues(values)
-		if trimmed := strings.TrimSpace(joined); trimmed != "" {
-			return trimmed
+	if title := joinValues(answers[titleQID]); title != "" {
+		return title
+	}
+
+	used := make(map[string]struct{}, len(answers))
+	for _, q := range questions.ordered {
+		used[q.QuestionID] = struct{}{}
+		if q.QuestionID == titleQID {
+			continue
+		}
+		if title := joinValues(answers[q.QuestionID]); title != "" {
+			return title
 		}
 	}
-	if questions.defaultTitleID != "" && questions.defaultTitleID != titleQuestionID {
-		if values := answers[questions.defaultTitleID]; len(values) > 0 {
-			joined := joinValues(values)
-			if trimmed := strings.TrimSpace(joined); trimmed != "" {
-				return trimmed
-			}
+
+	var extraIDs []string
+	for id := range answers {
+		if _, ok := used[id]; !ok {
+			extraIDs = append(extraIDs, id)
 		}
 	}
-	for _, values := range answers {
-		joined := joinValues(values)
-		if trimmed := strings.TrimSpace(joined); trimmed != "" {
-			return trimmed
+	sort.Strings(extraIDs)
+	for _, id := range extraIDs {
+		if title := joinValues(answers[id]); title != "" {
+			return title
 		}
 	}
-	if trimmed := strings.TrimSpace(formTitle); trimmed != "" {
-		return trimmed
+	if formTitle != "" {
+		return formTitle
 	}
 	return responseID
 }
 
-func buildAssigneeFromMap(
+func buildAssignee(
 	assigneeID *uuid.UUID,
-	memberMap map[uuid.UUID]entity.Member,
+	members map[uuid.UUID]entity.Member,
 ) *TicketAssignee {
 	if assigneeID == nil {
 		return nil
 	}
-	m, ok := memberMap[*assigneeID]
+	m, ok := members[*assigneeID]
 	if !ok {
 		return nil
 	}
-	name := strings.TrimSpace(m.DisplayName)
+	name := m.DisplayName
 	if name == "" {
-		name = strings.TrimSpace(m.Email)
+		name = m.Email
 	}
 	return &TicketAssignee{
 		ID:          m.ID,
@@ -289,13 +235,4 @@ func joinValues(values []string) string {
 		return ""
 	}
 	return strings.Join(values, ", ")
-}
-
-func cloneStrings(values []string) []string {
-	if len(values) == 0 {
-		return []string{}
-	}
-	out := make([]string, len(values))
-	copy(out, values)
-	return out
 }
