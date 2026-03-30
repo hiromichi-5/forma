@@ -44,7 +44,7 @@ func (uc *InviteUseCase) CreateInvite(
 		return entity.Invite{}, entity.NewError(entity.CodeValidation)
 	}
 
-	if err := uc.requireAdmin(ctx, formID, userID); err != nil {
+	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
 		return entity.Invite{}, err
 	}
 
@@ -69,7 +69,7 @@ func (uc *InviteUseCase) ListInvites(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.Invite, error) {
-	if err := uc.requireAdmin(ctx, formID, userID); err != nil {
+	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.inviteRepo.ListActive(ctx, formID)
@@ -79,7 +79,7 @@ func (uc *InviteUseCase) DeleteInvite(
 	ctx context.Context,
 	formID, userID, inviteID uuid.UUID,
 ) error {
-	if err := uc.requireAdmin(ctx, formID, userID); err != nil {
+	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
 		return err
 	}
 
@@ -138,18 +138,4 @@ func (uc *InviteUseCase) AcceptInvite(ctx context.Context, inviteID, userID uuid
 
 		return repos.Member.Upsert(ctx, userID, invite.FormID, invite.Role)
 	})
-}
-
-func (uc *InviteUseCase) requireAdmin(ctx context.Context, formID, userID uuid.UUID) error {
-	role, err := uc.memberRepo.GetRole(ctx, userID, formID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeForbidden)
-		}
-		return err
-	}
-	if role != entity.RoleAdmin {
-		return entity.NewError(entity.CodeForbidden)
-	}
-	return nil
 }

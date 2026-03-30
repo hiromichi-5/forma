@@ -35,7 +35,7 @@ func (uc *StatusUseCase) ListStatuses(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.FormStatus, error) {
-	if err := uc.requireEditor(ctx, formID, userID); err != nil {
+	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.statusRepo.List(ctx, formID)
@@ -49,7 +49,7 @@ func (uc *StatusUseCase) CreateStatus(
 	displayOrder int32,
 	isDefault bool,
 ) (entity.FormStatus, error) {
-	if err := uc.requireEditor(ctx, formID, userID); err != nil {
+	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return entity.FormStatus{}, err
 	}
 
@@ -120,7 +120,7 @@ func (uc *StatusUseCase) UpdateStatus(
 	name, color *string,
 	displayOrder *int32,
 ) (entity.FormStatus, error) {
-	if err := uc.requireEditor(ctx, formID, userID); err != nil {
+	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return entity.FormStatus{}, err
 	}
 
@@ -166,7 +166,7 @@ func (uc *StatusUseCase) SetDefaultStatus(
 	ctx context.Context,
 	formID, userID, statusID uuid.UUID,
 ) error {
-	if err := uc.requireEditor(ctx, formID, userID); err != nil {
+	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return err
 	}
 
@@ -189,7 +189,7 @@ func (uc *StatusUseCase) DeleteStatus(
 	ctx context.Context,
 	formID, userID, statusID uuid.UUID,
 ) error {
-	if err := uc.requireEditor(ctx, formID, userID); err != nil {
+	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return err
 	}
 
@@ -216,18 +216,4 @@ func (uc *StatusUseCase) DeleteStatus(
 	}
 
 	return uc.statusRepo.Delete(ctx, statusID)
-}
-
-func (uc *StatusUseCase) requireEditor(ctx context.Context, formID, userID uuid.UUID) error {
-	role, err := uc.memberRepo.GetRole(ctx, userID, formID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeForbidden)
-		}
-		return err
-	}
-	if role != entity.RoleAdmin && role != entity.RoleEditor {
-		return entity.NewError(entity.CodeForbidden)
-	}
-	return nil
 }

@@ -134,7 +134,7 @@ func (uc *FormUseCase) ListForms(ctx context.Context, userID uuid.UUID) ([]entit
 }
 
 func (uc *FormUseCase) GetForm(ctx context.Context, formID, userID uuid.UUID) (entity.Form, error) {
-	if err := uc.requireEditor(ctx, formID, userID); err != nil {
+	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return entity.Form{}, err
 	}
 
@@ -153,7 +153,7 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 	formID, userID uuid.UUID,
 	questionID *string,
 ) error {
-	if err := uc.requireEditor(ctx, formID, userID); err != nil {
+	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return err
 	}
 
@@ -181,24 +181,10 @@ func (uc *FormUseCase) ListQuestions(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.FormQuestion, error) {
-	if err := uc.requireEditor(ctx, formID, userID); err != nil {
+	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.formRepo.ListQuestions(ctx, formID)
-}
-
-func (uc *FormUseCase) requireEditor(ctx context.Context, formID, userID uuid.UUID) error {
-	role, err := uc.memberRepo.GetRole(ctx, userID, formID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeForbidden)
-		}
-		return err
-	}
-	if role != entity.RoleAdmin && role != entity.RoleEditor {
-		return entity.NewError(entity.CodeForbidden)
-	}
-	return nil
 }
 
 func extractFormID(u string) (string, error) {

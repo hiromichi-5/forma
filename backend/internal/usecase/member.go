@@ -33,7 +33,7 @@ func (uc *MemberUseCase) AddMember(
 		return entity.NewError(entity.CodeValidation)
 	}
 
-	if err := uc.requireAdmin(ctx, formID, userID); err != nil {
+	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
 		return err
 	}
 
@@ -57,7 +57,7 @@ func (uc *MemberUseCase) ChangeRole(
 		return entity.NewError(entity.CodeValidation)
 	}
 
-	if err := uc.requireAdmin(ctx, formID, userID); err != nil {
+	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
 		return err
 	}
 
@@ -74,7 +74,7 @@ func (uc *MemberUseCase) RemoveMember(
 	ctx context.Context,
 	formID, userID, targetUserID uuid.UUID,
 ) error {
-	if err := uc.requireAdmin(ctx, formID, userID); err != nil {
+	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
 		return err
 	}
 
@@ -89,7 +89,7 @@ func (uc *MemberUseCase) ListMembers(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.Member, error) {
-	if err := uc.requireEditor(ctx, formID, userID); err != nil {
+	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.memberRepo.List(ctx, formID)
@@ -115,34 +115,6 @@ func (uc *MemberUseCase) ensureFormKeepsAdmin(
 	}
 	if count <= 1 {
 		return entity.NewError(entity.CodeLastAdmin)
-	}
-	return nil
-}
-
-func (uc *MemberUseCase) requireAdmin(ctx context.Context, formID, userID uuid.UUID) error {
-	role, err := uc.memberRepo.GetRole(ctx, userID, formID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeForbidden)
-		}
-		return err
-	}
-	if role != entity.RoleAdmin {
-		return entity.NewError(entity.CodeForbidden)
-	}
-	return nil
-}
-
-func (uc *MemberUseCase) requireEditor(ctx context.Context, formID, userID uuid.UUID) error {
-	role, err := uc.memberRepo.GetRole(ctx, userID, formID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeForbidden)
-		}
-		return err
-	}
-	if role != entity.RoleAdmin && role != entity.RoleEditor {
-		return entity.NewError(entity.CodeForbidden)
 	}
 	return nil
 }
