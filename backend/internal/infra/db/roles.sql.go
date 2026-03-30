@@ -25,7 +25,7 @@ func (q *Queries) CountFormAdmins(ctx context.Context, formID pgtype.UUID) (int6
 	return count, err
 }
 
-const deleteFormMember = `-- name: DeleteFormMember :exec
+const deleteFormMember = `-- name: DeleteFormMember :execrows
 DELETE FROM form_members
 WHERE user_id = $1
   AND form_id = $2
@@ -36,9 +36,12 @@ type DeleteFormMemberParams struct {
 	FormID pgtype.UUID `json:"form_id"`
 }
 
-func (q *Queries) DeleteFormMember(ctx context.Context, arg DeleteFormMemberParams) error {
-	_, err := q.db.Exec(ctx, deleteFormMember, arg.UserID, arg.FormID)
-	return err
+func (q *Queries) DeleteFormMember(ctx context.Context, arg DeleteFormMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteFormMember, arg.UserID, arg.FormID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getFormMemberRole = `-- name: GetFormMemberRole :one

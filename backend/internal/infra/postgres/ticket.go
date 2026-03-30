@@ -70,10 +70,14 @@ func (r *TicketRepository) UpdateStatus(
 	id uuid.UUID,
 	statusID uuid.UUID,
 ) error {
-	return r.q.UpdateTicketStatus(ctx, db.UpdateTicketStatusParams{
+	n, err := r.q.UpdateTicketStatus(ctx, db.UpdateTicketStatusParams{
 		ID:       toUUID(id),
 		StatusID: toUUID(statusID),
 	})
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
 }
 
 func (r *TicketRepository) UpdateAssignee(
@@ -81,10 +85,14 @@ func (r *TicketRepository) UpdateAssignee(
 	id uuid.UUID,
 	assigneeID *uuid.UUID,
 ) error {
-	return r.q.UpdateTicketAssignee(ctx, db.UpdateTicketAssigneeParams{
+	n, err := r.q.UpdateTicketAssignee(ctx, db.UpdateTicketAssigneeParams{
 		ID:         toUUID(id),
 		AssigneeID: toNullUUID(assigneeID),
 	})
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
 }
 
 func (r *TicketRepository) UpdatePriority(
@@ -92,10 +100,14 @@ func (r *TicketRepository) UpdatePriority(
 	id uuid.UUID,
 	priority string,
 ) error {
-	return r.q.UpdateTicketPriority(ctx, db.UpdateTicketPriorityParams{
+	n, err := r.q.UpdateTicketPriority(ctx, db.UpdateTicketPriorityParams{
 		ID:       toUUID(id),
 		Priority: priority,
 	})
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
 }
 
 func (r *TicketRepository) CreateHistory(

@@ -70,7 +70,11 @@ func (r *InviteRepository) ListActive(
 }
 
 func (r *InviteRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.q.DeleteFormInvite(ctx, toUUID(id))
+	n, err := r.q.DeleteFormInvite(ctx, toUUID(id))
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
 }
 
 func toInvite(row db.FormInvite) entity.Invite {

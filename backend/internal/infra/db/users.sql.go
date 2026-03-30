@@ -125,7 +125,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDR
 	return i, err
 }
 
-const setUserVerifiedAt = `-- name: SetUserVerifiedAt :exec
+const setUserVerifiedAt = `-- name: SetUserVerifiedAt :execrows
 UPDATE users
 SET verified_at = $2
 WHERE id = $1
@@ -136,9 +136,12 @@ type SetUserVerifiedAtParams struct {
 	VerifiedAt pgtype.Timestamptz `json:"verified_at"`
 }
 
-func (q *Queries) SetUserVerifiedAt(ctx context.Context, arg SetUserVerifiedAtParams) error {
-	_, err := q.db.Exec(ctx, setUserVerifiedAt, arg.ID, arg.VerifiedAt)
-	return err
+func (q *Queries) SetUserVerifiedAt(ctx context.Context, arg SetUserVerifiedAtParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setUserVerifiedAt, arg.ID, arg.VerifiedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateUserDisplayName = `-- name: UpdateUserDisplayName :one
@@ -176,7 +179,7 @@ func (q *Queries) UpdateUserDisplayName(ctx context.Context, arg UpdateUserDispl
 	return i, err
 }
 
-const updateUserPasswordHash = `-- name: UpdateUserPasswordHash :exec
+const updateUserPasswordHash = `-- name: UpdateUserPasswordHash :execrows
 UPDATE users
 SET password_hash = $2
 WHERE id = $1
@@ -187,7 +190,10 @@ type UpdateUserPasswordHashParams struct {
 	PasswordHash string      `json:"password_hash"`
 }
 
-func (q *Queries) UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error {
-	_, err := q.db.Exec(ctx, updateUserPasswordHash, arg.ID, arg.PasswordHash)
-	return err
+func (q *Queries) UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateUserPasswordHash, arg.ID, arg.PasswordHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

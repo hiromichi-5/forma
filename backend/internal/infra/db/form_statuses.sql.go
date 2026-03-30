@@ -60,14 +60,17 @@ func (q *Queries) CreateFormStatus(ctx context.Context, arg CreateFormStatusPara
 	return i, err
 }
 
-const deleteFormStatus = `-- name: DeleteFormStatus :exec
+const deleteFormStatus = `-- name: DeleteFormStatus :execrows
 DELETE FROM form_statuses
 WHERE id = $1
 `
 
-func (q *Queries) DeleteFormStatus(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteFormStatus, id)
-	return err
+func (q *Queries) DeleteFormStatus(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteFormStatus, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getDefaultFormStatus = `-- name: GetDefaultFormStatus :one

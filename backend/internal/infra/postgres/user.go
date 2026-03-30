@@ -71,16 +71,20 @@ func (r *UserRepository) UpdatePasswordHash(
 	id uuid.UUID,
 	passwordHash string,
 ) error {
-	return r.q.UpdateUserPasswordHash(ctx, db.UpdateUserPasswordHashParams{
+	n, err := r.q.UpdateUserPasswordHash(ctx, db.UpdateUserPasswordHashParams{
 		ID:           toUUID(id),
 		PasswordHash: passwordHash,
 	})
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
 }
 
 func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	n, err := r.q.DeleteUser(ctx, toUUID(id))
 	if err != nil {
-		return err
+		return repoError(err)
 	}
 	return rowsError(n)
 }
@@ -90,10 +94,14 @@ func (r *UserRepository) SetVerifiedAt(
 	id uuid.UUID,
 	verifiedAt time.Time,
 ) error {
-	return r.q.SetUserVerifiedAt(ctx, db.SetUserVerifiedAtParams{
+	n, err := r.q.SetUserVerifiedAt(ctx, db.SetUserVerifiedAtParams{
 		ID:         toUUID(id),
 		VerifiedAt: toTimestamptz(verifiedAt),
 	})
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
 }
 
 func (r *UserRepository) GetSessionByID(ctx context.Context, id uuid.UUID) (entity.Session, error) {
@@ -121,7 +129,7 @@ func (r *UserRepository) CreateSession(
 func (r *UserRepository) DeleteSession(ctx context.Context, id uuid.UUID) error {
 	n, err := r.q.DeleteSession(ctx, toUUID(id))
 	if err != nil {
-		return err
+		return repoError(err)
 	}
 	return rowsError(n)
 }
@@ -156,7 +164,7 @@ func (r *UserRepository) GetEmailVerificationTokenByToken(
 func (r *UserRepository) UseEmailVerificationToken(ctx context.Context, id uuid.UUID) error {
 	n, err := r.q.UseEmailVerificationToken(ctx, toUUID(id))
 	if err != nil {
-		return err
+		return repoError(err)
 	}
 	return rowsError(n)
 }
@@ -198,7 +206,7 @@ func (r *UserRepository) GetPasswordResetTokenByToken(
 func (r *UserRepository) UsePasswordResetToken(ctx context.Context, id uuid.UUID) error {
 	n, err := r.q.UsePasswordResetToken(ctx, toUUID(id))
 	if err != nil {
-		return err
+		return repoError(err)
 	}
 	return rowsError(n)
 }

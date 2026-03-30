@@ -10,7 +10,7 @@ VALUES ($1, $2, $3)
 ON CONFLICT (user_id, form_id) DO UPDATE
 SET role = EXCLUDED.role;
 
--- name: DeleteFormMember :exec
+-- name: DeleteFormMember :execrows
 DELETE FROM form_members
 WHERE user_id = $1
   AND form_id = $2;

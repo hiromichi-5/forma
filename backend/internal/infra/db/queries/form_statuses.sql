@@ -41,6 +41,6 @@ SET name = $2,
 WHERE id = $1
 RETURNING id, form_id, name, color, display_order, is_default, created_at;
 
--- name: DeleteFormStatus :exec
+-- name: DeleteFormStatus :execrows
 DELETE FROM form_statuses
 WHERE id = $1;

@@ -8,12 +8,12 @@ SELECT id, form_id, title, description, title_question_id, email_collection_type
 FROM forms
 WHERE id = $1;
 
--- name: UpdateFormTitleQuestion :exec
+-- name: UpdateFormTitleQuestion :execrows
 UPDATE forms
 SET title_question_id = $2
 WHERE id = $1;
 
--- name: UpdateFormSyncedAt :exec
+-- name: UpdateFormSyncedAt :execrows
 UPDATE forms
 SET synced_at = $2
 WHERE id = $1;

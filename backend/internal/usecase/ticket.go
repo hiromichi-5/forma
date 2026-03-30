@@ -302,6 +302,9 @@ func (uc *TicketUseCase) UpdateTicket(
 
 		return rec.save(ctx, repos.Ticket)
 	}); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return TicketDetail{}, entity.NewError(entity.CodeForbidden)
+		}
 		return TicketDetail{}, err
 	}
 
@@ -391,7 +394,10 @@ func (uc *TicketUseCase) validateAssignee(
 ) error {
 	_, err := uc.memberRepo.GetRole(ctx, assigneeID, formID)
 	if err != nil {
-		return entity.NewError(entity.CodeValidation)
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.NewError(entity.CodeValidation)
+		}
+		return err
 	}
 	return nil
 }

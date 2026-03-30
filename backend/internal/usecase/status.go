@@ -159,7 +159,17 @@ func (uc *StatusUseCase) UpdateStatus(
 		current.DisplayOrder = *displayOrder
 	}
 
-	return uc.statusRepo.Update(ctx, current)
+	updated, err := uc.statusRepo.Update(ctx, current)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.FormStatus{}, entity.NewError(entity.CodeForbidden)
+		}
+		if errors.Is(err, repository.ErrConflict) {
+			return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
+		}
+		return entity.FormStatus{}, err
+	}
+	return updated, nil
 }
 
 func (uc *StatusUseCase) SetDefaultStatus(
@@ -215,5 +225,11 @@ func (uc *StatusUseCase) DeleteStatus(
 		return entity.NewError(entity.CodeValidation)
 	}
 
-	return uc.statusRepo.Delete(ctx, statusID)
+	if err := uc.statusRepo.Delete(ctx, statusID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.NewError(entity.CodeForbidden)
+		}
+		return err
+	}
+	return nil
 }

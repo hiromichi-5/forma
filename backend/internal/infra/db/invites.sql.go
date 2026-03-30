@@ -73,14 +73,17 @@ func (q *Queries) CreateFormInvite(ctx context.Context, arg CreateFormInvitePara
 	return i, err
 }
 
-const deleteFormInvite = `-- name: DeleteFormInvite :exec
+const deleteFormInvite = `-- name: DeleteFormInvite :execrows
 DELETE FROM form_invites
 WHERE id = $1
 `
 
-func (q *Queries) DeleteFormInvite(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteFormInvite, id)
-	return err
+func (q *Queries) DeleteFormInvite(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteFormInvite, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getFormInviteByEmail = `-- name: GetFormInviteByEmail :one

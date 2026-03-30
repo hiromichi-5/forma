@@ -34,10 +34,14 @@ func (r *MemberRepository) Upsert(
 }
 
 func (r *MemberRepository) Delete(ctx context.Context, userID uuid.UUID, formID uuid.UUID) error {
-	return r.q.DeleteFormMember(ctx, db.DeleteFormMemberParams{
+	n, err := r.q.DeleteFormMember(ctx, db.DeleteFormMemberParams{
 		UserID: toUUID(userID),
 		FormID: toUUID(formID),
 	})
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
 }
 
 func (r *MemberRepository) GetRole(

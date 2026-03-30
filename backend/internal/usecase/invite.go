@@ -96,7 +96,13 @@ func (uc *InviteUseCase) DeleteInvite(
 			return entity.NewError(entity.CodeInviteNotFound)
 		}
 
-		return repos.Invite.Delete(ctx, inviteID)
+		if err := repos.Invite.Delete(ctx, inviteID); err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return entity.NewError(entity.CodeInviteNotFound)
+			}
+			return err
+		}
+		return nil
 	})
 }
 

@@ -82,7 +82,13 @@ func (uc *MemberUseCase) RemoveMember(
 		return err
 	}
 
-	return uc.memberRepo.Delete(ctx, targetUserID, formID)
+	if err := uc.memberRepo.Delete(ctx, targetUserID, formID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func (uc *MemberUseCase) ListMembers(

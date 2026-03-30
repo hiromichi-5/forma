@@ -108,7 +108,11 @@ func (r *StatusRepository) ClearDefault(ctx context.Context, formID uuid.UUID) e
 }
 
 func (r *StatusRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.q.DeleteFormStatus(ctx, toUUID(id))
+	n, err := r.q.DeleteFormStatus(ctx, toUUID(id))
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
 }
 
 func toFormStatus(row db.FormStatus) entity.FormStatus {

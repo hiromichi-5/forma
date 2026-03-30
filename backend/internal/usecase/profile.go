@@ -88,5 +88,11 @@ func (uc *ProfileUseCase) ChangePassword(
 		return err
 	}
 
-	return uc.userRepo.UpdatePasswordHash(ctx, userID, string(hashed))
+	if err := uc.userRepo.UpdatePasswordHash(ctx, userID, string(hashed)); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.NewError(entity.CodeUserNotFound)
+		}
+		return err
+	}
+	return nil
 }

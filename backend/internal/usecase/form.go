@@ -92,6 +92,9 @@ func (uc *FormUseCase) RegisterForm(
 		return uc.initFormStatuses(ctx, repos.Status, form.ID)
 	})
 	if err != nil {
+		if errors.Is(err, repository.ErrConflict) {
+			return entity.Form{}, entity.NewError(entity.CodeValidation)
+		}
 		return entity.Form{}, err
 	}
 
@@ -174,7 +177,13 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 		}
 	}
 
-	return uc.formRepo.UpdateTitleQuestion(ctx, formID, questionID)
+	if err := uc.formRepo.UpdateTitleQuestion(ctx, formID, questionID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.NewError(entity.CodeFormNotFound)
+		}
+		return err
+	}
+	return nil
 }
 
 func (uc *FormUseCase) ListQuestions(
@@ -198,4 +207,14 @@ func extractFormID(u string) (string, error) {
 		return "", entity.NewError(entity.CodeValidation)
 	}
 	return "", entity.NewError(entity.CodeValidation)
+}
+
+func mapFormFetcherError(err error) error {
+	if errors.Is(err, repository.ErrForbidden) {
+		return entity.NewError(entity.CodeFormNotShared)
+	}
+	if errors.Is(err, repository.ErrNotFound) {
+		return entity.NewError(entity.CodeFormNotFound)
+	}
+	return err
 }

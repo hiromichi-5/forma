@@ -108,7 +108,7 @@ func (q *Queries) ListForms(ctx context.Context) ([]Form, error) {
 	return items, nil
 }
 
-const updateFormSyncedAt = `-- name: UpdateFormSyncedAt :exec
+const updateFormSyncedAt = `-- name: UpdateFormSyncedAt :execrows
 UPDATE forms
 SET synced_at = $2
 WHERE id = $1
@@ -119,12 +119,15 @@ type UpdateFormSyncedAtParams struct {
 	SyncedAt pgtype.Timestamptz `json:"synced_at"`
 }
 
-func (q *Queries) UpdateFormSyncedAt(ctx context.Context, arg UpdateFormSyncedAtParams) error {
-	_, err := q.db.Exec(ctx, updateFormSyncedAt, arg.ID, arg.SyncedAt)
-	return err
+func (q *Queries) UpdateFormSyncedAt(ctx context.Context, arg UpdateFormSyncedAtParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateFormSyncedAt, arg.ID, arg.SyncedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const updateFormTitleQuestion = `-- name: UpdateFormTitleQuestion :exec
+const updateFormTitleQuestion = `-- name: UpdateFormTitleQuestion :execrows
 UPDATE forms
 SET title_question_id = $2
 WHERE id = $1
@@ -135,7 +138,10 @@ type UpdateFormTitleQuestionParams struct {
 	TitleQuestionID pgtype.Text `json:"title_question_id"`
 }
 
-func (q *Queries) UpdateFormTitleQuestion(ctx context.Context, arg UpdateFormTitleQuestionParams) error {
-	_, err := q.db.Exec(ctx, updateFormTitleQuestion, arg.ID, arg.TitleQuestionID)
-	return err
+func (q *Queries) UpdateFormTitleQuestion(ctx context.Context, arg UpdateFormTitleQuestionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateFormTitleQuestion, arg.ID, arg.TitleQuestionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

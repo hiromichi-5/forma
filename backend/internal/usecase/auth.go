@@ -134,7 +134,13 @@ func (uc *AuthUseCase) VerifyEmail(ctx context.Context, token string) error {
 			}
 			return err
 		}
-		return repos.User.SetVerifiedAt(ctx, t.UserID, uc.now())
+		if err := repos.User.SetVerifiedAt(ctx, t.UserID, uc.now()); err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return entity.NewError(entity.CodeUserNotFound)
+			}
+			return err
+		}
+		return nil
 	})
 }
 
@@ -213,6 +219,9 @@ func (uc *AuthUseCase) ConfirmPasswordReset(ctx context.Context, token, newPassw
 			return err
 		}
 		if err := repos.User.UpdatePasswordHash(ctx, t.UserID, string(hashed)); err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return entity.NewError(entity.CodeUserNotFound)
+			}
 			return err
 		}
 		return repos.User.DeletePasswordResetTokensByUser(ctx, t.UserID)

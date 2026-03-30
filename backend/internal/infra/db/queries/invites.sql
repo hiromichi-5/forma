@@ -31,6 +31,6 @@ WHERE id = $1
   AND accepted_at IS NULL
 RETURNING id, form_id, email, role, invited_by, accepted_at, expires_at, created_at;
 
--- name: DeleteFormInvite :exec
+-- name: DeleteFormInvite :execrows
 DELETE FROM form_invites
 WHERE id = $1;

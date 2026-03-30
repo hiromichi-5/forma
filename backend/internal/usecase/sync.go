@@ -66,7 +66,7 @@ func (uc *SyncUseCase) SyncFormOnce(
 	for {
 		page, e := uc.fetcher.ListResponses(ctx, form.FormID, filter, token)
 		if e != nil {
-			return 0, time.Time{}, e
+			return 0, time.Time{}, mapFormFetcherError(e)
 		}
 		if page != nil {
 			all = append(all, page.Responses...)
@@ -120,6 +120,9 @@ func (uc *SyncUseCase) SyncFormOnce(
 
 	if !maxSubmitted.IsZero() {
 		if err := uc.formRepo.UpdateSyncedAt(ctx, form.ID, maxSubmitted); err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return 0, time.Time{}, entity.NewError(entity.CodeFormNotFound)
+			}
 			return 0, time.Time{}, err
 		}
 	}
@@ -130,13 +133,7 @@ func (uc *SyncUseCase) SyncFormOnce(
 func (uc *SyncUseCase) refreshFormQuestions(ctx context.Context, form entity.Form) error {
 	gf, err := uc.fetcher.GetForm(ctx, form.FormID)
 	if err != nil {
-		if errors.Is(err, repository.ErrForbidden) {
-			return entity.NewError(entity.CodeFormNotShared)
-		}
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeFormNotFound)
-		}
-		return err
+		return mapFormFetcherError(err)
 	}
 	if gf == nil {
 		return entity.NewError(entity.CodeFormNotFound)

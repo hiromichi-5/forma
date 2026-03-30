@@ -51,10 +51,14 @@ func (r *FormRepository) UpdateTitleQuestion(
 	id uuid.UUID,
 	titleQuestionID *string,
 ) error {
-	return r.q.UpdateFormTitleQuestion(ctx, db.UpdateFormTitleQuestionParams{
+	n, err := r.q.UpdateFormTitleQuestion(ctx, db.UpdateFormTitleQuestionParams{
 		ID:              toUUID(id),
 		TitleQuestionID: toTextPtr(titleQuestionID),
 	})
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
 }
 
 func (r *FormRepository) UpdateSyncedAt(
@@ -62,10 +66,14 @@ func (r *FormRepository) UpdateSyncedAt(
 	id uuid.UUID,
 	syncedAt time.Time,
 ) error {
-	return r.q.UpdateFormSyncedAt(ctx, db.UpdateFormSyncedAtParams{
+	n, err := r.q.UpdateFormSyncedAt(ctx, db.UpdateFormSyncedAtParams{
 		ID:       toUUID(id),
 		SyncedAt: toTimestamptz(syncedAt),
 	})
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
 }
 
 func (r *FormRepository) ListQuestions(

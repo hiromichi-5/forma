@@ -131,7 +131,7 @@ func (q *Queries) ListTickets(ctx context.Context, arg ListTicketsParams) ([]Tic
 	return items, nil
 }
 
-const updateTicketAssignee = `-- name: UpdateTicketAssignee :exec
+const updateTicketAssignee = `-- name: UpdateTicketAssignee :execrows
 UPDATE tickets SET assignee_id = $2 WHERE id = $1
 `
 
@@ -140,12 +140,15 @@ type UpdateTicketAssigneeParams struct {
 	AssigneeID pgtype.UUID `json:"assignee_id"`
 }
 
-func (q *Queries) UpdateTicketAssignee(ctx context.Context, arg UpdateTicketAssigneeParams) error {
-	_, err := q.db.Exec(ctx, updateTicketAssignee, arg.ID, arg.AssigneeID)
-	return err
+func (q *Queries) UpdateTicketAssignee(ctx context.Context, arg UpdateTicketAssigneeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateTicketAssignee, arg.ID, arg.AssigneeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const updateTicketPriority = `-- name: UpdateTicketPriority :exec
+const updateTicketPriority = `-- name: UpdateTicketPriority :execrows
 UPDATE tickets SET priority = $2 WHERE id = $1
 `
 
@@ -154,12 +157,15 @@ type UpdateTicketPriorityParams struct {
 	Priority string      `json:"priority"`
 }
 
-func (q *Queries) UpdateTicketPriority(ctx context.Context, arg UpdateTicketPriorityParams) error {
-	_, err := q.db.Exec(ctx, updateTicketPriority, arg.ID, arg.Priority)
-	return err
+func (q *Queries) UpdateTicketPriority(ctx context.Context, arg UpdateTicketPriorityParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateTicketPriority, arg.ID, arg.Priority)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const updateTicketStatus = `-- name: UpdateTicketStatus :exec
+const updateTicketStatus = `-- name: UpdateTicketStatus :execrows
 UPDATE tickets SET status_id = $2 WHERE id = $1
 `
 
@@ -168,7 +174,10 @@ type UpdateTicketStatusParams struct {
 	StatusID pgtype.UUID `json:"status_id"`
 }
 
-func (q *Queries) UpdateTicketStatus(ctx context.Context, arg UpdateTicketStatusParams) error {
-	_, err := q.db.Exec(ctx, updateTicketStatus, arg.ID, arg.StatusID)
-	return err
+func (q *Queries) UpdateTicketStatus(ctx context.Context, arg UpdateTicketStatusParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateTicketStatus, arg.ID, arg.StatusID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

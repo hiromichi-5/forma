@@ -19,12 +19,12 @@ SET display_name = $2
 WHERE id = $1
 RETURNING id, email, password_hash, created_at, display_name, verified_at;
 
--- name: UpdateUserPasswordHash :exec
+-- name: UpdateUserPasswordHash :execrows
 UPDATE users
 SET password_hash = $2
 WHERE id = $1;
 
--- name: SetUserVerifiedAt :exec
+-- name: SetUserVerifiedAt :execrows
 UPDATE users
 SET verified_at = $2
 WHERE id = $1;
