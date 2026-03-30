@@ -3,11 +3,14 @@ package google
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"google.golang.org/api/forms/v1"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 )
 
@@ -31,7 +34,7 @@ func NewFormClient(ctx context.Context, saJSONPath string) (*FormClient, error) 
 func (c *FormClient) GetForm(ctx context.Context, formID string) (*repository.GoogleForm, error) {
 	form, err := c.svc.Forms.Get(formID).Context(ctx).Do()
 	if err != nil {
-		return nil, err
+		return nil, classifyGoogleAPIError(err)
 	}
 
 	gf := &repository.GoogleForm{
@@ -86,7 +89,7 @@ func (c *FormClient) ListResponses(
 
 	resp, err := call.Do()
 	if err != nil {
-		return nil, err
+		return nil, classifyGoogleAPIError(err)
 	}
 
 	page := &repository.GoogleFormResponsePage{
@@ -205,4 +208,19 @@ func marshalAnswers(answers map[string]forms.Answer) []byte {
 		return nil
 	}
 	return b
+}
+
+func classifyGoogleAPIError(err error) error {
+	var apiErr *googleapi.Error
+	if !errors.As(err, &apiErr) {
+		return err
+	}
+	switch apiErr.Code {
+	case http.StatusForbidden:
+		return repository.ErrForbidden
+	case http.StatusNotFound:
+		return repository.ErrNotFound
+	default:
+		return err
+	}
 }
