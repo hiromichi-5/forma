@@ -38,21 +38,21 @@ func NewSyncUseCase(
 func (uc *SyncUseCase) SyncFormOnce(
 	ctx context.Context,
 	formID, userID uuid.UUID,
-) (synced int, newTickets int, lastSync time.Time, err error) {
-	if err := uc.requireEditor(ctx, formID, userID); err != nil {
-		return 0, 0, time.Time{}, err
+) (newTickets int, lastSync time.Time, err error) {
+	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+		return 0, time.Time{}, err
 	}
 
 	form, err := uc.formRepo.GetByID(ctx, formID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return 0, 0, time.Time{}, entity.NewError(entity.CodeFormNotFound)
+			return 0, time.Time{}, entity.NewError(entity.CodeFormNotFound)
 		}
-		return 0, 0, time.Time{}, err
+		return 0, time.Time{}, err
 	}
 
 	if err := uc.refreshFormQuestions(ctx, form); err != nil {
-		return 0, 0, time.Time{}, err
+		return 0, time.Time{}, err
 	}
 
 	filter := ""
@@ -66,7 +66,7 @@ func (uc *SyncUseCase) SyncFormOnce(
 	for {
 		page, e := uc.fetcher.ListResponses(ctx, form.FormID, filter, token)
 		if e != nil {
-			return 0, 0, time.Time{}, e
+			return 0, time.Time{}, e
 		}
 		if page != nil {
 			all = append(all, page.Responses...)
@@ -83,7 +83,7 @@ func (uc *SyncUseCase) SyncFormOnce(
 
 	defaultStatus, err := uc.statusRepo.GetDefault(ctx, form.ID)
 	if err != nil {
-		return 0, 0, time.Time{}, err
+		return 0, time.Time{}, err
 	}
 
 	var maxSubmitted time.Time
@@ -108,10 +108,9 @@ func (uc *SyncUseCase) SyncFormOnce(
 			SubmittedAt:     r.SubmittedAt,
 		})
 		if e != nil {
-			return 0, 0, time.Time{}, e
+			return 0, time.Time{}, e
 		}
 		if created {
-			synced++
 			newTickets++
 		}
 		if r.SubmittedAt.After(maxSubmitted) {
@@ -121,11 +120,11 @@ func (uc *SyncUseCase) SyncFormOnce(
 
 	if !maxSubmitted.IsZero() {
 		if err := uc.formRepo.UpdateSyncedAt(ctx, form.ID, maxSubmitted); err != nil {
-			return 0, 0, time.Time{}, err
+			return 0, time.Time{}, err
 		}
 	}
 
-	return synced, newTickets, maxSubmitted, nil
+	return newTickets, maxSubmitted, nil
 }
 
 func (uc *SyncUseCase) refreshFormQuestions(ctx context.Context, form entity.Form) error {
@@ -164,19 +163,5 @@ func (uc *SyncUseCase) refreshFormQuestions(ctx context.Context, form entity.For
 		}
 	}
 
-	return nil
-}
-
-func (uc *SyncUseCase) requireEditor(ctx context.Context, formID, userID uuid.UUID) error {
-	role, err := uc.memberRepo.GetRole(ctx, userID, formID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeForbidden)
-		}
-		return err
-	}
-	if role != entity.RoleAdmin && role != entity.RoleEditor {
-		return entity.NewError(entity.CodeForbidden)
-	}
 	return nil
 }
