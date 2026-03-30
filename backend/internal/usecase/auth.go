@@ -85,20 +85,22 @@ func (uc *AuthUseCase) Signup(ctx context.Context, email, password, displayName 
 		return err
 	}
 
-	_, err = uc.userRepo.Create(ctx, entity.User{
-		ID:           uuid.New(),
-		Email:        email,
-		PasswordHash: string(hashed),
-		DisplayName:  displayName,
-	})
-	if err != nil {
-		if errors.Is(err, repository.ErrConflict) {
-			return nil
+	return uc.txm.Do(ctx, func(repos repository.Repos) error {
+		user, err := repos.User.Create(ctx, entity.User{
+			ID:           uuid.New(),
+			Email:        email,
+			PasswordHash: string(hashed),
+			DisplayName:  displayName,
+		})
+		if err != nil {
+			if errors.Is(err, repository.ErrConflict) {
+				return nil
+			}
+			return err
 		}
-		return err
-	}
 
-	return nil
+		return uc.issueEmailVerificationTokenTx(ctx, repos.User, user.ID)
+	})
 }
 
 func (uc *AuthUseCase) Logout(ctx context.Context, sessionID uuid.UUID) error {
