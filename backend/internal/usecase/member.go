@@ -45,6 +45,12 @@ func (uc *MemberUseCase) AddMember(
 		return err
 	}
 
+	if _, err := uc.memberRepo.GetRole(ctx, target.ID, formID); err == nil {
+		return entity.NewError(entity.CodeAlreadyMember)
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return err
+	}
+
 	return uc.memberRepo.Upsert(ctx, target.ID, formID, role)
 }
 
@@ -59,6 +65,18 @@ func (uc *MemberUseCase) ChangeRole(
 
 	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
 		return err
+	}
+
+	currentRole, err := uc.memberRepo.GetRole(ctx, targetUserID, formID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.NewError(entity.CodeResourceHidden)
+		}
+		return err
+	}
+
+	if currentRole == role {
+		return nil
 	}
 
 	if role != entity.RoleAdmin {
