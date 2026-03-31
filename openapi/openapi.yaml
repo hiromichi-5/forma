@@ -18,8 +18,15 @@ components:
       required: [code]
       properties:
         code: { type: string }
-        message: { type: string, nullable: true }
-        details: { type: object, additionalProperties: true, nullable: true }
+        message: { type: string }
+        fields:
+          type: array
+          items:
+            type: object
+            required: [field, code]
+            properties:
+              field: { type: string }
+              code: { type: string }
 
     LoginRequest:
       type: object
@@ -39,7 +46,7 @@ components:
       properties:
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
-        display_name: { type: string }
+        display_name: { type: string, minLength: 1 }
     SignupResponse:
       type: object
       required: [id]
@@ -84,6 +91,12 @@ components:
       properties:
         display_name: { type: string }
 
+    WhoamiResponse:
+      type: object
+      required: [user_id]
+      properties:
+        user_id: { type: string, format: uuid }
+
     RegisterFormRequest:
       type: object
       required: [url]
@@ -95,32 +108,22 @@ components:
       properties:
         id: { type: string, format: uuid }
 
-    FormSummary:
+    Form:
       type: object
-      required: [id, title]
+      required: [id, form_id, title, created_at]
       properties:
         id: { type: string, format: uuid }
+        form_id: { type: string }
         title: { type: string }
-        synced_at: { type: string, format: date-time, nullable: true }
+        description: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
     ListFormsResponse:
       type: object
       required: [forms]
       properties:
         forms:
           type: array
-          items: { $ref: "#/components/schemas/FormSummary" }
-
-    Form:
-      type: object
-      required: [id, title, created_at]
-      properties:
-        id: { type: string, format: uuid }
-        title: { type: string }
-        description: { type: string, nullable: true }
-        title_question_id: { type: string, nullable: true }
-        email_collection_type: { type: string, nullable: true }
-        synced_at: { type: string, format: date-time, nullable: true }
-        created_at: { type: string, format: date-time }
+          items: { $ref: "#/components/schemas/Form" }
 
     UpdateFormRequest:
       type: object
@@ -186,7 +189,7 @@ components:
 
     FormQuestion:
       type: object
-      required: [question_id, title, question_type]
+      required: [question_id, title, question_type, options]
       properties:
         question_id: { type: string }
         title: { type: string }
@@ -194,7 +197,6 @@ components:
         options:
           type: array
           items: { type: string }
-          nullable: true
     ListFormQuestionsResponse:
       type: object
       required: [questions]
@@ -205,9 +207,10 @@ components:
 
     FormStatus:
       type: object
-      required: [id, name, display_order, is_default]
+      required: [id, form_id, name, display_order, is_default]
       properties:
         id: { type: string, format: uuid }
+        form_id: { type: string, format: uuid }
         name: { type: string }
         color: { type: string, nullable: true }
         display_order: { type: integer }
@@ -347,9 +350,9 @@ components:
       type: object
       required: [synced, new_tickets]
       properties:
-        synced: { type: integer }
-        new_tickets: { type: integer }
-        last: { type: string, format: date-time, nullable: true }
+        synced: { type: boolean }
+        newTickets: { type: integer }
+        last: { type: string, format: date-time }
 
 security:
   - cookieAuth: []
@@ -508,7 +511,7 @@ paths:
 
   /v1/auth/password-reset/confirm:
     post:
-      summary: パスワードリセット
+      summary: パスワードリセット確認
       security: []
       requestBody:
         required: true
@@ -609,6 +612,21 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /v1/whoami:
+    get:
+      summary: 現在のユーザーID取得
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WhoamiResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /v1/forms:
     get:
       summary: フォーム一覧
@@ -652,10 +670,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{id}:
+  /v1/forms/{form_id}:
     parameters:
       - in: path
-        name: id
+        name: form_id
         required: true
         schema: { type: string, format: uuid }
     get:
@@ -702,12 +720,12 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{id}/sync:
+  /v1/forms/{form_id}/sync:
     post:
       summary: 回答の同期
       parameters:
         - in: path
-          name: id
+          name: form_id
           required: true
           schema: { type: string, format: uuid }
       responses:
@@ -727,10 +745,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{id}/members:
+  /v1/forms/{form_id}/members:
     parameters:
       - in: path
-        name: id
+        name: form_id
         required: true
         schema: { type: string, format: uuid }
     get:
@@ -777,10 +795,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{id}/members/{user_id}:
+  /v1/forms/{form_id}/members/{user_id}:
     parameters:
       - in: path
-        name: id
+        name: form_id
         required: true
         schema: { type: string, format: uuid }
       - in: path
@@ -833,10 +851,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{id}/invites:
+  /v1/forms/{form_id}/invites:
     parameters:
       - in: path
-        name: id
+        name: form_id
         required: true
         schema: { type: string, format: uuid }
     get:
@@ -886,10 +904,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{id}/invites/{invite_id}:
+  /v1/forms/{form_id}/invites/{invite_id}:
     parameters:
       - in: path
-        name: id
+        name: form_id
         required: true
         schema: { type: string, format: uuid }
       - in: path
@@ -934,10 +952,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{id}/questions:
+  /v1/forms/{form_id}/questions:
     parameters:
       - in: path
-        name: id
+        name: form_id
         required: true
         schema: { type: string, format: uuid }
     get:
@@ -959,10 +977,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{id}/statuses:
+  /v1/forms/{form_id}/statuses:
     parameters:
       - in: path
-        name: id
+        name: form_id
         required: true
         schema: { type: string, format: uuid }
     get:
@@ -1012,10 +1030,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{id}/statuses/{status_id}:
+  /v1/forms/{form_id}/statuses/{status_id}:
     parameters:
       - in: path
-        name: id
+        name: form_id
         required: true
         schema: { type: string, format: uuid }
       - in: path
@@ -1071,10 +1089,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/forms/{id}/statuses/{status_id}/default:
+  /v1/forms/{form_id}/statuses/{status_id}/default:
     parameters:
       - in: path
-        name: id
+        name: form_id
         required: true
         schema: { type: string, format: uuid }
       - in: path
@@ -1086,9 +1104,6 @@ paths:
       responses:
         "200":
           description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FormStatus" }
         "401":
           description: Unauthorized
           content:
@@ -1106,6 +1121,7 @@ paths:
       parameters:
         - in: query
           name: form
+          required: true
           schema: { type: string, format: uuid }
           description: "フィルタリング用のフォームID"
         - in: query

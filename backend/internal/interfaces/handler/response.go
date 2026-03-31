@@ -7,8 +7,6 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/usecase"
 )
 
-// --- Auth ---
-
 type loginResp struct {
 	SessionID string `json:"session_id"`
 }
@@ -16,8 +14,6 @@ type loginResp struct {
 type signupResp struct {
 	ID string `json:"id"`
 }
-
-// --- Profile ---
 
 type userProfileResp struct {
 	ID          string  `json:"id"`
@@ -34,8 +30,6 @@ func toUserProfileResp(u entity.User) userProfileResp {
 		VerifiedAt:  timePtr(u.VerifiedAt),
 	}
 }
-
-// --- Form ---
 
 type formResp struct {
 	ID          string  `json:"id"`
@@ -63,8 +57,6 @@ func toFormListResp(forms []entity.Form) []formResp {
 	return out
 }
 
-// --- Question ---
-
 type questionResp struct {
 	QuestionID   string   `json:"question_id"`
 	Title        string   `json:"title"`
@@ -89,8 +81,6 @@ func toQuestionListResp(questions []entity.FormQuestion) []questionResp {
 	return out
 }
 
-// --- Member ---
-
 type memberResp struct {
 	ID          string `json:"id"`
 	Email       string `json:"email"`
@@ -110,8 +100,6 @@ func toMemberListResp(members []entity.Member) []memberResp {
 	}
 	return out
 }
-
-// --- Invite ---
 
 type createInviteResp struct {
 	InviteID  string `json:"invite_id"`
@@ -142,8 +130,6 @@ func toInviteListResp(invites []entity.Invite) []inviteResp {
 	return out
 }
 
-// --- Status ---
-
 type statusResp struct {
 	ID           string  `json:"id"`
 	FormID       string  `json:"form_id"`
@@ -171,8 +157,6 @@ func toStatusListResp(statuses []entity.FormStatus) []statusResp {
 	}
 	return out
 }
-
-// --- Ticket ---
 
 type ticketStatusResp struct {
 	ID    string  `json:"id"`
@@ -267,8 +251,6 @@ func toTicketDetailResp(d usecase.TicketDetail) ticketDetailResp {
 	}
 }
 
-// --- Ticket History ---
-
 type ticketHistoryResp struct {
 	ID            string  `json:"id"`
 	TicketID      string  `json:"ticket_id"`
@@ -302,15 +284,11 @@ func toTicketHistoryListResp(histories []entity.TicketHistory) []ticketHistoryRe
 	return out
 }
 
-// --- Sync ---
-
 type syncResp struct {
 	Synced     bool   `json:"synced"`
-	NewTickets int    `json:"newTickets"`
+	NewTickets int    `json:"new_tickets"`
 	Last       string `json:"last"`
 }
-
-// --- Helpers ---
 
 func timePtr(t *time.Time) *string {
 	if t == nil {
