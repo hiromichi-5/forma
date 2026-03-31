@@ -48,6 +48,10 @@ func (uc *InviteUseCase) CreateInvite(
 		return entity.Invite{}, err
 	}
 
+	if err := uc.ensureEmailNotMember(ctx, formID, email); err != nil {
+		return entity.Invite{}, err
+	}
+
 	invite, err := uc.inviteRepo.Create(ctx, entity.Invite{
 		ID:        uuid.New(),
 		FormID:    formID,
@@ -58,7 +62,7 @@ func (uc *InviteUseCase) CreateInvite(
 	})
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
-			return entity.Invite{}, entity.NewError(entity.CodeValidation)
+			return entity.Invite{}, entity.NewError(entity.CodeActiveInviteAlreadyExists)
 		}
 		return entity.Invite{}, err
 	}
@@ -132,7 +136,11 @@ func (uc *InviteUseCase) AcceptInvite(ctx context.Context, inviteID, userID uuid
 		}
 
 		if user.Email != invite.Email {
-			return entity.NewError(entity.CodeForbidden)
+			return entity.NewError(entity.CodeResourceHidden)
+		}
+
+		if err := ensureUserNotMember(ctx, repos.Member, invite.FormID, userID); err != nil {
+			return err
 		}
 
 		if _, err := repos.Invite.Accept(ctx, inviteID); err != nil {
@@ -144,4 +152,35 @@ func (uc *InviteUseCase) AcceptInvite(ctx context.Context, inviteID, userID uuid
 
 		return repos.Member.Upsert(ctx, userID, invite.FormID, invite.Role)
 	})
+}
+
+func (uc *InviteUseCase) ensureEmailNotMember(
+	ctx context.Context,
+	formID uuid.UUID,
+	email string,
+) error {
+	user, err := uc.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+
+	return ensureUserNotMember(ctx, uc.memberRepo, formID, user.ID)
+}
+
+func ensureUserNotMember(
+	ctx context.Context,
+	memberRepo repository.MemberRepository,
+	formID, userID uuid.UUID,
+) error {
+	_, err := memberRepo.GetRole(ctx, userID, formID)
+	if err == nil {
+		return entity.NewError(entity.CodeAlreadyMember)
+	}
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil
+	}
+	return err
 }
