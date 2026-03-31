@@ -10,8 +10,10 @@ type (
 const (
 	// 認証・認可
 	CodeInvalidCredentials Code = "INVALID_CREDENTIALS" // #nosec
+	CodeInvalidSession     Code = "INVALID_SESSION"
 	CodeEmailNotVerified   Code = "EMAIL_NOT_VERIFIED"
 	CodeForbidden          Code = "FORBIDDEN"
+	CodeResourceHidden     Code = "RESOURCE_HIDDEN"
 
 	// リソース不在
 	CodeUserNotFound   Code = "USER_NOT_FOUND"
@@ -21,10 +23,14 @@ const (
 	CodeInviteNotFound Code = "INVITE_NOT_FOUND"
 
 	// ビジネスルール違反
-	CodeInviteExpired     Code = "INVITE_EXPIRED"
-	CodeAlreadyMember     Code = "ALREADY_MEMBER"
-	CodeIncorrectPassword Code = "INCORRECT_PASSWORD"
-	CodeLastAdmin         Code = "LAST_ADMIN"
+	CodeInviteExpired             Code = "INVITE_EXPIRED"
+	CodeAlreadyMember             Code = "ALREADY_MEMBER"
+	CodeIncorrectPassword         Code = "INCORRECT_PASSWORD"
+	CodeLastAdmin                 Code = "LAST_ADMIN"
+	CodeConflict                  Code = "CONFLICT"
+	CodeFormAlreadyRegistered     Code = "FORM_ALREADY_REGISTERED"
+	CodeActiveInviteAlreadyExists Code = "ACTIVE_INVITE_ALREADY_EXISTS"
+	CodeStatusConflict            Code = "STATUS_CONFLICT"
 
 	CodeValidation Code = "VALIDATION_ERROR"
 )
