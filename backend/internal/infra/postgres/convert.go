@@ -56,10 +56,6 @@ func fromTimestamptzPtr(t pgtype.Timestamptz) *time.Time {
 	return &v
 }
 
-func toText(s string) pgtype.Text {
-	return pgtype.Text{String: s, Valid: true}
-}
-
 func toTextPtr(s *string) pgtype.Text {
 	if s == nil {
 		return pgtype.Text{}
