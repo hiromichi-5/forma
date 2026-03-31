@@ -75,17 +75,21 @@ func (uc *AuthUseCase) Authenticate(
 	return session, nil
 }
 
-func (uc *AuthUseCase) Signup(ctx context.Context, email, password, displayName string) error {
+func (uc *AuthUseCase) Signup(
+	ctx context.Context,
+	email, password, displayName string,
+) (uuid.UUID, error) {
 	if email == "" || password == "" || displayName == "" {
-		return entity.NewError(entity.CodeValidation)
+		return uuid.UUID{}, entity.NewError(entity.CodeValidation)
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return uuid.UUID{}, err
 	}
 
-	return uc.txm.Do(ctx, func(repos repository.Repos) error {
+	var createdUserID uuid.UUID
+	if err := uc.txm.Do(ctx, func(repos repository.Repos) error {
 		user, err := repos.User.Create(ctx, entity.User{
 			ID:           uuid.New(),
 			Email:        email,
@@ -94,20 +98,25 @@ func (uc *AuthUseCase) Signup(ctx context.Context, email, password, displayName 
 		})
 		if err != nil {
 			if errors.Is(err, repository.ErrConflict) {
-				return nil
+				return entity.NewError(entity.CodeConflict)
 			}
 			return err
 		}
+		createdUserID = user.ID
 
 		return uc.issueEmailVerificationTokenTx(ctx, repos.User, user.ID)
-	})
+	}); err != nil {
+		return uuid.UUID{}, err
+	}
+
+	return createdUserID, nil
 }
 
 func (uc *AuthUseCase) Logout(ctx context.Context, sessionID uuid.UUID) error {
 	err := uc.userRepo.DeleteSession(ctx, sessionID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeInvalidCredentials)
+			return entity.NewError(entity.CodeInvalidSession)
 		}
 		return err
 	}

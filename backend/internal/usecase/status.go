@@ -77,7 +77,7 @@ func (uc *StatusUseCase) CreateStatus(
 		})
 		if err != nil {
 			if errors.Is(err, repository.ErrConflict) {
-				return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
+				return entity.FormStatus{}, entity.NewError(entity.CodeStatusConflict)
 			}
 			return entity.FormStatus{}, err
 		}
@@ -106,7 +106,7 @@ func (uc *StatusUseCase) CreateStatus(
 		return setErr
 	}); err != nil {
 		if errors.Is(err, repository.ErrConflict) {
-			return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
+			return entity.FormStatus{}, entity.NewError(entity.CodeStatusConflict)
 		}
 		return entity.FormStatus{}, err
 	}
@@ -127,12 +127,12 @@ func (uc *StatusUseCase) UpdateStatus(
 	current, err := uc.statusRepo.GetByID(ctx, statusID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return entity.FormStatus{}, entity.NewError(entity.CodeForbidden)
+			return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
 		}
 		return entity.FormStatus{}, err
 	}
 	if current.FormID != formID {
-		return entity.FormStatus{}, entity.NewError(entity.CodeForbidden)
+		return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
 	}
 
 	if name != nil {
@@ -162,10 +162,10 @@ func (uc *StatusUseCase) UpdateStatus(
 	updated, err := uc.statusRepo.Update(ctx, current)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return entity.FormStatus{}, entity.NewError(entity.CodeForbidden)
+			return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
 		}
 		if errors.Is(err, repository.ErrConflict) {
-			return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
+			return entity.FormStatus{}, entity.NewError(entity.CodeStatusConflict)
 		}
 		return entity.FormStatus{}, err
 	}
@@ -187,7 +187,7 @@ func (uc *StatusUseCase) SetDefaultStatus(
 		_, err := repos.Status.SetDefault(ctx, formID, statusID)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
-				return entity.NewError(entity.CodeForbidden)
+				return entity.NewError(entity.CodeResourceHidden)
 			}
 			return err
 		}
@@ -206,12 +206,12 @@ func (uc *StatusUseCase) DeleteStatus(
 	status, err := uc.statusRepo.GetByID(ctx, statusID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeForbidden)
+			return entity.NewError(entity.CodeResourceHidden)
 		}
 		return err
 	}
 	if status.FormID != formID {
-		return entity.NewError(entity.CodeForbidden)
+		return entity.NewError(entity.CodeResourceHidden)
 	}
 	if status.IsDefault {
 		return entity.NewError(entity.CodeValidation)
@@ -227,7 +227,7 @@ func (uc *StatusUseCase) DeleteStatus(
 
 	if err := uc.statusRepo.Delete(ctx, statusID); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeForbidden)
+			return entity.NewError(entity.CodeResourceHidden)
 		}
 		return err
 	}

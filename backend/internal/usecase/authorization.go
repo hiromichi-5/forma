@@ -17,12 +17,12 @@ func requireEditor(
 	role, err := memberRepo.GetRole(ctx, userID, formID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeForbidden)
+			return entity.NewError(entity.CodeResourceHidden)
 		}
 		return err
 	}
 	if role != entity.RoleAdmin && role != entity.RoleEditor {
-		return entity.NewError(entity.CodeForbidden)
+		return entity.NewError(entity.CodeResourceHidden)
 	}
 	return nil
 }
@@ -35,7 +35,7 @@ func requireAdmin(
 	role, err := memberRepo.GetRole(ctx, userID, formID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeForbidden)
+			return entity.NewError(entity.CodeResourceHidden)
 		}
 		return err
 	}

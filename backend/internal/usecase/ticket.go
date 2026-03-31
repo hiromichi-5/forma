@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -86,7 +87,9 @@ type formContext struct {
 
 func (fc formContext) titleQuestionID() string {
 	if fc.form.TitleQuestionID != nil {
-		return *fc.form.TitleQuestionID
+		if trimmed := strings.TrimSpace(*fc.form.TitleQuestionID); trimmed != "" {
+			return trimmed
+		}
 	}
 	return fc.questions.defaultTitleID
 }
@@ -140,6 +143,12 @@ func (uc *TicketUseCase) ListTickets(
 		return nil, err
 	}
 
+	if statusID != nil {
+		if _, err := uc.getVisibleStatus(ctx, formID, *statusID); err != nil {
+			return nil, err
+		}
+	}
+
 	tickets, err := uc.ticketRepo.List(ctx, formID, statusID)
 	if err != nil {
 		return nil, err
@@ -171,7 +180,7 @@ func (uc *TicketUseCase) GetTicket(
 	ticket, err := uc.ticketRepo.GetByID(ctx, ticketID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return TicketDetail{}, entity.NewError(entity.CodeForbidden)
+			return TicketDetail{}, entity.NewError(entity.CodeResourceHidden)
 		}
 		return TicketDetail{}, err
 	}
@@ -204,7 +213,7 @@ func (uc *TicketUseCase) UpdateTicket(
 	ticket, err := uc.ticketRepo.GetByID(ctx, ticketID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return TicketDetail{}, entity.NewError(entity.CodeForbidden)
+			return TicketDetail{}, entity.NewError(entity.CodeResourceHidden)
 		}
 		return TicketDetail{}, err
 	}
@@ -224,15 +233,9 @@ func (uc *TicketUseCase) UpdateTicket(
 
 	var newStatus *entity.FormStatus
 	if statusID != nil {
-		s, err := uc.statusRepo.GetByID(ctx, *statusID)
+		s, err := uc.getVisibleStatus(ctx, ticket.FormID, *statusID)
 		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return TicketDetail{}, entity.NewError(entity.CodeValidation)
-			}
 			return TicketDetail{}, err
-		}
-		if s.FormID != ticket.FormID {
-			return TicketDetail{}, entity.NewError(entity.CodeValidation)
 		}
 		newStatus = &s
 	}
@@ -252,6 +255,9 @@ func (uc *TicketUseCase) UpdateTicket(
 	if err := uc.txm.Do(ctx, func(repos repository.Repos) error {
 		current, err := repos.Ticket.GetByID(ctx, ticketID)
 		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return entity.NewError(entity.CodeResourceHidden)
+			}
 			return err
 		}
 
@@ -264,9 +270,6 @@ func (uc *TicketUseCase) UpdateTicket(
 		if newStatus != nil && newStatus.ID != current.StatusID {
 			oldStatus, err := repos.Status.GetByID(ctx, current.StatusID)
 			if err != nil {
-				if errors.Is(err, repository.ErrNotFound) {
-					return entity.NewError(entity.CodeValidation)
-				}
 				return err
 			}
 			if err := repos.Ticket.UpdateStatus(ctx, ticketID, newStatus.ID); err != nil {
@@ -302,9 +305,6 @@ func (uc *TicketUseCase) UpdateTicket(
 
 		return rec.save(ctx, repos.Ticket)
 	}); err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return TicketDetail{}, entity.NewError(entity.CodeForbidden)
-		}
 		return TicketDetail{}, err
 	}
 
@@ -318,7 +318,7 @@ func (uc *TicketUseCase) ListTicketHistories(
 	ticket, err := uc.ticketRepo.GetByID(ctx, ticketID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return nil, entity.NewError(entity.CodeForbidden)
+			return nil, entity.NewError(entity.CodeResourceHidden)
 		}
 		return nil, err
 	}
@@ -392,14 +392,38 @@ func (uc *TicketUseCase) validateAssignee(
 	ctx context.Context,
 	formID, assigneeID uuid.UUID,
 ) error {
+	if _, err := uc.userRepo.GetByID(ctx, assigneeID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.NewError(entity.CodeUserNotFound)
+		}
+		return err
+	}
+
 	_, err := uc.memberRepo.GetRole(ctx, assigneeID, formID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeValidation)
+			return entity.NewError(entity.CodeResourceHidden)
 		}
 		return err
 	}
 	return nil
+}
+
+func (uc *TicketUseCase) getVisibleStatus(
+	ctx context.Context,
+	formID, statusID uuid.UUID,
+) (entity.FormStatus, error) {
+	status, err := uc.statusRepo.GetByID(ctx, statusID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
+		}
+		return entity.FormStatus{}, err
+	}
+	if status.FormID != formID {
+		return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
+	}
+	return status, nil
 }
 
 func isValidTicketPriority(p string) bool {
