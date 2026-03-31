@@ -29,7 +29,6 @@ DELETE /v1/forms/:id/invites/:id
 POST /v1/auth/login                          ログイン
 POST /v1/auth/signup                         ユーザー登録
 POST /v1/forms/:id/sync                      フォーム同期
-POST /v1/forms/:id/statuses/:id/default      デフォルトステータス設定
 POST /v1/invites/:id/accept                  招待承諾
 ```
 
@@ -112,8 +111,7 @@ POST /v1/invites/:id/accept
 |---|---|---|
 | GET | `/v1/forms/:form_id/statuses` | ステータス一覧 |
 | POST | `/v1/forms/:form_id/statuses` | ステータス作成 |
-| PATCH | `/v1/forms/:form_id/statuses/:status_id` | ステータス更新 |
-| POST | `/v1/forms/:form_id/statuses/:status_id/default` | デフォルト設定 |
+| PATCH | `/v1/forms/:form_id/statuses/:status_id` | ステータス更新 / デフォルト設定 |
 | DELETE | `/v1/forms/:form_id/statuses/:status_id` | ステータス削除 |
 
 ### チケット

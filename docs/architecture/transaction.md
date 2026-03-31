@@ -78,7 +78,7 @@ form, err := uc.formRepo.GetByID(ctx, formID)
 | **FormUseCase.RegisterForm** | フォーム登録 | フォーム作成 + Admin メンバー作成 + デフォルトステータス3件作成 |
 | **InviteUseCase.AcceptInvite** | 招待承諾 | 招待を SELECT FOR UPDATE → 有効性検証 → Accept + メンバー追加 |
 | **InviteUseCase.DeleteInvite** | 招待削除 | 招待を SELECT FOR UPDATE → フォーム所属確認 → 削除 |
-| **StatusUseCase.SetDefaultStatus** | デフォルトステータス設定 | 現在のデフォルトを解除 + 新しいデフォルトを設定 |
+| **StatusUseCase.UpdateStatus** | ステータス更新（isDefault=true の場合） | ステータス更新 + 現在のデフォルトを解除 + 新しいデフォルトを設定 |
 | **StatusUseCase.CreateStatus** | ステータス作成（isDefault=true の場合） | ステータス作成 + デフォルト設定 |
 | **TicketUseCase.UpdateTicket** | チケット更新 | 最新状態を再取得 → ステータス/担当者/優先度更新 + 変更履歴記録 |
 | **AuthUseCase.Signup** | ユーザー登録 | ユーザー作成 + メール検証トークン作成 |

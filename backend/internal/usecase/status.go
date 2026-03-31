@@ -119,9 +119,14 @@ func (uc *StatusUseCase) UpdateStatus(
 	formID, userID, statusID uuid.UUID,
 	name, color *string,
 	displayOrder *int32,
+	isDefault *bool,
 ) (entity.FormStatus, error) {
 	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return entity.FormStatus{}, err
+	}
+
+	if isDefault != nil && !*isDefault {
+		return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
 	}
 
 	current, err := uc.statusRepo.GetByID(ctx, statusID)
@@ -135,6 +140,58 @@ func (uc *StatusUseCase) UpdateStatus(
 		return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
 	}
 
+	next, err := applyStatusUpdate(current, name, color, displayOrder)
+	if err != nil {
+		return entity.FormStatus{}, err
+	}
+
+	if isDefault == nil {
+		updated, updateErr := uc.statusRepo.Update(ctx, next)
+		if updateErr != nil {
+			if errors.Is(updateErr, repository.ErrNotFound) {
+				return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
+			}
+			if errors.Is(updateErr, repository.ErrConflict) {
+				return entity.FormStatus{}, entity.NewError(entity.CodeStatusConflict)
+			}
+			return entity.FormStatus{}, updateErr
+		}
+		return updated, nil
+	}
+
+	var updated entity.FormStatus
+	if err := uc.txm.Do(ctx, func(repos repository.Repos) error {
+		var updateErr error
+		updated, updateErr = repos.Status.Update(ctx, next)
+		if updateErr != nil {
+			return updateErr
+		}
+		if err := repos.Status.ClearDefault(ctx, formID); err != nil {
+			return err
+		}
+		updated, updateErr = repos.Status.SetDefault(ctx, formID, statusID)
+		if updateErr != nil {
+			return updateErr
+		}
+		return nil
+	}); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
+		}
+		if errors.Is(err, repository.ErrConflict) {
+			return entity.FormStatus{}, entity.NewError(entity.CodeStatusConflict)
+		}
+		return entity.FormStatus{}, err
+	}
+
+	return updated, nil
+}
+
+func applyStatusUpdate(
+	current entity.FormStatus,
+	name, color *string,
+	displayOrder *int32,
+) (entity.FormStatus, error) {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
@@ -159,40 +216,7 @@ func (uc *StatusUseCase) UpdateStatus(
 		current.DisplayOrder = *displayOrder
 	}
 
-	updated, err := uc.statusRepo.Update(ctx, current)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
-		}
-		if errors.Is(err, repository.ErrConflict) {
-			return entity.FormStatus{}, entity.NewError(entity.CodeStatusConflict)
-		}
-		return entity.FormStatus{}, err
-	}
-	return updated, nil
-}
-
-func (uc *StatusUseCase) SetDefaultStatus(
-	ctx context.Context,
-	formID, userID, statusID uuid.UUID,
-) error {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
-		return err
-	}
-
-	return uc.txm.Do(ctx, func(repos repository.Repos) error {
-		if err := repos.Status.ClearDefault(ctx, formID); err != nil {
-			return err
-		}
-		_, err := repos.Status.SetDefault(ctx, formID, statusID)
-		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return entity.NewError(entity.CodeResourceHidden)
-			}
-			return err
-		}
-		return nil
-	})
+	return current, nil
 }
 
 func (uc *StatusUseCase) DeleteStatus(

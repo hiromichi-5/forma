@@ -25,8 +25,8 @@ type StatusUseCase interface {
 		formID, userID, statusID uuid.UUID,
 		name, color *string,
 		displayOrder *int32,
+		isDefault *bool,
 	) (entity.FormStatus, error)
-	SetDefaultStatus(ctx context.Context, formID, userID, statusID uuid.UUID) error
 	DeleteStatus(ctx context.Context, formID, userID, statusID uuid.UUID) error
 }
 
@@ -49,6 +49,7 @@ type updateStatusReq struct {
 	Name         *string `json:"name"`
 	Color        *string `json:"color"`
 	DisplayOrder *int32  `json:"display_order"`
+	IsDefault    *bool   `json:"is_default"`
 }
 
 func (h *StatusHandler) GetV1FormsIdStatuses(c *gin.Context) {
@@ -136,36 +137,13 @@ func (h *StatusHandler) PatchV1FormsIdStatusesStatusId(c *gin.Context) {
 		req.Name,
 		req.Color,
 		req.DisplayOrder,
+		req.IsDefault,
 	)
 	if err != nil {
 		handleError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, toStatusResp(status))
-}
-
-func (h *StatusHandler) PostV1FormsIdStatusesStatusIdDefault(c *gin.Context) {
-	userID, ok := middleware.UserID(c)
-	if !ok {
-		handleError(c, entity.NewError(entity.CodeInvalidSession))
-		return
-	}
-	formID, err := uuid.Parse(c.Param("form_id"))
-	if err != nil {
-		handleError(c, entity.NewError(entity.CodeValidation))
-		return
-	}
-	statusID, err := uuid.Parse(c.Param("status_id"))
-	if err != nil {
-		handleError(c, entity.NewError(entity.CodeValidation))
-		return
-	}
-
-	if err := h.uc.SetDefaultStatus(c, formID, userID, statusID); err != nil {
-		handleError(c, err)
-		return
-	}
-	c.Status(http.StatusOK)
 }
 
 func (h *StatusHandler) DeleteV1FormsIdStatusesStatusId(c *gin.Context) {

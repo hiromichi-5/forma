@@ -183,10 +183,6 @@ func run() error {
 	authz.GET("/forms/:form_id/statuses", sh.GetV1FormsIdStatuses)
 	authz.POST("/forms/:form_id/statuses", sh.PostV1FormsIdStatuses)
 	authz.PATCH("/forms/:form_id/statuses/:status_id", sh.PatchV1FormsIdStatusesStatusId)
-	authz.POST(
-		"/forms/:form_id/statuses/:status_id/default",
-		sh.PostV1FormsIdStatusesStatusIdDefault,
-	)
 	authz.DELETE("/forms/:form_id/statuses/:status_id", sh.DeleteV1FormsIdStatusesStatusId)
 	authz.GET("/forms/:form_id/questions", fh.GetV1FormsFormIdQuestions)
 	authz.POST("/invites/:invite_id/accept", ih.PostV1InvitesInviteIdAccept)

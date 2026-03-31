@@ -4,7 +4,6 @@
 
 フォームに紐づくチケットステータスの CRUD とデフォルトステータスの設定を提供する。
 
----
 
 ## GET /v1/forms/:form_id/statuses
 
@@ -87,7 +86,7 @@
 
 ## PATCH /v1/forms/:form_id/statuses/:status_id
 
-ステータスの名前・カラー・表示順を更新する。
+ステータスの名前・カラー・表示順を更新する。`is_default=true` を指定すると、そのステータスをデフォルトに設定する。
 
 | 項目 | 値 |
 |------|-----|
@@ -105,6 +104,7 @@
 | `name` | string? | No | 新しいステータス名 |
 | `color` | string? | No | 新しいカラーコード。空文字で null に設定 |
 | `display_order` | int? | No | 新しい表示順 |
+| `is_default` | bool? | No | `true` のとき、このステータスをデフォルトに設定 |
 
 ### レスポンス
 
@@ -114,43 +114,15 @@
 
 | コード | HTTP | 条件 |
 |---|---|---|
-| `VALIDATION_ERROR` | 400 | 名前が空文字、display_order が 0 以下 |
+| `VALIDATION_ERROR` | 400 | 名前が空文字、display_order が 0 以下、`is_default=false` |
 | `RESOURCE_HIDDEN` | 404 | メンバーでない、ステータスが存在しない、別フォームのステータス |
 | `STATUS_CONFLICT` | 409 | 名前または表示順が重複 |
 
-## POST /v1/forms/:form_id/statuses/:status_id/default
+### 補足
 
-ステータスをデフォルトに設定する。
+- `is_default=true` の場合、更新とデフォルト切り替えは同一トランザクションで実行する
+- `is_default=false` は受け付けない。別のステータスに `is_default=true` を指定することで切り替える
 
-| 項目 | 値 |
-|------|-----|
-| メソッド | `POST` |
-| パス | `/v1/forms/:form_id/statuses/:status_id/default` |
-| 認証 | 必要（SessionMiddleware） |
-| 権限 | Editor 以上 |
-
-### レスポンス
-
-**200 OK**（ボディなし）
-
-### エラー
-
-| コード | HTTP | 条件 |
-|---|---|---|
-| `RESOURCE_HIDDEN` | 404 | メンバーでない、ステータスが存在しない |
-
-### 内部フロー
-
-```
-handler.PostV1FormsIdStatusesStatusIdDefault
-  → StatusUseCase.SetDefaultStatus(formID, userID, statusID)
-    → requireEditor(memberRepo, formID, userID)
-    → txm.Do:
-      → repos.Status.ClearDefault(formID)          // 現在のデフォルトを解除
-      → repos.Status.SetDefault(formID, statusID)  // 新しいデフォルトを設定
-        → ErrNotFound → CodeResourceHidden
-  → 200
-```
 
 ## DELETE /v1/forms/:form_id/statuses/:status_id
 

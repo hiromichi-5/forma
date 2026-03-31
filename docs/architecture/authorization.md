@@ -98,8 +98,7 @@ func requireAdmin(ctx, memberRepo, formID, userID) error
 | `GET /v1/forms/:id/questions` | 質問一覧 |
 | `GET /v1/forms/:id/statuses` | ステータス一覧 |
 | `POST /v1/forms/:id/statuses` | ステータス作成 |
-| `PATCH /v1/forms/:id/statuses/:id` | ステータス更新 |
-| `POST /v1/forms/:id/statuses/:id/default` | デフォルトステータス設定 |
+| `PATCH /v1/forms/:id/statuses/:id` | ステータス更新 / デフォルトステータス設定 |
 | `DELETE /v1/forms/:id/statuses/:id` | ステータス削除 |
 | `POST /v1/forms/:id/sync` | フォーム同期 |
 | `GET /v1/forms/:id/members` | メンバー一覧 |
