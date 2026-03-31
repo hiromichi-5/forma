@@ -93,7 +93,7 @@ func (uc *FormUseCase) RegisterForm(
 	})
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
-			return entity.Form{}, entity.NewError(entity.CodeValidation)
+			return entity.Form{}, entity.NewError(entity.CodeFormAlreadyRegistered)
 		}
 		return entity.Form{}, err
 	}
@@ -160,14 +160,15 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 		return err
 	}
 
-	if questionID != nil && strings.TrimSpace(*questionID) != "" {
+	normalizedQuestionID := normalizeQuestionID(questionID)
+	if normalizedQuestionID != nil {
 		questions, err := uc.formRepo.ListQuestions(ctx, formID)
 		if err != nil {
 			return err
 		}
 		found := false
 		for _, q := range questions {
-			if q.QuestionID == *questionID {
+			if q.QuestionID == *normalizedQuestionID {
 				found = true
 				break
 			}
@@ -177,7 +178,7 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 		}
 	}
 
-	if err := uc.formRepo.UpdateTitleQuestion(ctx, formID, questionID); err != nil {
+	if err := uc.formRepo.UpdateTitleQuestion(ctx, formID, normalizedQuestionID); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeFormNotFound)
 		}
@@ -217,4 +218,15 @@ func mapFormFetcherError(err error) error {
 		return entity.NewError(entity.CodeFormNotFound)
 	}
 	return err
+}
+
+func normalizeQuestionID(questionID *string) *string {
+	if questionID == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*questionID)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }
