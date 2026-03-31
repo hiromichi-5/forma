@@ -45,7 +45,7 @@ func (h *TicketHandler) GetV1Tickets(c *gin.Context) {
 		return
 	}
 
-	formIDStr := c.Query("form")
+	formIDStr := c.Query("form_id")
 	formID, err := uuid.Parse(formIDStr)
 	if err != nil {
 		handleError(c, entity.NewError(entity.CodeValidation))

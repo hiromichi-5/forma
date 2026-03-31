@@ -117,18 +117,28 @@ components:
         title: { type: string }
         description: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
+    FormSummary:
+      type: object
+      required: [id, form_id, title]
+      properties:
+        id: { type: string, format: uuid }
+        form_id: { type: string }
+        title: { type: string }
     ListFormsResponse:
       type: object
       required: [forms]
       properties:
         forms:
           type: array
-          items: { $ref: "#/components/schemas/Form" }
+          items: { $ref: "#/components/schemas/FormSummary" }
 
     UpdateFormRequest:
       type: object
       properties:
-        title_question_id: { type: string, nullable: true }
+        title_question_id:
+          type: string
+          nullable: true
+          description: "未指定なら変更なし。null のみ解除。"
 
     Member:
       type: object
@@ -789,8 +799,18 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Conflict
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -898,8 +918,18 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Conflict
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1073,6 +1103,11 @@ paths:
       responses:
         "204":
           description: No Content
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: Unauthorized
           content:
@@ -1080,11 +1115,6 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Not found
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "409":
-          description: Status in use
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1120,7 +1150,7 @@ paths:
       summary: チケット一覧取得
       parameters:
         - in: query
-          name: form
+          name: form_id
           required: true
           schema: { type: string, format: uuid }
           description: "フィルタリング用のフォームID"

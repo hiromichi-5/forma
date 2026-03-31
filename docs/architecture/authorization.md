@@ -102,6 +102,7 @@ func requireAdmin(ctx, memberRepo, formID, userID) error
 | `POST /v1/forms/:id/statuses/:id/default` | デフォルトステータス設定 |
 | `DELETE /v1/forms/:id/statuses/:id` | ステータス削除 |
 | `POST /v1/forms/:id/sync` | フォーム同期 |
+| `GET /v1/forms/:id/members` | メンバー一覧 |
 | `GET /v1/tickets` | チケット一覧 |
 | `GET /v1/tickets/:id` | チケット詳細 |
 | `PATCH /v1/tickets/:id` | チケット更新 |
@@ -111,7 +112,6 @@ func requireAdmin(ctx, memberRepo, formID, userID) error
 
 | エンドポイント | 説明 |
 |---|---|
-| `GET /v1/forms/:id/members` | メンバー一覧 |
 | `POST /v1/forms/:id/members` | メンバー追加 |
 | `PUT /v1/forms/:id/members/:id` | ロール変更 |
 | `DELETE /v1/forms/:id/members/:id` | メンバー削除 |

@@ -21,7 +21,7 @@
 
 | パラメータ | 型 | 必須 | 説明 |
 |-----------|-----|------|------|
-| `form` | string (UUID) | Yes | フォーム ID |
+| `form_id` | string (UUID) | Yes | フォーム ID |
 | `status_id` | string (UUID) | No | ステータスで絞り込み |
 
 ### レスポンス
@@ -61,7 +61,7 @@
 
 | コード | HTTP | 条件 |
 |---|---|---|
-| `VALIDATION_ERROR` | 400 | form パラメータが不正な UUID |
+| `VALIDATION_ERROR` | 400 | form_id パラメータが不正な UUID |
 | `RESOURCE_HIDDEN` | 404 | メンバーでない、status_id が不正 |
 
 ### 補足

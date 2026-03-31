@@ -39,6 +39,12 @@ type formResp struct {
 	CreatedAt   string  `json:"created_at"`
 }
 
+type formSummaryResp struct {
+	ID     string `json:"id"`
+	FormID string `json:"form_id"`
+	Title  string `json:"title"`
+}
+
 func toFormResp(f entity.Form) formResp {
 	return formResp{
 		ID:          f.ID.String(),
@@ -49,10 +55,14 @@ func toFormResp(f entity.Form) formResp {
 	}
 }
 
-func toFormListResp(forms []entity.Form) []formResp {
-	out := make([]formResp, len(forms))
+func toFormSummaryListResp(forms []entity.Form) []formSummaryResp {
+	out := make([]formSummaryResp, len(forms))
 	for i, f := range forms {
-		out[i] = toFormResp(f)
+		out[i] = formSummaryResp{
+			ID:     f.ID.String(),
+			FormID: f.FormID,
+			Title:  f.Title,
+		}
 	}
 	return out
 }

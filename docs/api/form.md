@@ -70,9 +70,7 @@ Google Forms をシステムに登録する。登録者は Admin メンバーと
     {
       "id": "...",
       "form_id": "1FAIpQL...",
-      "title": "お問い合わせフォーム",
-      "description": null,
-      "created_at": "2026-01-15T10:30:00Z"
+      "title": "お問い合わせフォーム"
     }
   ]
 }
@@ -127,7 +125,7 @@ Google Forms をシステムに登録する。登録者は Admin メンバーと
 
 | フィールド | 型 | 必須 | 説明 |
 |-----------|-----|------|------|
-| `title_question_id` | string? | No | タイトルに使う質問 ID。`null` で解除 |
+| `title_question_id` | string? | No | タイトルに使う質問 ID。未指定なら変更なし、`null` で解除 |
 
 ### レスポンス
 
@@ -137,9 +135,14 @@ Google Forms をシステムに登録する。登録者は Admin メンバーと
 
 | コード | HTTP | 条件 |
 |---|---|---|
-| `VALIDATION_ERROR` | 400 | 指定された質問 ID がフォームに存在しない |
+| `VALIDATION_ERROR` | 400 | 指定された質問 ID がフォームに存在しない、または空文字 |
 | `RESOURCE_HIDDEN` | 404 | メンバーでない |
 | `FORM_NOT_FOUND` | 404 | フォームが存在しない |
+
+### 補足
+
+- 空の `{}` の場合、既存設定は維持される
+- `{"title_question_id": null}` のみ解除として扱う
 
 ---
 

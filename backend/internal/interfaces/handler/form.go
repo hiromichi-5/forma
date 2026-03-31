@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -62,7 +64,7 @@ func (h *FormHandler) GetV1Forms(c *gin.Context) {
 		handleError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"forms": toFormListResp(forms)})
+	c.JSON(http.StatusOK, gin.H{"forms": toFormSummaryListResp(forms)})
 }
 
 func (h *FormHandler) GetV1FormsId(c *gin.Context) {
@@ -86,7 +88,29 @@ func (h *FormHandler) GetV1FormsId(c *gin.Context) {
 }
 
 type updateFormReq struct {
-	TitleQuestionID *string `json:"title_question_id"`
+	TitleQuestionID nullableStringPayload `json:"title_question_id"`
+}
+
+type nullableStringPayload struct {
+	set   bool
+	null  bool
+	value string
+}
+
+func (n *nullableStringPayload) UnmarshalJSON(data []byte) error {
+	n.set = true
+	trimmed := bytes.TrimSpace(data)
+	if bytes.Equal(trimmed, []byte("null")) {
+		n.null = true
+		n.value = ""
+		return nil
+	}
+
+	if err := json.Unmarshal(trimmed, &n.value); err != nil {
+		return err
+	}
+	n.null = false
+	return nil
 }
 
 func (h *FormHandler) PatchV1FormsId(c *gin.Context) {
@@ -107,7 +131,17 @@ func (h *FormHandler) PatchV1FormsId(c *gin.Context) {
 		return
 	}
 
-	if err := h.uc.UpdateTitleQuestion(c, formID, userID, req.TitleQuestionID); err != nil {
+	if !req.TitleQuestionID.set {
+		c.Status(http.StatusNoContent)
+		return
+	}
+
+	var questionID *string
+	if !req.TitleQuestionID.null {
+		questionID = &req.TitleQuestionID.value
+	}
+
+	if err := h.uc.UpdateTitleQuestion(c, formID, userID, questionID); err != nil {
 		handleError(c, err)
 		return
 	}

@@ -160,7 +160,10 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 		return err
 	}
 
-	normalizedQuestionID := normalizeQuestionID(questionID)
+	normalizedQuestionID, err := normalizeQuestionID(questionID)
+	if err != nil {
+		return err
+	}
 	if normalizedQuestionID != nil {
 		questions, err := uc.formRepo.ListQuestions(ctx, formID)
 		if err != nil {
@@ -220,13 +223,13 @@ func mapFormFetcherError(err error) error {
 	return err
 }
 
-func normalizeQuestionID(questionID *string) *string {
+func normalizeQuestionID(questionID *string) (*string, error) {
 	if questionID == nil {
-		return nil
+		return nil, nil
 	}
 	trimmed := strings.TrimSpace(*questionID)
 	if trimmed == "" {
-		return nil
+		return nil, entity.NewError(entity.CodeValidation)
 	}
-	return &trimmed
+	return &trimmed, nil
 }
