@@ -44,7 +44,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// MockFormFetcher implements repository.FormFetcher for tests.
 type MockFormFetcher struct {
 	GetFormFunc       func(ctx context.Context, formID string) (*repository.GoogleForm, error)
 	ListResponsesFunc func(ctx context.Context, formID, filter, pageToken string) (*repository.GoogleFormResponsePage, error)
@@ -70,8 +69,6 @@ func (m *MockFormFetcher) ListResponses(
 	return &repository.GoogleFormResponsePage{}, nil
 }
 
-// loginUser creates a verified user, logs in via the API, and returns
-// an *http.Client whose cookie jar holds the session cookie.
 func loginUser(t *testing.T, email, password, displayName string) *http.Client {
 	t.Helper()
 	ctx := context.Background()
@@ -91,8 +88,6 @@ func loginUser(t *testing.T, email, password, displayName string) *http.Client {
 
 	return client
 }
-
-// --- HTTP helpers ---
 
 func postJSON(t *testing.T, client *http.Client, path string, body any) *http.Response {
 	t.Helper()

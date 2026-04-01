@@ -11,6 +11,12 @@ build:
 test:
 	go test ./...
 
+test-v:
+	go test -v -count=1 ./...
+
+test-nc:
+	go test -count=1 ./...
+
 lint:
 	golangci-lint run -c $(GOLANGCI_CONFIG)
 
