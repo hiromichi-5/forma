@@ -127,6 +127,27 @@ func get(t *testing.T, client *http.Client, path string) *http.Response {
 	return resp
 }
 
+func putJSON(t *testing.T, client *http.Client, path string, body any) *http.Response {
+	t.Helper()
+	b, err := json.Marshal(body)
+	require.NoError(t, err)
+	req, err := http.NewRequest(http.MethodPut, testServer.URL+path, strings.NewReader(string(b)))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	return resp
+}
+
+func del(t *testing.T, client *http.Client, path string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodDelete, testServer.URL+path, nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	return resp
+}
+
 func readJSON(t *testing.T, resp *http.Response, v any) {
 	t.Helper()
 	defer resp.Body.Close()
