@@ -55,11 +55,16 @@ infra/google → repository (interface) を実装
 userRepo := postgres.NewUserRepository(pool)
 formRepo := postgres.NewFormRepository(pool)
 // ...
-txm := postgres.NewTxManager(pool)
 
 // --- UseCase ---
-authUC := usecase.NewAuthUseCase(userRepo, txm)
-formUC := usecase.NewFormUseCase(formRepo, memberRepo, statusRepo, fetcher, txm)
+authUC := usecase.NewAuthUseCase(userRepo, postgres.NewAuthUoW(pool))
+formUC := usecase.NewFormUseCase(
+    formRepo,
+    memberRepo,
+    statusRepo,
+    fetcher,
+    postgres.NewFormUoW(pool),
+)
 // ...
 
 // --- Handler ---
