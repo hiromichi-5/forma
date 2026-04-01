@@ -19,7 +19,7 @@ type FormUseCase struct {
 	memberRepo repository.MemberRepository
 	statusRepo repository.StatusRepository
 	fetcher    repository.FormFetcher
-	txm        repository.TxManager
+	uow        repository.UnitOfWork[repository.FormRepos]
 }
 
 func NewFormUseCase(
@@ -27,14 +27,14 @@ func NewFormUseCase(
 	memberRepo repository.MemberRepository,
 	statusRepo repository.StatusRepository,
 	fetcher repository.FormFetcher,
-	txm repository.TxManager,
+	uow repository.UnitOfWork[repository.FormRepos],
 ) *FormUseCase {
 	return &FormUseCase{
 		formRepo:   formRepo,
 		memberRepo: memberRepo,
 		statusRepo: statusRepo,
 		fetcher:    fetcher,
-		txm:        txm,
+		uow:        uow,
 	}
 }
 
@@ -73,7 +73,7 @@ func (uc *FormUseCase) RegisterForm(
 	}
 
 	var form entity.Form
-	err = uc.txm.Do(ctx, func(repos repository.Repos) error {
+	err = uc.uow.Do(ctx, func(repos repository.FormRepos) error {
 		var txErr error
 		form, txErr = repos.Form.Create(ctx, entity.Form{
 			ID:          uuid.New(),

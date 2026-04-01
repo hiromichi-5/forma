@@ -57,7 +57,7 @@ type TicketUseCase struct {
 	statusRepo repository.StatusRepository
 	memberRepo repository.MemberRepository
 	userRepo   repository.UserRepository
-	txm        repository.TxManager
+	uow        repository.UnitOfWork[repository.TicketRepos]
 }
 
 func NewTicketUseCase(
@@ -66,7 +66,7 @@ func NewTicketUseCase(
 	statusRepo repository.StatusRepository,
 	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
-	txm repository.TxManager,
+	uow repository.UnitOfWork[repository.TicketRepos],
 ) *TicketUseCase {
 	return &TicketUseCase{
 		ticketRepo: ticketRepo,
@@ -74,7 +74,7 @@ func NewTicketUseCase(
 		statusRepo: statusRepo,
 		memberRepo: memberRepo,
 		userRepo:   userRepo,
-		txm:        txm,
+		uow:        uow,
 	}
 }
 
@@ -252,7 +252,7 @@ func (uc *TicketUseCase) UpdateTicket(
 		}
 	}
 
-	if err := uc.txm.Do(ctx, func(repos repository.Repos) error {
+	if err := uc.uow.Do(ctx, func(repos repository.TicketRepos) error {
 		current, err := repos.Ticket.GetByID(ctx, ticketID)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {

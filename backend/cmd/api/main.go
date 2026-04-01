@@ -98,33 +98,45 @@ func run() error {
 		return fmt.Errorf("forms client: %w", err)
 	}
 
-	// --- Repository ---
 	userRepo := postgres.NewUserRepository(pool)
 	formRepo := postgres.NewFormRepository(pool)
 	memberRepo := postgres.NewMemberRepository(pool)
 	statusRepo := postgres.NewStatusRepository(pool)
 	ticketRepo := postgres.NewTicketRepository(pool)
 	inviteRepo := postgres.NewInviteRepository(pool)
-	txm := postgres.NewTxManager(pool)
 
-	// --- UseCase ---
-	authUC := usecase.NewAuthUseCase(userRepo, txm)
+	authUC := usecase.NewAuthUseCase(userRepo, postgres.NewAuthUoW(pool))
 	profileUC := usecase.NewProfileUseCase(userRepo)
-	formUC := usecase.NewFormUseCase(formRepo, memberRepo, statusRepo, fetcher, txm)
+	formUC := usecase.NewFormUseCase(
+		formRepo,
+		memberRepo,
+		statusRepo,
+		fetcher,
+		postgres.NewFormUoW(pool),
+	)
 	memberUC := usecase.NewMemberUseCase(memberRepo, userRepo)
-	inviteUC := usecase.NewInviteUseCase(inviteRepo, memberRepo, userRepo, txm)
-	statusUC := usecase.NewStatusUseCase(statusRepo, memberRepo, ticketRepo, txm)
+	inviteUC := usecase.NewInviteUseCase(
+		inviteRepo,
+		memberRepo,
+		userRepo,
+		postgres.NewInviteUoW(pool),
+	)
+	statusUC := usecase.NewStatusUseCase(
+		statusRepo,
+		memberRepo,
+		ticketRepo,
+		postgres.NewStatusUoW(pool),
+	)
 	ticketUC := usecase.NewTicketUseCase(
 		ticketRepo,
 		formRepo,
 		statusRepo,
 		memberRepo,
 		userRepo,
-		txm,
+		postgres.NewTicketUoW(pool),
 	)
 	syncUC := usecase.NewSyncUseCase(formRepo, ticketRepo, statusRepo, memberRepo, fetcher)
 
-	// --- Handler ---
 	cookieCfg := handler.CookieConfig{
 		Name:     "forma_token",
 		Path:     "/",
@@ -141,7 +153,6 @@ func run() error {
 	thh := handler.NewTicketHistoryHandler(ticketUC)
 	syh := handler.NewSyncHandler(syncUC)
 
-	// --- Router ---
 	r := NewRouter()
 
 	r.POST("/v1/auth/login", ah.PostV1AuthLogin)

@@ -14,20 +14,20 @@ type StatusUseCase struct {
 	statusRepo repository.StatusRepository
 	memberRepo repository.MemberRepository
 	ticketRepo repository.TicketRepository
-	txm        repository.TxManager
+	uow        repository.UnitOfWork[repository.StatusRepos]
 }
 
 func NewStatusUseCase(
 	statusRepo repository.StatusRepository,
 	memberRepo repository.MemberRepository,
 	ticketRepo repository.TicketRepository,
-	txm repository.TxManager,
+	uow repository.UnitOfWork[repository.StatusRepos],
 ) *StatusUseCase {
 	return &StatusUseCase{
 		statusRepo: statusRepo,
 		memberRepo: memberRepo,
 		ticketRepo: ticketRepo,
-		txm:        txm,
+		uow:        uow,
 	}
 }
 
@@ -85,7 +85,7 @@ func (uc *StatusUseCase) CreateStatus(
 	}
 
 	var status entity.FormStatus
-	if err := uc.txm.Do(ctx, func(repos repository.Repos) error {
+	if err := uc.uow.Do(ctx, func(repos repository.StatusRepos) error {
 		var createErr error
 		status, createErr = repos.Status.Create(ctx, entity.FormStatus{
 			ID:           statusID,
@@ -160,7 +160,7 @@ func (uc *StatusUseCase) UpdateStatus(
 	}
 
 	var updated entity.FormStatus
-	if err := uc.txm.Do(ctx, func(repos repository.Repos) error {
+	if err := uc.uow.Do(ctx, func(repos repository.StatusRepos) error {
 		var updateErr error
 		updated, updateErr = repos.Status.Update(ctx, next)
 		if updateErr != nil {

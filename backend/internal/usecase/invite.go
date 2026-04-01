@@ -16,7 +16,7 @@ type InviteUseCase struct {
 	inviteRepo repository.InviteRepository
 	memberRepo repository.MemberRepository
 	userRepo   repository.UserRepository
-	txm        repository.TxManager
+	uow        repository.UnitOfWork[repository.InviteRepos]
 	now        func() time.Time
 }
 
@@ -24,13 +24,13 @@ func NewInviteUseCase(
 	inviteRepo repository.InviteRepository,
 	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
-	txm repository.TxManager,
+	uow repository.UnitOfWork[repository.InviteRepos],
 ) *InviteUseCase {
 	return &InviteUseCase{
 		inviteRepo: inviteRepo,
 		memberRepo: memberRepo,
 		userRepo:   userRepo,
-		txm:        txm,
+		uow:        uow,
 		now:        time.Now,
 	}
 }
@@ -87,7 +87,7 @@ func (uc *InviteUseCase) DeleteInvite(
 		return err
 	}
 
-	return uc.txm.Do(ctx, func(repos repository.Repos) error {
+	return uc.uow.Do(ctx, func(repos repository.InviteRepos) error {
 		invite, err := repos.Invite.GetForUpdate(ctx, inviteID)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
@@ -111,7 +111,7 @@ func (uc *InviteUseCase) DeleteInvite(
 }
 
 func (uc *InviteUseCase) AcceptInvite(ctx context.Context, inviteID, userID uuid.UUID) error {
-	return uc.txm.Do(ctx, func(repos repository.Repos) error {
+	return uc.uow.Do(ctx, func(repos repository.InviteRepos) error {
 		invite, err := repos.Invite.GetForUpdate(ctx, inviteID)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {

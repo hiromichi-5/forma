@@ -18,15 +18,18 @@ const tokenTTL = 24 * time.Hour
 
 type AuthUseCase struct {
 	userRepo      repository.UserRepository
-	txm           repository.TxManager
+	uow           repository.UnitOfWork[repository.AuthRepos]
 	now           func() time.Time
 	generateToken func() (string, error)
 }
 
-func NewAuthUseCase(userRepo repository.UserRepository, txm repository.TxManager) *AuthUseCase {
+func NewAuthUseCase(
+	userRepo repository.UserRepository,
+	uow repository.UnitOfWork[repository.AuthRepos],
+) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:      userRepo,
-		txm:           txm,
+		uow:           uow,
 		now:           time.Now,
 		generateToken: defaultToken,
 	}
@@ -89,7 +92,7 @@ func (uc *AuthUseCase) Signup(
 	}
 
 	var createdUserID uuid.UUID
-	if err := uc.txm.Do(ctx, func(repos repository.Repos) error {
+	if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
 		user, err := repos.User.Create(ctx, entity.User{
 			ID:           uuid.New(),
 			Email:        email,
@@ -136,7 +139,7 @@ func (uc *AuthUseCase) VerifyEmail(ctx context.Context, token string) error {
 		return err
 	}
 
-	return uc.txm.Do(ctx, func(repos repository.Repos) error {
+	return uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
 		if err := repos.User.UseEmailVerificationToken(ctx, t.ID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return entity.NewError(entity.CodeTokenNotFound)
@@ -170,7 +173,7 @@ func (uc *AuthUseCase) ResendEmailVerification(ctx context.Context, email string
 		return nil
 	}
 
-	return uc.txm.Do(ctx, func(repos repository.Repos) error {
+	return uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
 		if err := repos.User.DeleteEmailVerificationTokensByUser(ctx, user.ID); err != nil {
 			return err
 		}
@@ -191,7 +194,7 @@ func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) e
 		return err
 	}
 
-	return uc.txm.Do(ctx, func(repos repository.Repos) error {
+	return uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
 		if err := repos.User.DeletePasswordResetTokensByUser(ctx, user.ID); err != nil {
 			return err
 		}
@@ -220,7 +223,7 @@ func (uc *AuthUseCase) ConfirmPasswordReset(ctx context.Context, token, newPassw
 		return err
 	}
 
-	return uc.txm.Do(ctx, func(repos repository.Repos) error {
+	return uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
 		if err := repos.User.UsePasswordResetToken(ctx, t.ID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return entity.NewError(entity.CodeTokenNotFound)
