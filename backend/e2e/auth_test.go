@@ -33,7 +33,7 @@ func TestAuthScenario(t *testing.T) {
 		userID = body["id"]
 	})
 
-	t.Run("signup: 重複したメールアドレスでの登録は409で失敗する。", func(t *testing.T) {
+	t.Run("signup: 重複したメールアドレスでの登録は409で失敗する", func(t *testing.T) {
 		resp := postJSON(t, http.DefaultClient, "/v1/auth/signup", map[string]string{
 			"email":        "test-user@example.com",
 			"password":     "password123",

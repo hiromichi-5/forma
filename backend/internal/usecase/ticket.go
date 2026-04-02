@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -87,9 +86,7 @@ type formContext struct {
 
 func (fc formContext) titleQuestionID() string {
 	if fc.form.TitleQuestionID != nil {
-		if trimmed := strings.TrimSpace(*fc.form.TitleQuestionID); trimmed != "" {
-			return trimmed
-		}
+		return *fc.form.TitleQuestionID
 	}
 	return fc.questions.defaultTitleID
 }

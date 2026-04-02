@@ -9,10 +9,6 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/entity"
 )
 
-type storedResponse struct {
-	Answers map[string]storedAnswer `json:"answers"`
-}
-
 type storedAnswer struct {
 	QuestionID  string           `json:"questionId"`
 	TextAnswers *storedTextBlock `json:"textAnswers"`
@@ -44,10 +40,6 @@ func newFormQuestionSet(questions []entity.FormQuestion) formQuestionSet {
 func parseResponseAnswers(payload []byte) (map[string][]string, error) {
 	if len(payload) == 0 {
 		return map[string][]string{}, nil
-	}
-	var wrapper storedResponse
-	if err := json.Unmarshal(payload, &wrapper); err == nil && wrapper.Answers != nil {
-		return flattenAnswers(wrapper.Answers), nil
 	}
 	var raw map[string]storedAnswer
 	if err := json.Unmarshal(payload, &raw); err != nil {
