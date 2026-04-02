@@ -72,15 +72,6 @@ tx を `context.WithValue` で埋め込み、各 repository が暗黙的に取�
 
 **不採用理由:** 明示的なトランザクション管理を重視するため、採用しない。
 
-### 複数データソース対応方式（Transactions パターン）
-
-複数データソースを跨いだトランザクション管理。`Get(key, builder)` で遅延初期化 + キャッシュ。
-
-- メリット: 複数 DB、キャッシュ層、dry-run 対応
-- デメリット: 単一 DB のシステムには過剰
-
-**却下理由:** forma は PostgreSQL 単一であるため、過剰な複雑さを避けるために採用しない。
-
 ## 参考 (References)
 
 - https://tech.gree-x.com/golang-transaction-pattern/

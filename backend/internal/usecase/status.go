@@ -53,14 +53,13 @@ func (uc *StatusUseCase) CreateStatus(
 		return entity.FormStatus{}, err
 	}
 
-	name = strings.TrimSpace(name)
 	if name == "" || displayOrder <= 0 {
 		return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
 	}
 
 	var trimmedColor *string
-	if color != nil && strings.TrimSpace(*color) != "" {
-		c := strings.TrimSpace(*color)
+	if color != nil && *color != "" {
+		c := *color
 		trimmedColor = &c
 	}
 
@@ -193,19 +192,17 @@ func applyStatusUpdate(
 	displayOrder *int32,
 ) (entity.FormStatus, error) {
 	if name != nil {
-		trimmed := strings.TrimSpace(*name)
-		if trimmed == "" {
+		if *name == "" || strings.TrimSpace(*name) == "" {
 			return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
 		}
-		current.Name = trimmed
+		current.Name = *name
 	}
 
 	if color != nil {
-		trimmed := strings.TrimSpace(*color)
-		if trimmed == "" {
+		if *color == "" || strings.TrimSpace(*color) == "" {
 			current.Color = nil
 		} else {
-			current.Color = &trimmed
+			current.Color = color
 		}
 	}
 

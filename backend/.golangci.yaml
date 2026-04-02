@@ -23,6 +23,12 @@ linters:
       # oapi-codegen生成コード
       - path: gen\.go$
         linters: ["*"]
+      # e2eテスト: テストヘルパーの都合でlintが通らないため除外する
+      - path: e2e/
+        linters: [bodyclose, errcheck, unparam, gosec]
+      # テストユーティリティ: テストヘルパーの都合でlintが通らないため除外する
+      - path: internal/testutil/
+        linters: [errcheck]
 
 formatters:
   enable:

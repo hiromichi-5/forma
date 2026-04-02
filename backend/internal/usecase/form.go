@@ -12,7 +12,7 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
-var reFormID = regexp.MustCompile(`/forms/d/e/([a-zA-Z0-9_-]+)/`)
+var reFormID = regexp.MustCompile(`/forms/d/([a-zA-Z0-9_-]+)/`)
 
 type FormUseCase struct {
 	formRepo   repository.FormRepository
@@ -62,7 +62,7 @@ func (uc *FormUseCase) RegisterForm(
 		return entity.Form{}, entity.NewError(entity.CodeFormNotFound)
 	}
 
-	title := strings.TrimSpace(gf.Title)
+	title := gf.Title
 	if title == "" {
 		title = googleFormID
 	}
@@ -160,18 +160,14 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 		return err
 	}
 
-	normalizedQuestionID, err := normalizeQuestionID(questionID)
-	if err != nil {
-		return err
-	}
-	if normalizedQuestionID != nil {
+	if questionID != nil {
 		questions, err := uc.formRepo.ListQuestions(ctx, formID)
 		if err != nil {
 			return err
 		}
 		found := false
 		for _, q := range questions {
-			if q.QuestionID == *normalizedQuestionID {
+			if q.QuestionID == *questionID {
 				found = true
 				break
 			}
@@ -181,7 +177,7 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 		}
 	}
 
-	if err := uc.formRepo.UpdateTitleQuestion(ctx, formID, normalizedQuestionID); err != nil {
+	if err := uc.formRepo.UpdateTitleQuestion(ctx, formID, questionID); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeFormNotFound)
 		}
@@ -221,15 +217,4 @@ func mapFormFetcherError(err error) error {
 		return entity.NewError(entity.CodeFormNotFound)
 	}
 	return err
-}
-
-func normalizeQuestionID(questionID *string) (*string, error) {
-	if questionID == nil {
-		return nil, nil
-	}
-	trimmed := strings.TrimSpace(*questionID)
-	if trimmed == "" {
-		return nil, entity.NewError(entity.CodeValidation)
-	}
-	return &trimmed, nil
 }
