@@ -8,9 +8,6 @@ internal-docs
 old-ai-context/*
 !.claude/*
 backend/linters-report.json
-.claude/settings.local.json
-
-AGENTS.md
-CLAUDE.md
 
 docs/archive/*
+.sample-claude/*
