@@ -2,11 +2,13 @@ package middleware
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/logger"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
@@ -28,17 +30,26 @@ func SessionMiddleware(userRepo repository.UserRepository, cookieName string) gi
 			abortInvalidSession(c)
 			return
 		}
+		log := logger.From(c.Request.Context())
+
 		session, err := userRepo.GetSessionByID(c, sid)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
+				log.Debug("session not found")
 				abortInvalidSession(c)
 				return
 			}
+			log.Error("session lookup failed", "error", err)
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 				"code": "INTERNAL",
 			})
 			return
 		}
+
+		enriched := log.With(slog.String("user_id", session.UserID.String()))
+		ctx := logger.WithLogger(c.Request.Context(), enriched)
+		c.Request = c.Request.WithContext(ctx)
+
 		c.Set(ctxUserID, session.UserID)
 		c.Next()
 	}

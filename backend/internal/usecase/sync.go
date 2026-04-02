@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/logger"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
@@ -42,6 +43,9 @@ func (uc *SyncUseCase) SyncFormOnce(
 	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
 		return 0, time.Time{}, err
 	}
+
+	log := logger.From(ctx)
+	log.Info("form sync started", "form_id", formID.String())
 
 	form, err := uc.formRepo.GetByID(ctx, formID)
 	if err != nil {
@@ -126,6 +130,11 @@ func (uc *SyncUseCase) SyncFormOnce(
 			return 0, time.Time{}, err
 		}
 	}
+
+	log.Info("form sync completed",
+		"form_id", formID.String(),
+		"new_tickets", newTickets,
+	)
 
 	return newTickets, maxSubmitted, nil
 }

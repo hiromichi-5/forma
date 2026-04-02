@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/logger"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
@@ -97,6 +98,11 @@ func (uc *FormUseCase) RegisterForm(
 		}
 		return entity.Form{}, err
 	}
+
+	logger.From(ctx).Info("form registered",
+		"form_id", form.ID.String(),
+		"google_form_id", form.FormID,
+	)
 
 	return form, nil
 }

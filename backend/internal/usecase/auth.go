@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/logger"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -75,6 +76,9 @@ func (uc *AuthUseCase) Authenticate(
 	if err != nil {
 		return entity.Session{}, err
 	}
+
+	logger.From(ctx).Info("user authenticated", "user_id", user.ID.String())
+
 	return session, nil
 }
 
@@ -111,6 +115,8 @@ func (uc *AuthUseCase) Signup(
 	}); err != nil {
 		return uuid.UUID{}, err
 	}
+
+	logger.From(ctx).Info("user signed up", "user_id", createdUserID.String())
 
 	return createdUserID, nil
 }

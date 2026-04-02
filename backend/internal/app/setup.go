@@ -28,6 +28,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(middleware.RequestLogger())
 
 	config := cors.DefaultConfig()
 	origins := "http://localhost:5173"
