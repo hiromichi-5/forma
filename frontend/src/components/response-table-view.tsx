@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MessageSquare } from "lucide-react";
+import { ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 
@@ -93,162 +93,183 @@ export function ResponseTableView({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {responses.map((response) => (
-            <Fragment key={response.id}>
-              <TableRow
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() =>
-                  setExpandedRow(
-                    expandedRow === response.id ? null : response.id
-                  )
-                }
-              >
-                <TableCell>
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {response.respondentEmail}
-                    </p>
-                    {getTitleAnswer(response) && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {getTitleAnswer(response)}
-                      </p>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Select
-                    value={response.status}
-                    onValueChange={(value) =>
-                      onStatusChange(response.id, value)
-                    }
-                  >
-                    <SelectTrigger className="w-[130px] h-8 border-0 shadow-none">
-                      <div
-                        className="flex items-center gap-2 px-2 py-1 rounded"
-                        style={{
-                          backgroundColor: hexToRgba(response.statusColor, 0.1),
-                        }}
-                      >
-                        <div
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{
-                            backgroundColor: response.statusColor || "#9CA3AF",
-                          }}
+          {responses.map((response) => {
+            const isExpanded = expandedRow === response.id;
+            const detailId = `response-details-${response.id}`;
+            const titleAnswer = getTitleAnswer(response);
+
+            return (
+              <Fragment key={response.id}>
+                <TableRow className="hover:bg-muted/50 transition-colors">
+                  <TableCell>
+                    <button
+                      type="button"
+                      className="flex w-full items-start justify-between gap-3 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={() =>
+                        setExpandedRow(isExpanded ? null : response.id)
+                      }
+                      aria-expanded={isExpanded}
+                      aria-controls={detailId}
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {response.respondentEmail}
+                        </p>
+                        {titleAnswer && (
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {titleAnswer}
+                          </p>
+                        )}
+                      </div>
+                      {isExpanded ? (
+                        <ChevronDown
+                          className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+                          aria-hidden="true"
                         />
-                        <span className="text-sm">{response.statusName}</span>
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sortedStatuses.map((status) => (
-                        <SelectItem key={status.id} value={status.id}>
-                          {status.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Select
-                    value={response.assignedTo || "unassigned"}
-                    onValueChange={(value) =>
-                      onAssignChange(
-                        response.id,
-                        value === "unassigned" ? null : value
-                      )
-                    }
-                  >
-                    <SelectTrigger className="w-[130px] h-8 border-0 shadow-none">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">未割当</SelectItem>
-                      {users.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Select
-                    value={response.priority}
-                    onValueChange={(value) =>
-                      onPriorityChange(response.id, toPriorityValue(value))
-                    }
-                  >
-                    <SelectTrigger className="w-[90px] h-8 border-0 shadow-none">
-                      <div
-                        className="flex items-center gap-2 px-2 py-1 rounded"
-                        style={{
-                          backgroundColor: hexToRgba(
-                            priorityConfig[response.priority].hex,
-                            0.1
-                          ),
-                        }}
-                      >
-                        <span
-                          className="text-sm font-medium"
+                      ) : (
+                        <ChevronRight
+                          className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </button>
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={response.status}
+                      onValueChange={(value) =>
+                        onStatusChange(response.id, value)
+                      }
+                    >
+                      <SelectTrigger className="w-[130px] h-8 border-0 shadow-none">
+                        <div
+                          className="flex items-center gap-2 px-2 py-1 rounded"
                           style={{
-                            color: priorityConfig[response.priority].hex,
+                            backgroundColor: hexToRgba(response.statusColor, 0.1),
                           }}
                         >
-                          {priorityConfig[response.priority].label}
-                        </span>
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">低</SelectItem>
-                      <SelectItem value="medium">中</SelectItem>
-                      <SelectItem value="high">高</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <span className="text-sm text-muted-foreground">
-                    {formatDistanceToNow(response.submittedAt, {
-                      addSuffix: true,
-                      locale: ja,
-                    })}
-                  </span>
-                </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onOpenDetail(response)}
-                    className="gap-2 h-8"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-              {expandedRow === response.id && (
-                <TableRow className="hover:bg-muted/20">
-                  <TableCell colSpan={6} className="bg-muted/20 p-4">
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-sm text-foreground">
-                        回答内容
-                      </h4>
-                      {response.questions.map((question, index) => (
+                          <div
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{
+                              backgroundColor: response.statusColor || "#9CA3AF",
+                            }}
+                          />
+                          <span className="text-sm">{response.statusName}</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sortedStatuses.map((status) => (
+                          <SelectItem key={status.id} value={status.id}>
+                            {status.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={response.assignedTo || "unassigned"}
+                      onValueChange={(value) =>
+                        onAssignChange(
+                          response.id,
+                          value === "unassigned" ? null : value
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-[130px] h-8 border-0 shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">未割当</SelectItem>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={response.priority}
+                      onValueChange={(value) =>
+                        onPriorityChange(response.id, toPriorityValue(value))
+                      }
+                    >
+                      <SelectTrigger className="w-[90px] h-8 border-0 shadow-none">
                         <div
-                          key={`${question.questionId}-${index}`}
-                          className="text-sm"
+                          className="flex items-center gap-2 px-2 py-1 rounded"
+                          style={{
+                            backgroundColor: hexToRgba(
+                              priorityConfig[response.priority].hex,
+                              0.1
+                            ),
+                          }}
                         >
-                          <span className="text-muted-foreground">
-                            {question.question}{" "}
-                          </span>
-                          <span className="text-foreground">
-                            {question.answer}
+                          <span
+                            className="text-sm font-medium"
+                            style={{
+                              color: priorityConfig[response.priority].hex,
+                            }}
+                          >
+                            {priorityConfig[response.priority].label}
                           </span>
                         </div>
-                      ))}
-                    </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">低</SelectItem>
+                        <SelectItem value="medium">中</SelectItem>
+                        <SelectItem value="high">高</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-muted-foreground">
+                      {formatDistanceToNow(response.submittedAt, {
+                        addSuffix: true,
+                        locale: ja,
+                      })}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onOpenDetail(response)}
+                      className="gap-2 h-8"
+                      aria-label={`回答詳細を開く: ${response.respondentEmail}`}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
-              )}
-            </Fragment>
-          ))}
+                {isExpanded && (
+                  <TableRow className="hover:bg-muted/20">
+                    <TableCell colSpan={6} className="bg-muted/20 p-4">
+                      <div id={detailId} className="space-y-3">
+                        <h4 className="font-semibold text-sm text-foreground">
+                          回答内容
+                        </h4>
+                        {response.questions.map((question, index) => (
+                          <div
+                            key={`${question.questionId}-${index}`}
+                            className="text-sm"
+                          >
+                            <span className="text-muted-foreground">
+                              {question.question}{" "}
+                            </span>
+                            <span className="text-foreground">
+                              {question.answer}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Fragment>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

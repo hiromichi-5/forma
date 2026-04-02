@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Search } from "lucide-react"
@@ -15,7 +15,6 @@ type FormListItem = {
 }
 
 export default function FormsListPage() {
-  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
   const [forms, setForms] = useState<FormListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -116,22 +115,24 @@ export default function FormsListPage() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredForms.map((form) => (
               <Card
+                asChild
                 key={form.id}
-                className="cursor-pointer border-border/60 bg-card/95 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-sm"
-                onClick={() => navigate(`/forms/${form.id}`)}
+                className="border-border/60 bg-card/95 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <CardContent className="p-4">
-                  <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">
-                    {form.title}
-                  </h3>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {form.responseCount}件
-                    <span className="mx-1.5">•</span>
-                    {form.latestSubmittedAt
-                      ? `最終提出 ${formatCompactDate(form.latestSubmittedAt)}`
-                      : "回答なし"}
-                  </p>
-                </CardContent>
+                <Link to={`/forms/${form.id}`}>
+                  <CardContent className="p-4">
+                    <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">
+                      {form.title}
+                    </h3>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {form.responseCount}件
+                      <span className="mx-1.5">•</span>
+                      {form.latestSubmittedAt
+                        ? `最終提出 ${formatCompactDate(form.latestSubmittedAt)}`
+                        : "回答なし"}
+                    </p>
+                  </CardContent>
+                </Link>
               </Card>
             ))}
           </div>
