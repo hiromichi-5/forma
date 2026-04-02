@@ -1,8 +1,8 @@
 globs:
   - "**/*.{md,markdown}"
-  - ".github/**/*.{md,markdown}"
-  - "#node_modules"
-  - "#frontend/node_modules"
+ignores:
+  - "**/node_modules/**"
+  - ".github/**"
 config:
   MD013: false
   MD024: false
