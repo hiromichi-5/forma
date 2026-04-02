@@ -13,7 +13,7 @@
 
 以下の5層構成に移行する。
 
-```
+```text
 backend/internal/
 ├── entity/          ドメインモデル・ドメインエラー
 ├── repository/      データアクセス interface
@@ -26,7 +26,6 @@ backend/internal/
     ├── google/      Google Forms API クライアント
     └── db/          sqlc 生成コード
 ```
-
 
 各層の詳細な責務は `docs/architecture/overview.md` を参照。
 
@@ -53,7 +52,6 @@ Service を分割し、エラーミドルウェアを追加するだけの最小
 - デメリット: pgtype の侵食が残る、DB 層との結合が残る
 
 ## 参考 (References)
-
 
 ## 議論 (Discussion)
 

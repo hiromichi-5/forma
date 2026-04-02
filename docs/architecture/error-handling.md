@@ -75,13 +75,13 @@ if err != nil {
 例えば、同じ `repository.ErrNotFound` でも、コンテキストによって変換先が異なる。
 
 | UseCase の状況 | 変換先コード |
-|---|---|
+| --- | --- |
 | フォームが見つからない | `CodeFormNotFound` |
-| 非メンバーがフォームにアクセス | `CodeResourceHidden` | 
-| 招待が見つからない | `CodeInviteNotFound` | 
+| 非メンバーがフォームにアクセス | `CodeResourceHidden` |
+| 招待が見つからない | `CodeInviteNotFound` |
 | 同一フォームの重複登録 | `CodeFormAlreadyRegistered` |
 
-### handler 層 
+### handler 層
 
 `handler/error.go` の `errorDefs` マップで変換する。
 
@@ -97,7 +97,7 @@ var errorDefs = map[entity.Code]errorDef{
 
 ## エラーフロー全体図
 
-```
+```text
 PostgreSQL エラー
   ↓ repoError()
 repository.ErrNotFound / ErrConflict
@@ -112,7 +112,7 @@ HTTP レスポンス {code, message, fields?}
 ### 認証・認可
 
 | コード | HTTP | 意味 |
-|---|---|---|
+| --- | --- | --- |
 | `INVALID_CREDENTIALS` | 401 | メールアドレスまたはパスワードが正しくない |
 | `INVALID_SESSION` | 401 | セッションが無効・期限切れ |
 | `EMAIL_NOT_VERIFIED` | 403 | メール認証が完了していない |
@@ -122,7 +122,7 @@ HTTP レスポンス {code, message, fields?}
 ### リソース不在
 
 | コード | HTTP | 意味 |
-|---|---|---|
+| --- | --- | --- |
 | `USER_NOT_FOUND` | 404 | ユーザーが存在しない |
 | `FORM_NOT_FOUND` | 404 | フォームが存在しない |
 | `FORM_NOT_SHARED` | 404 | フォームがサービスアカウントに共有されていない |
@@ -132,7 +132,7 @@ HTTP レスポンス {code, message, fields?}
 ### ビジネスルール違反
 
 | コード | HTTP | 意味 |
-|---|---|---|
+| --- | --- | --- |
 | `INVITE_EXPIRED` | 404 | 招待の有効期限切れ |
 | `ALREADY_MEMBER` | 409 | 既にメンバーである |
 | `INCORRECT_PASSWORD` | 403 | 現在のパスワードが正しくない |
@@ -145,7 +145,7 @@ HTTP レスポンス {code, message, fields?}
 ### バリデーション
 
 | コード | HTTP | 意味 |
-|---|---|---|
+| --- | --- | --- |
 | `VALIDATION_ERROR` | 400 | 入力値の検証エラー（`fields` 配列で詳細を返す） |
 
 **フィールドエラーコード:** `REQUIRED`, `TOO_SHORT`, `INVALID_FORMAT`, `INVALID_VALUE`

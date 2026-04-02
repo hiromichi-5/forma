@@ -68,6 +68,7 @@ Error 構造体に `Kind ErrorKind`（Validation, Forbidden, NotFound 等）を�
 - `FORBIDDEN`: actor はリソースを知っているが、操作権限だけが不足している場合（HTTP 403）
 
 具体的な使い分け:
+
 - `requireEditor` 失敗 → フォームへの基礎アクセス権がないので `RESOURCE_HIDDEN`
 - `requireAdmin` 失敗で非メンバー → `RESOURCE_HIDDEN`
 - `requireAdmin` 失敗で Editor → メンバーであることは分かっているため `FORBIDDEN`
