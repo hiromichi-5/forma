@@ -51,5 +51,5 @@ make test
 
 ```bash
 pnpm install --frozen-lockfile --ignore-scripts
-pnpm exec markdownlint-cli2
+pnpm run lint:md
 ```
