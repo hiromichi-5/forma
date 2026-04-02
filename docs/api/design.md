@@ -6,7 +6,7 @@
 
 基本はリソース指向で設計する。URL がリソースを表し、HTTP メソッドが操作を表す。
 
-```
+```text
 GET    /v1/forms              フォーム一覧
 POST   /v1/forms              フォーム登録
 GET    /v1/forms/:id          フォーム詳細
@@ -15,7 +15,7 @@ PATCH  /v1/forms/:id          フォーム更新
 
 サブリソースは親リソースの下にネストする。
 
-```
+```text
 GET    /v1/forms/:id/members
 POST   /v1/forms/:id/statuses
 DELETE /v1/forms/:id/invites/:id
@@ -25,7 +25,7 @@ DELETE /v1/forms/:id/invites/:id
 
 アクションとしての性質が強い操作は RPC スタイルを許容する。
 
-```
+```text
 POST /v1/auth/login                          ログイン
 POST /v1/auth/signup                         ユーザー登録
 POST /v1/forms/:id/sync                      フォーム同期
@@ -36,7 +36,7 @@ POST /v1/invites/:id/accept                  招待承諾
 
 チケットはフォームのサブリソースだが、URL はフラットにしている。
 
-```
+```text
 GET   /v1/tickets?form_id=xxx          フォーム指定でチケット一覧
 GET   /v1/tickets/:id                  チケット詳細
 PATCH /v1/tickets/:id                  チケット更新
@@ -47,7 +47,7 @@ GET   /v1/tickets/:id/histories        変更履歴
 
 ### 招待承諾のフラットルーティング
 
-```
+```text
 POST /v1/invites/:id/accept
 ```
 
@@ -58,7 +58,7 @@ POST /v1/invites/:id/accept
 ### 認証（`/v1/auth/*`）
 
 | メソッド | パス | 説明 |
-|---|---|---|
+| --- | --- | --- |
 | POST | `/v1/auth/signup` | ユーザー登録 |
 | POST | `/v1/auth/login` | ログイン |
 | POST | `/v1/auth/logout` | ログアウト |
@@ -70,7 +70,7 @@ POST /v1/invites/:id/accept
 ### プロフィール（`/v1/me`）
 
 | メソッド | パス | 説明 |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/v1/me` | プロフィール取得 |
 | PATCH | `/v1/me` | 表示名更新 |
 | DELETE | `/v1/me` | アカウント削除 |
@@ -79,7 +79,7 @@ POST /v1/invites/:id/accept
 ### フォーム
 
 | メソッド | パス | 説明 |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/v1/forms` | フォーム一覧 |
 | POST | `/v1/forms` | フォーム登録 |
 | GET | `/v1/forms/:form_id` | フォーム詳細 |
@@ -90,7 +90,7 @@ POST /v1/invites/:id/accept
 ### メンバー
 
 | メソッド | パス | 説明 |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/v1/forms/:form_id/members` | メンバー一覧 |
 | POST | `/v1/forms/:form_id/members` | メンバー追加 |
 | PUT | `/v1/forms/:form_id/members/:user_id` | ロール変更 |
@@ -99,7 +99,7 @@ POST /v1/invites/:id/accept
 ### 招待
 
 | メソッド | パス | 説明 |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/v1/forms/:form_id/invites` | 招待一覧 |
 | POST | `/v1/forms/:form_id/invites` | 招待作成 |
 | DELETE | `/v1/forms/:form_id/invites/:invite_id` | 招待削除 |
@@ -108,7 +108,7 @@ POST /v1/invites/:id/accept
 ### ステータス
 
 | メソッド | パス | 説明 |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/v1/forms/:form_id/statuses` | ステータス一覧 |
 | POST | `/v1/forms/:form_id/statuses` | ステータス作成 |
 | PATCH | `/v1/forms/:form_id/statuses/:status_id` | ステータス更新 / デフォルト設定 |
@@ -117,7 +117,7 @@ POST /v1/invites/:id/accept
 ### チケット
 
 | メソッド | パス | 説明 |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/v1/tickets?form_id=xxx` | チケット一覧 |
 | GET | `/v1/tickets/:ticket_id` | チケット詳細 |
 | PATCH | `/v1/tickets/:ticket_id` | チケット更新 |
@@ -126,6 +126,7 @@ POST /v1/invites/:id/accept
 ## レスポンス DTO
 
 レスポンス DTO は `handler/response.go` に定義する。以下の理由から、entity とは別の構造体としている。
+
 - **HTTP 層の関心事**: JSON タグ、フィールドの省略（`omitempty`）、ネスト構造はクライアントとの契約であり entity が持つべきではない
 - **バージョニング容易性**: API バージョンを変える場合、handler の DTO だけ変えれば済む
 - **変換の明示性**: entity → DTO の変換関数がハンドラーに存在することで、何がクライアントに露出するかが明確になる

@@ -99,31 +99,39 @@ function DraggableCard({
     );
     return titleQuestion?.answer || null;
   };
+  const titleAnswer = getTitleAnswer();
 
   return (
     <Card
       ref={setNodeRef}
       style={style}
       className={cn(
-        "p-4 border hover:bg-muted/30 transition-colors cursor-pointer",
+        "cursor-grab border p-4 transition-colors hover:bg-muted/30 active:cursor-grabbing",
         isDragging && "opacity-50"
       )}
-      onClick={() => onOpenDetail(response)}
       {...attributes}
       {...listeners}
     >
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex-1">
-            <h4 className="font-semibold text-sm text-foreground mb-1">
-              {getTitleAnswer() || response.respondentEmail}
-            </h4>
-            {getTitleAnswer() && (
-              <p className="text-xs text-muted-foreground">
-                {response.respondentEmail}
-              </p>
-            )}
-          </div>
+          <Button
+            variant="ghost"
+            type="button"
+            className="h-auto flex-1 justify-start p-0 text-left hover:bg-transparent"
+            onClick={() => onOpenDetail(response)}
+            aria-label={`回答詳細を開く: ${titleAnswer || response.respondentEmail}`}
+          >
+            <div className="min-w-0">
+              <h4 className="mb-1 text-sm font-semibold text-foreground">
+                {titleAnswer || response.respondentEmail}
+              </h4>
+              {titleAnswer && (
+                <p className="text-xs text-muted-foreground">
+                  {response.respondentEmail}
+                </p>
+              )}
+            </div>
+          </Button>
           <Select
             value={response.priority}
             onValueChange={(value) =>
@@ -198,6 +206,7 @@ function DraggableCard({
               onOpenDetail(response);
             }}
             className="gap-1 h-7 px-2"
+            aria-label={`回答詳細を開く: ${response.respondentEmail}`}
           >
             <MessageSquare className="h-3 w-3" />
           </Button>

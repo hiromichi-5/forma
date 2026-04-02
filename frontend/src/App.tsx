@@ -11,6 +11,10 @@ import FormManagementPage from "./pages/FormManagementPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import SettingsPage from "./pages/SettingsPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import PasswordResetPage from "./pages/PasswordResetPage";
+import PasswordResetConfirmPage from "./pages/PasswordResetConfirmPage";
+import AcceptInvitePage from "./pages/AcceptInvitePage";
 import { useRequireAuth } from "./hooks/useAuth";
 
 type RequireAuthProps = {
@@ -38,8 +42,17 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/forms-list" element={<Navigate to="/" replace />} />
-          <Route path="/login-new" element={<Navigate to="/login" replace />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/password-reset" element={<PasswordResetPage />} />
+          <Route path="/password-reset/confirm" element={<PasswordResetConfirmPage />} />
+          <Route
+            path="/invites/:inviteId/accept"
+            element={
+              <RequireAuth>
+                <AcceptInvitePage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/"
             element={

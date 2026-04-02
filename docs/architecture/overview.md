@@ -2,7 +2,7 @@
 
 ## レイヤー構成
 
-```
+```text
 backend/internal/
 ├── entity/          ドメインモデル・ドメインエラー
 ├── repository/      データアクセス interface
@@ -18,7 +18,7 @@ backend/internal/
 
 ## 依存の方向
 
-```
+```text
 handler → usecase → repository (interface)
                   → entity
 
@@ -36,7 +36,7 @@ infra/google → repository (interface) を実装
 ## 各層の責務
 
 | 層 | やること | やらないこと |
-|---|---|---|
+| --- | --- | --- |
 | **entity** | Go 標準型でのドメインモデル定義、ドメインエラー定義 | ビジネスロジック、DB 型、JSON タグ |
 | **repository** | データアクセス・外部 API の interface 定義 | 実装、SQL |
 | **usecase** | ビジネスロジック、権限チェック、トランザクション境界 | HTTP、DB 型、レスポンス整形 |
@@ -72,7 +72,6 @@ ah := handler.NewAuthHandler(authUC, cookieCfg)
 fh := handler.NewFormHandler(formUC)
 // ...
 ```
-
 
 ## ルーティング
 

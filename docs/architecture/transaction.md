@@ -106,7 +106,7 @@ form, err := uc.formRepo.GetByID(ctx, formID)
 ## TX が必要な操作一覧
 
 | UseCase | 操作 | TX 内で行うこと |
-|---|---|---|
+| --- | --- | --- |
 | **AuthUseCase.Signup** | ユーザー登録 | ユーザー作成 + メール検証トークン作成 |
 | **AuthUseCase.VerifyEmail** | メール認証 | トークン使用済みにする + ユーザーの認証日時を設定 |
 | **AuthUseCase.ResendEmailVerification** | メール再送 | 既存トークン削除 + 新規トークン作成 |

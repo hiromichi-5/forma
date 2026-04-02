@@ -1,0 +1,99 @@
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Card, CardContent, CardTitle } from "../components/ui/card";
+import { ApiError, apiClient } from "../lib/api";
+import { CheckCircle, Loader2, XCircle } from "lucide-react";
+
+export default function VerifyEmailPage() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (!token) {
+      setStatus("error");
+      setErrorMessage("認証トークンが見つかりません");
+      return;
+    }
+
+    const verify = async () => {
+      try {
+        await apiClient.verifyEmail({ token });
+        setStatus("success");
+      } catch (err) {
+        setStatus("error");
+        if (err instanceof ApiError) {
+          if (err.error.code === "TOKEN_NOT_FOUND") {
+            setErrorMessage("トークンが無効または期限切れです");
+          } else {
+            setErrorMessage("認証に失敗しました");
+          }
+        } else {
+          setErrorMessage("予期しないエラーが発生しました");
+        }
+      }
+    };
+
+    verify();
+  }, [token]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardContent className="p-6">
+          <div className="space-y-6 text-center">
+            {status === "loading" && (
+              <>
+                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                <CardTitle className="text-xl">メールアドレスを確認中...</CardTitle>
+              </>
+            )}
+
+            {status === "success" && (
+              <>
+                <div className="flex justify-center">
+                  <div className="rounded-full bg-green-100 p-4">
+                    <CheckCircle className="h-12 w-12 text-green-600" />
+                  </div>
+                </div>
+                <div>
+                  <CardTitle className="text-xl">メール認証が完了しました</CardTitle>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    アカウントが有効化されました。ログインしてご利用ください。
+                  </p>
+                </div>
+                <Link
+                  to="/login"
+                  className="inline-block font-medium text-primary hover:underline"
+                >
+                  ログインページへ
+                </Link>
+              </>
+            )}
+
+            {status === "error" && (
+              <>
+                <div className="flex justify-center">
+                  <div className="rounded-full bg-destructive/10 p-4">
+                    <XCircle className="h-12 w-12 text-destructive" />
+                  </div>
+                </div>
+                <div>
+                  <CardTitle className="text-xl">認証に失敗しました</CardTitle>
+                  <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
+                </div>
+                <Link
+                  to="/login"
+                  className="inline-block font-medium text-primary hover:underline"
+                >
+                  ログインページへ
+                </Link>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

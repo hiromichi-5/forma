@@ -5,7 +5,7 @@
 フォームごとにメンバーシップとロールが存在する。
 
 | ロール | 値 | 権限 |
-|---|---|---|
+| --- | --- | --- |
 | **Admin** | `"admin"` | フォームに対するすべての操作（メンバー管理、招待、設定変更含む） |
 | **Editor** | `"editor"` | チケット操作、ステータス操作、同期、フォーム閲覧 |
 
@@ -53,7 +53,7 @@ func requireAdmin(ctx, memberRepo, formID, userID) error
 ### エラーの使い分け
 
 | 状況 | 返すエラー | HTTP | 理由 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | ユーザーがフォームのメンバーでない | `RESOURCE_HIDDEN` | 404 | フォームの存在自体を隠す |
 | `requireEditor` でロール不足 | `RESOURCE_HIDDEN` | 404 | フォームの存在自体を隠す |
 | `requireAdmin` でメンバーでない | `RESOURCE_HIDDEN` | 404 | フォームの存在自体を隠す |
@@ -68,7 +68,7 @@ func requireAdmin(ctx, memberRepo, formID, userID) error
 ### 認証不要
 
 | エンドポイント | 説明 |
-|---|---|
+| --- | --- |
 | `POST /v1/auth/signup` | ユーザー登録 |
 | `POST /v1/auth/login` | ログイン |
 | `POST /v1/auth/logout` | ログアウト |
@@ -80,7 +80,7 @@ func requireAdmin(ctx, memberRepo, formID, userID) error
 ### 認証のみ（ロール不問）
 
 | エンドポイント | 説明 |
-|---|---|
+| --- | --- |
 | `GET /v1/me` | 自分のプロフィール取得 |
 | `PATCH /v1/me` | 表示名変更 |
 | `DELETE /v1/me` | アカウント削除 |
@@ -92,7 +92,7 @@ func requireAdmin(ctx, memberRepo, formID, userID) error
 ### Editor 以上（`requireEditor`）
 
 | エンドポイント | 説明 |
-|---|---|
+| --- | --- |
 | `GET /v1/forms/:id` | フォーム詳細 |
 | `PATCH /v1/forms/:id` | タイトル質問 ID の設定 |
 | `GET /v1/forms/:id/questions` | 質問一覧 |
@@ -110,7 +110,7 @@ func requireAdmin(ctx, memberRepo, formID, userID) error
 ### Admin のみ（`requireAdmin`）
 
 | エンドポイント | 説明 |
-|---|---|
+| --- | --- |
 | `POST /v1/forms/:id/members` | メンバー追加 |
 | `PUT /v1/forms/:id/members/:id` | ロール変更 |
 | `DELETE /v1/forms/:id/members/:id` | メンバー削除 |

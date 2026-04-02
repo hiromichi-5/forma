@@ -46,12 +46,14 @@ Go Generics を用いた `UnitOfWork[T]` interface により、各 UseCase は�
 ## 検討した別の選択肢 (Alternatives Considered)
 
 ### repository層での管理
+
 - メリット: repository 層で完結するため、usecase はトランザクション管理を意識しなくて良い
 - デメリット: repository のインターフェースにトランザクション管理の概念が入り込む。複数 repository を跨いだトランザクション管理が難しい。
 
 **不採用理由:** repository 層でトランザクション管理の概念を持ち込むのは現在のアーキテクチャの方針に反するため、採用しない。
 
 ### usecase層での管理
+
 - メリット: usecase 層で完結するため、トランザクション管理が明示的になる。複数 repository を跨いだトランザクション管理が容易。
 - デメリット: usecaseにdbの実装詳細が入り込む。
 
@@ -74,7 +76,7 @@ tx を `context.WithValue` で埋め込み、各 repository が暗黙的に取�
 
 ## 参考 (References)
 
-- https://tech.gree-x.com/golang-transaction-pattern/
-- https://zenn.dev/hacobell_dev/articles/0ae114500cf974
-- https://karamaru-alpha.com/posts/layered-tx/
-- https://tech.yappli.io/entry/ddd_usecase
+- <https://tech.gree-x.com/golang-transaction-pattern/>
+- <https://zenn.dev/hacobell_dev/articles/0ae114500cf974>
+- <https://karamaru-alpha.com/posts/layered-tx/>
+- <https://tech.yappli.io/entry/ddd_usecase>

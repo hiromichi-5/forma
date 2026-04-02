@@ -180,9 +180,10 @@ export function StatusesDialog({
     setIsWorking(true)
     setErrorMessage("")
     try {
-      const updatedDefault = await apiClient.setDefaultFormStatus(
+      const updatedDefault = await apiClient.updateFormStatus(
         formId,
-        statusId
+        statusId,
+        { is_default: true }
       )
       onStatusesChange(
         statuses.map((status) => ({

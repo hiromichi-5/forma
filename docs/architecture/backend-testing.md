@@ -26,21 +26,21 @@ usecase 層と infra/postgres 層を対象に、テスト用 DB に接続して�
 
 以下のような実装を想定している。
 
-    ```go
-    func TestTicketUseCase_UpdateStatus(t *testing.T) {
-        t.Run("正常系: admin がステータスを変更できること", func(t *testing.T) { // 日本語でケースを説明する
-            // arrange: テスト用DBにデータ投入
-            // act: usecase 呼び出し
-            // assert: 結果検証
-        })
-        t.Run("準正常系: editor は権限不足でエラーになること", func(t *testing.T) {
-            // ...
-        })
-        t.Run("準正常系: 存在しないチケットはエラーになること", func(t *testing.T) {
-            // ...
-        })
-    }
-    ```
+```go
+func TestTicketUseCase_UpdateStatus(t *testing.T) {
+    t.Run("正常系: admin がステータスを変更できること", func(t *testing.T) { // 日本語でケースを説明する
+        // arrange: テスト用DBにデータ投入
+        // act: usecase 呼び出し
+        // assert: 結果検証
+    })
+    t.Run("準正常系: editor は権限不足でエラーになること", func(t *testing.T) {
+        // ...
+    })
+    t.Run("準正常系: 存在しないチケットはエラーになること", func(t *testing.T) {
+        // ...
+    })
+}
+```
 
 #### infra/postgres 層
 
@@ -51,7 +51,6 @@ usecase 層と infra/postgres 層を対象に、テスト用 DB に接続して�
 
 `httptest.NewServer` + Gin ルーター全体を起動し、テスト用 DB + モック外部サービスを注入する。
 実際の HTTP リクエスト/レスポンスでシナリオを検証する。
-
 
 ## テストインフラ
 
@@ -82,6 +81,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 ```
 
 プロダクション側:
+
 ```go
 // cmd/api/main.go
 func run() error {
@@ -92,6 +92,7 @@ func run() error {
 ```
 
 テスト側:
+
 ```go
 func setupTestRouter(t *testing.T, pool *pgxpool.Pool) *gin.Engine {
     return app.NewRouter(app.Deps{
@@ -101,11 +102,11 @@ func setupTestRouter(t *testing.T, pool *pgxpool.Pool) *gin.Engine {
 }
 ```
 
-
 ### テストライブラリ
 
 - `github.com/stretchr/testify` — assert/require
 - `github.com/testcontainers/testcontainers-go` — PostgreSQL コンテナ管理
 
-# 参考
-- https://developers.freee.co.jp/entry/testing-strategy-based-on-software-architecture
+## 参考
+
+- <https://developers.freee.co.jp/entry/testing-strategy-based-on-software-architecture>

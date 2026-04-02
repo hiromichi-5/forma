@@ -11,9 +11,25 @@ export interface SignupRequest {
   display_name: string;
 }
 
+export interface VerifyEmailRequest {
+  token: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
+}
+
+export interface PasswordResetRequest {
+  email: string;
+}
+
+export interface PasswordResetConfirmRequest {
+  token: string;
+  new_password: string;
+}
+
 export interface RegisterFormRequest {
   url: string;
-  polling_sec?: number;
 }
 
 export interface RegisterFormResponse {
@@ -22,8 +38,8 @@ export interface RegisterFormResponse {
 
 export interface FormSummary {
   id: string;
+  form_id: string;
   title: string;
-  synced_at?: string | null;
 }
 
 export interface ListFormsResponse {
@@ -32,11 +48,10 @@ export interface ListFormsResponse {
 
 export interface Form {
   id: string;
+  form_id: string;
   title: string;
   description?: string | null;
   title_question_id?: string | null;
-  email_collection_type?: string | null;
-  synced_at?: string | null;
   created_at: string;
 }
 
@@ -87,22 +102,13 @@ export interface ListFormInvitesResponse {
   invites: FormInvite[];
 }
 
-export interface AcceptInviteRequest {
-  code: string;
-}
-
-export interface IssueInviteResponse {
-  code: string;
-}
-
 export interface SyncResponse {
-  synced: number;
+  synced: boolean;
   new_tickets: number;
-  last?: string | null;
+  last?: string;
 }
 
 export interface FormQuestion {
-  form_id: string;
   question_id: string;
   title: string;
   question_type: string;
@@ -115,6 +121,7 @@ export interface ListFormQuestionsResponse {
 
 export interface FormStatus {
   id: string;
+  form_id: string;
   name: string;
   color?: string | null;
   display_order: number;
@@ -136,19 +143,7 @@ export interface UpdateFormStatusRequest {
   name?: string;
   color?: string | null;
   display_order?: number;
-}
-
-export interface Response {
-  response_id: string;
-  form_id: string;
-  submitted_at: string;
-  payload: Record<string, unknown>;
-  schema_version: number;
-  created_at: string;
-}
-
-export interface ListResponsesResponse {
-  responses: Response[];
+  is_default?: boolean;
 }
 
 export type TicketPriority = "high" | "medium" | "low";
@@ -217,10 +212,15 @@ export interface ListTicketHistoriesResponse {
   histories: TicketHistory[];
 }
 
+export interface ErrorField {
+  field: string;
+  code: string;
+}
+
 export interface ErrorResponse {
   code: string;
   message?: string;
-  details?: Record<string, unknown>;
+  fields?: ErrorField[];
 }
 
 export interface User {
@@ -232,6 +232,7 @@ export interface UserProfile {
   id: string;
   email: string;
   display_name: string;
+  verified_at?: string | null;
 }
 
 export interface UpdateUserProfileRequest {

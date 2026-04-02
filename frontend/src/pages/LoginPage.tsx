@@ -5,7 +5,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { ApiError } from "../lib/api";
+import { ApiError, apiClient } from "../lib/api";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent">("idle");
 
   if (user) {
     return <Navigate to="/" replace />;
@@ -22,24 +24,38 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setShowResendVerification(false);
     setIsLoading(true);
 
     try {
       await login({ email, password });
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.isUnauthorized) {
+        if (err.error.code === "EMAIL_NOT_VERIFIED") {
+          setError("メールアドレスが未認証です。確認メールをご確認ください。");
+          setShowResendVerification(true);
+        } else if (err.isUnauthorized) {
           setError("メールアドレスまたはパスワードが間違っています");
         } else if (err.isValidationError) {
           setError("入力内容を確認してください");
         } else {
-          setError("ログインに失敗しました。");
+          setError("ログインに失敗しました");
         }
       } else {
         setError("予期しないエラーが発生しました");
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendStatus("sending");
+    try {
+      await apiClient.resendVerification({ email });
+      setResendStatus("sent");
+    } catch {
+      setResendStatus("idle");
     }
   };
 
@@ -55,7 +71,7 @@ export default function LoginPage() {
                 </div>
               </div>
               <CardTitle className="text-2xl font-bold">Forma</CardTitle>
-              <p className="mt-2 text-sm text-gray-600">
+              <p className="mt-2 text-sm text-muted-foreground">
                 チームでGoogleフォームを取り込んで、
                 <br />
                 回答をチケット化して管理
@@ -76,7 +92,15 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">パスワード</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">パスワード</Label>
+                  <Link
+                    to="/password-reset"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    パスワードを忘れた方
+                  </Link>
+                </div>
                 <Input
                   id="password"
                   type="password"
@@ -94,6 +118,24 @@ export default function LoginPage() {
                   aria-live="polite"
                 >
                   {error}
+                  {showResendVerification && (
+                    <div className="mt-2">
+                      {resendStatus === "sent" ? (
+                        <p className="text-muted-foreground">確認メールを再送しました</p>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-primary"
+                          disabled={resendStatus === "sending"}
+                          onClick={handleResendVerification}
+                        >
+                          確認メールを再送する
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -114,7 +156,7 @@ export default function LoginPage() {
             </form>
 
             <div className="text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 アカウントをお持ちでない方は{" "}
                 <Link
                   to="/signup"

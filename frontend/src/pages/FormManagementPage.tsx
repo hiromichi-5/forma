@@ -66,7 +66,7 @@ export default function FormManagementPage() {
   const handleTitleQuestionChange = async (questionId: string | null) => {
     if (!formId) return
     try {
-      await apiClient.updateFormTitleQuestion(formId, questionId)
+      await apiClient.updateForm(formId, { title_question_id: questionId })
       setForm((prev) => (prev ? { ...prev, title_question_id: questionId } : null))
     } catch (error) {
       console.error("Failed to update title question:", error)

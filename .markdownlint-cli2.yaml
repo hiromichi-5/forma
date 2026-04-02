@@ -1,0 +1,8 @@
+globs:
+  - "**/*.{md,markdown}"
+ignores:
+  - "**/node_modules/**"
+  - ".github/**"
+config:
+  MD013: false
+  MD024: false

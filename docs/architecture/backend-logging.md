@@ -16,7 +16,7 @@ Backend APIのログの設計方針を定める。
 ### ログレベル運用
 
 | レベル | 用途 | ローカル | 本番 |
-|:-------|:-----|:---------|:-----|
+| --- | --- | --- | --- |
 | ERROR | リクエスト処理の予期せぬ失敗 | o | o |
 | WARN | 将来的に問題になりうる状態 | o | o |
 | INFO | アクセスログ、起動ログ、重要なビジネスイベント | o | o |
@@ -31,7 +31,7 @@ Backend APIのログの設計方針を定める。
 
 `context.Context`の`Value`を使い、request_id付きのloggerをミドルウェアからusecase層まで伝搬する。
 
-```
+```text
 RequestLoggerミドルウェア
   ├─ request_id付きloggerを生成
   └─ context.WithValue でリクエストのcontextに格納
@@ -62,7 +62,7 @@ Repository層 (context.Context)
 OTel Semantic Conventionsに準拠しつつ、slogの標準キー（`time`, `level`, `msg`）はそのまま使用する。
 
 | キー名 | 付与タイミング | 例 |
-|:-------|:--------------|:---|
+| --- | --- | --- |
 | `service.name` | 起動時 | `"forma-api"` |
 | `deployment.environment` | 起動時 | `"local"` |
 | `request_id` | リクエスト受信時 | `"550e8400-..."` |
@@ -76,8 +76,10 @@ OTel Semantic Conventionsに準拠しつつ、slogの標準キー（`time`, `lev
 | `form_id` | フォーム操作時 | `"550e8400-..."` |
 
 ## ログ出力例
+
 ### JSON形式での出力例
-```
+
+```json
 // 起動時
 {"time":"2026-04-02T13:43:25.208263+09:00","level":"INFO","msg":"application startup initiated","service.name":"forma-api","deployment.environment":"production","env":"production","log_level":"DEBUG"}
 {"time":"2026-04-02T13:43:25.210354+09:00","level":"INFO","msg":"database connection established","service.name":"forma-api","deployment.environment":"production"}
@@ -94,7 +96,8 @@ OTel Semantic Conventionsに準拠しつつ、slogの標準キー（`time`, `lev
 ```
 
 ### TEXT形式の出力例
-```
+
+```text
 // 起動時
 time=2026-04-02T13:18:10.754+09:00 level=INFO msg="application startup initiated" service.name=forma-api deployment.environment=local env=local log_level=DEBUG
 time=2026-04-02T13:18:10.756+09:00 level=INFO msg="database connection established" service.name=forma-api deployment.environment=local
@@ -105,11 +108,14 @@ time=2026-04-02T13:28:39.500+09:00 level=INFO msg="request completed" service.na
 ```
 
 ## 実装例
+
 usecase層では以下のように記述することで、自動的にrequest_idとuser_idが付与されたloggerを取得できる。
+
 ```go
 log := logger.From(ctx)
 log.Info("form sync started", "form_id", formID.String())
 ```
 
 ## 参考
-- https://future-architect.github.io/arch-guidelines/documents/forLog/
+
+- <https://future-architect.github.io/arch-guidelines/documents/forLog/>
