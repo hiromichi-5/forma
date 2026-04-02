@@ -1,0 +1,5 @@
+globs:
+  - "**/*.{md,markdown}"
+  - ".github/**/*.{md,markdown}"
+config:
+  MD024: false

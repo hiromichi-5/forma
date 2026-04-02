@@ -16,3 +16,5 @@ Forma（フォーマ）は、Googleフォームの回答をチケット化して
 | guides/ | 開発ガイド（getting-started、デプロイ等） |
 | images/ | ドキュメント用画像 |
 | rules/ | コーディング規約・レビュー観点・テスト方針等 |
+
+なお、MarkdownファイルはCIで`markdownlint-cli2`により検証しています。ただし、`MD024`については除外しています。詳細は<https://github.com/DavidAnson/markdownlint/tree/main>を参照してください。

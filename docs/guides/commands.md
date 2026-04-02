@@ -46,3 +46,10 @@
 ```bash
 make test
 ```
+
+### Markdown lint の実行
+
+```bash
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm exec markdownlint-cli2
+```
