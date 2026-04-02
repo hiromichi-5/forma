@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hiromichi-5/forma/backend/internal/app"
 	"github.com/hiromichi-5/forma/backend/internal/infra/google"
+	"github.com/hiromichi-5/forma/backend/internal/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/viper"
 	swaggerFiles "github.com/swaggo/files"
@@ -29,6 +31,13 @@ func run() error {
 	if appEnv == "" {
 		appEnv = "local"
 	}
+	logLevel := viper.GetString("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "INFO"
+	}
+	logger.Setup(appEnv, logLevel)
+	slog.Info("application startup initiated", "env", appEnv, "log_level", logLevel)
+
 	addr := viper.GetString("HTTP_ADDR")
 	if addr == "" {
 		addr = ":8080"
@@ -51,6 +60,7 @@ func run() error {
 		return fmt.Errorf("pgxpool: %w", err)
 	}
 	defer pool.Close()
+	slog.Info("database connection established")
 
 	fetcher, err := google.NewFormClient(ctx, saPath)
 	if err != nil {
@@ -83,5 +93,6 @@ func run() error {
 		))
 	}
 
+	slog.Info("server listening", "addr", addr)
 	return r.Run(addr)
 }

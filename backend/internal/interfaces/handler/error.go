@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/logger"
 )
 
 type errorDef struct {
@@ -47,17 +48,23 @@ type fieldErrorResp struct {
 }
 
 func handleError(c *gin.Context, err error) {
+	log := logger.From(c.Request.Context())
+
 	var domainErr *entity.Error
 	if !errors.As(err, &domainErr) {
+		log.Error("unexpected error", "error", err)
 		c.JSON(http.StatusInternalServerError, errorResponse{Code: "INTERNAL"})
 		return
 	}
 
 	def, ok := errorDefs[domainErr.Code]
 	if !ok {
+		log.Error("unmapped domain error", "code", domainErr.Code, "error", err)
 		c.JSON(http.StatusInternalServerError, errorResponse{Code: "INTERNAL"})
 		return
 	}
+
+	log.Debug("domain error", "code", domainErr.Code, "status", def.Status)
 
 	resp := errorResponse{
 		Code:    string(domainErr.Code),
