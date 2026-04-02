@@ -1,6 +1,10 @@
 import type {
   LoginRequest,
   SignupRequest,
+  VerifyEmailRequest,
+  ResendVerificationRequest,
+  PasswordResetRequest,
+  PasswordResetConfirmRequest,
   RegisterFormRequest,
   RegisterFormResponse,
   ListFormsResponse,
@@ -13,7 +17,6 @@ import type {
   CreateInviteRequest,
   CreateInviteResponse,
   SyncResponse,
-  ListResponsesResponse,
   ListTicketsResponse,
   ListFormQuestionsResponse,
   ListFormStatusesResponse,
@@ -84,7 +87,7 @@ class ApiClient {
         throw new ApiError(response.status, errorData);
       }
 
-      if (response.status === 204) {
+      if (response.status === 204 || response.status === 202) {
         return {} as T;
       }
 
@@ -106,6 +109,8 @@ class ApiClient {
     }
   }
 
+  // Auth
+
   async login(request: LoginRequest): Promise<void> {
     await this.request<void>("/v1/auth/login", {
       method: "POST",
@@ -113,12 +118,52 @@ class ApiClient {
     });
   }
 
-  async signup(request: SignupRequest): Promise<void> {
-    await this.request<void>("/v1/auth/signup", {
+  async signup(request: SignupRequest): Promise<{ id: string }> {
+    return this.request<{ id: string }>("/v1/auth/signup", {
       method: "POST",
       body: JSON.stringify(request),
     });
   }
+
+  async logout(): Promise<void> {
+    await this.request<void>("/v1/auth/logout", {
+      method: "POST",
+    });
+  }
+
+  async verifyEmail(request: VerifyEmailRequest): Promise<void> {
+    await this.request<void>("/v1/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async resendVerification(
+    request: ResendVerificationRequest
+  ): Promise<void> {
+    await this.request<void>("/v1/auth/verify-email/resend", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async passwordReset(request: PasswordResetRequest): Promise<void> {
+    await this.request<void>("/v1/auth/password-reset", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async passwordResetConfirm(
+    request: PasswordResetConfirmRequest
+  ): Promise<void> {
+    await this.request<void>("/v1/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  // User
 
   async whoami(): Promise<{ user_id: string }> {
     return this.request<{ user_id: string }>("/v1/whoami");
@@ -148,6 +193,8 @@ class ApiClient {
     });
   }
 
+  // Forms
+
   async getForms(): Promise<ListFormsResponse> {
     return this.request<ListFormsResponse>("/v1/forms");
   }
@@ -172,13 +219,7 @@ class ApiClient {
     });
   }
 
-  async checkFormHealth(
-    formId: string
-  ): Promise<{ form_id: string; title: string }> {
-    return this.request<{ form_id: string; title: string }>(
-      `/v1/forms/${formId}/health`
-    );
-  }
+  // Members
 
   async getMembers(formId: string): Promise<ListMembersResponse> {
     return this.request<ListMembersResponse>(`/v1/forms/${formId}/members`);
@@ -208,11 +249,16 @@ class ApiClient {
     });
   }
 
+  // Invites
+
   async listInvites(formId: string): Promise<ListFormInvitesResponse> {
     return this.request<ListFormInvitesResponse>(`/v1/forms/${formId}/invites`);
   }
 
-  async createInvite(formId: string, request: CreateInviteRequest): Promise<CreateInviteResponse> {
+  async createInvite(
+    formId: string,
+    request: CreateInviteRequest
+  ): Promise<CreateInviteResponse> {
     return this.request<CreateInviteResponse>(`/v1/forms/${formId}/invites`, {
       method: "POST",
       body: JSON.stringify(request),
@@ -231,25 +277,15 @@ class ApiClient {
     });
   }
 
+  // Sync
+
   async syncForm(formId: string): Promise<SyncResponse> {
     return this.request<SyncResponse>(`/v1/forms/${formId}/sync`, {
       method: "POST",
     });
   }
 
-  async getResponses(
-    formId?: string,
-    since?: string
-  ): Promise<ListResponsesResponse> {
-    const params = new URLSearchParams();
-    if (formId) params.append("form_id", formId);
-    if (since) params.append("since", since);
-
-    const query = params.toString();
-    const endpoint = `/v1/responses${query ? `?${query}` : ""}`;
-
-    return this.request<ListResponsesResponse>(endpoint);
-  }
+  // Questions
 
   async getFormQuestions(formId: string): Promise<ListFormQuestionsResponse> {
     return this.request<ListFormQuestionsResponse>(
@@ -257,24 +293,36 @@ class ApiClient {
     );
   }
 
+  // Statuses
+
   async getFormStatuses(formId: string): Promise<ListFormStatusesResponse> {
     return this.request<ListFormStatusesResponse>(
       `/v1/forms/${formId}/statuses`
     );
   }
 
-  async createFormStatus(formId: string, request: CreateFormStatusRequest): Promise<FormStatus> {
+  async createFormStatus(
+    formId: string,
+    request: CreateFormStatusRequest
+  ): Promise<FormStatus> {
     return this.request<FormStatus>(`/v1/forms/${formId}/statuses`, {
       method: "POST",
       body: JSON.stringify(request),
     });
   }
 
-  async updateFormStatus(formId: string, statusId: string, request: UpdateFormStatusRequest): Promise<FormStatus> {
-    return this.request<FormStatus>(`/v1/forms/${formId}/statuses/${statusId}`, {
-      method: "PATCH",
-      body: JSON.stringify(request),
-    });
+  async updateFormStatus(
+    formId: string,
+    statusId: string,
+    request: UpdateFormStatusRequest
+  ): Promise<FormStatus> {
+    return this.request<FormStatus>(
+      `/v1/forms/${formId}/statuses/${statusId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(request),
+      }
+    );
   }
 
   async deleteFormStatus(formId: string, statusId: string): Promise<void> {
@@ -283,34 +331,17 @@ class ApiClient {
     });
   }
 
-  async setDefaultFormStatus(formId: string, statusId: string): Promise<FormStatus> {
-    return this.request<FormStatus>(`/v1/forms/${formId}/statuses/${statusId}/default`, {
-      method: "POST",
-    });
-  }
-
-  async updateFormTitleQuestion(
-    formId: string,
-    questionId: string | null
-  ): Promise<void> {
-    await this.request<void>(`/v1/forms/${formId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ title_question_id: questionId }),
-    });
-  }
+  // Tickets
 
   async getTickets(
-    formId?: string,
+    formId: string,
     statusId?: string
   ): Promise<ListTicketsResponse> {
     const params = new URLSearchParams();
-    if (formId) params.append("form", formId);
+    params.append("form_id", formId);
     if (statusId) params.append("status_id", statusId);
 
-    const query = params.toString();
-    const endpoint = `/v1/tickets${query ? `?${query}` : ""}`;
-
-    return this.request<ListTicketsResponse>(endpoint);
+    return this.request<ListTicketsResponse>(`/v1/tickets?${params.toString()}`);
   }
 
   async getTicket(ticketId: string): Promise<TicketDetail> {
@@ -327,18 +358,18 @@ class ApiClient {
     });
   }
 
-  async getTicketHistories(ticketId: string): Promise<ListTicketHistoriesResponse> {
-    return this.request<ListTicketHistoriesResponse>(`/v1/tickets/${ticketId}/histories`);
+  async getTicketHistories(
+    ticketId: string
+  ): Promise<ListTicketHistoriesResponse> {
+    return this.request<ListTicketHistoriesResponse>(
+      `/v1/tickets/${ticketId}/histories`
+    );
   }
+
+  // Health
 
   async healthz(): Promise<string> {
     return this.request<string>("/healthz");
-  }
-
-  async logout(): Promise<void> {
-    await this.request<void>("/v1/auth/logout", {
-      method: "POST",
-    });
   }
 }
 

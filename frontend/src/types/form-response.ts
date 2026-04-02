@@ -9,11 +9,11 @@ export type FormResponse = {
   statusColor?: string | null
   assignedTo: string | null
   responses: Record<string, string>
-  questions: FormQuestion[]
+  questions: FormResponseQuestion[]
   priority: "high" | "medium" | "low"
 }
 
-export type FormQuestion = {
+export type FormResponseQuestion = {
   questionId: string
   question: string
   answer: string
@@ -34,5 +34,4 @@ export type User = {
   id: string
   name: string
   email: string
-  avatar?: string
 }

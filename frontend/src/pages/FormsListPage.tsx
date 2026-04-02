@@ -2,53 +2,16 @@ import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Search, FileText } from "lucide-react"
+import { Search } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { apiClient } from "@/lib/api"
-import type { FormSummary, TicketSummary } from "@/types"
+import type { FormSummary } from "@/types"
 import { RegisterFormDialog } from "@/components/register-form-dialog"
-
 type FormListItem = {
   id: string
   title: string
   responseCount: number
-  newCount: number
-  lastUpdated: Date | null
-}
-
-const buildFormList = (forms: FormSummary[], tickets: TicketSummary[], defaultStatusId?: string): FormListItem[] => {
-  const ticketMap = new Map<string, TicketSummary[]>()
-
-  tickets.forEach((ticket) => {
-    const bucket = ticketMap.get(ticket.form_id)
-    if (bucket) {
-      bucket.push(ticket)
-    } else {
-      ticketMap.set(ticket.form_id, [ticket])
-    }
-  })
-
-  return forms.map((form) => {
-    const formTickets = ticketMap.get(form.id) ?? []
-    const responseCount = formTickets.length
-    const newCount = defaultStatusId ? formTickets.filter((ticket) => ticket.status.id === defaultStatusId).length : 0
-    const lastUpdated = formTickets.reduce<Date | null>((latest, ticket) => {
-      const createdAt = new Date(ticket.created_at)
-      if (!latest || createdAt > latest) {
-        return createdAt
-      }
-      return latest
-    }, null)
-
-    return {
-      id: form.id,
-      title: form.title,
-      responseCount,
-      newCount,
-      lastUpdated,
-    }
-  })
+  latestSubmittedAt: Date | null
 }
 
 export default function FormsListPage() {
@@ -62,12 +25,9 @@ export default function FormsListPage() {
     setIsLoading(true)
     setErrorMessage("")
     try {
-      // 外部API(バックエンド)との同期のための処理
-      const [formsResponse, ticketsResponse] = await Promise.all([
-        apiClient.getForms(),
-        apiClient.getTickets(),
-      ])
-      setForms(buildFormList(formsResponse.forms, ticketsResponse.tickets))
+      const formsResponse = await apiClient.getForms()
+      const formItems = await buildFormList(formsResponse.forms)
+      setForms(formItems)
     } catch (error) {
       console.error("Failed to load forms:", error)
       setErrorMessage("フォーム一覧の取得に失敗しました")
@@ -79,17 +39,15 @@ export default function FormsListPage() {
   useEffect(() => {
     let isActive = true
 
-    const loadFormsWithGuard = async () => {
+    const load = async () => {
       setIsLoading(true)
       setErrorMessage("")
       try {
-        // 外部API(バックエンド)との同期のための処理
-        const [formsResponse, ticketsResponse] = await Promise.all([
-          apiClient.getForms(),
-          apiClient.getTickets(),
-        ])
+        const formsResponse = await apiClient.getForms()
         if (!isActive) return
-        setForms(buildFormList(formsResponse.forms, ticketsResponse.tickets))
+        const formItems = await buildFormList(formsResponse.forms)
+        if (!isActive) return
+        setForms(formItems)
       } catch (error) {
         if (!isActive) return
         console.error("Failed to load forms:", error)
@@ -101,8 +59,7 @@ export default function FormsListPage() {
       }
     }
 
-    // 外部API(バックエンド)との同期のための処理
-    loadFormsWithGuard()
+    load()
 
     return () => {
       isActive = false
@@ -135,57 +92,89 @@ export default function FormsListPage() {
           />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {isLoading && (
-            <Card className="md:col-span-2 lg:col-span-3">
-              <CardContent className="p-6 text-sm text-muted-foreground">フォーム一覧を読み込み中...</CardContent>
-            </Card>
-          )}
+        {isLoading && (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">フォーム一覧を読み込み中...</CardContent>
+          </Card>
+        )}
 
-          {!isLoading && errorMessage && (
-            <Card className="md:col-span-2 lg:col-span-3 border-destructive/40">
-              <CardContent className="p-6 text-sm text-destructive">{errorMessage}</CardContent>
-            </Card>
-          )}
+        {!isLoading && errorMessage && (
+          <Card className="border-destructive/40">
+            <CardContent className="p-6 text-sm text-destructive">{errorMessage}</CardContent>
+          </Card>
+        )}
 
-          {!isLoading && !errorMessage && filteredForms.length === 0 && (
-            <Card className="md:col-span-2 lg:col-span-3">
-              <CardContent className="p-6 text-sm text-muted-foreground">
-                条件に一致するフォームがありません
-              </CardContent>
-            </Card>
-          )}
+        {!isLoading && !errorMessage && filteredForms.length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              条件に一致するフォームがありません
+            </CardContent>
+          </Card>
+        )}
 
-          {!isLoading &&
-            !errorMessage &&
-            filteredForms.map((form) => (
-            <Card
-              key={form.id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/forms/${form.id}`)}
-            >
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-foreground mb-1">{form.title}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {form.lastUpdated ? form.lastUpdated.toLocaleDateString("ja-JP") : "更新情報なし"}
-                    </p>
-                  </div>
-                  {form.newCount > 0 && <Badge className="bg-blue-500 text-white">{form.newCount}件の新規</Badge>}
-                </div>
-
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <FileText className="h-4 w-4" />
-                    <span>{form.responseCount}件の回答</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {!isLoading && !errorMessage && filteredForms.length > 0 && (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {filteredForms.map((form) => (
+              <Card
+                key={form.id}
+                className="cursor-pointer border-border/60 bg-card/95 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-sm"
+                onClick={() => navigate(`/forms/${form.id}`)}
+              >
+                <CardContent className="p-4">
+                  <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">
+                    {form.title}
+                  </h3>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {form.responseCount}件
+                    <span className="mx-1.5">•</span>
+                    {form.latestSubmittedAt
+                      ? `最終提出 ${formatCompactDate(form.latestSubmittedAt)}`
+                      : "回答なし"}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </AppLayout>
   )
+}
+
+async function buildFormList(forms: FormSummary[]): Promise<FormListItem[]> {
+  const results = await Promise.all(
+    forms.map(async (form) => {
+      try {
+        const ticketsRes = await apiClient.getTickets(form.id)
+        const latestSubmittedAt = ticketsRes.tickets.reduce<Date | null>((latest, ticket) => {
+          const submittedAt = new Date(ticket.submitted_at)
+          if (!latest || submittedAt > latest) return submittedAt
+          return latest
+        }, null)
+
+        return {
+          id: form.id,
+          title: form.title,
+          responseCount: ticketsRes.tickets.length,
+          latestSubmittedAt,
+        }
+      } catch {
+        return {
+          id: form.id,
+          title: form.title,
+          responseCount: 0,
+          latestSubmittedAt: null,
+        }
+      }
+    })
+  )
+  return results
+}
+
+function formatCompactDate(date: Date): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date)
 }

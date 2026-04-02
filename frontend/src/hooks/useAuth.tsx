@@ -62,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const profileData = await apiClient.getProfile();
       setProfile(profileData);
-      // userのemailも更新
       setUser((prev) => (prev ? { ...prev, email: profileData.email } : null));
     } catch (error) {
       console.error("Failed to fetch profile:", error);
@@ -87,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (credentials: SignupRequest) => {
     await apiClient.signup(credentials);
-    await hydrateUser();
+    // サインアップ後はメール認証が必要なため、自動ログインしない
   };
 
   const updateProfile = async (
@@ -95,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ): Promise<UserProfile> => {
     const updatedProfile = await apiClient.updateProfile(request);
     setProfile(updatedProfile);
-    // userのemailも更新（メールが変更可能になった場合のため）
     setUser((prev) => (prev ? { ...prev, email: updatedProfile.email } : null));
     return updatedProfile;
   };

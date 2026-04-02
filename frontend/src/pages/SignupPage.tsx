@@ -1,21 +1,22 @@
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardTitle } from "../components/ui/card";
 import { ApiError } from "../lib/api";
-import { Loader2 } from "lucide-react";
+import { Loader2, MailCheck } from "lucide-react";
 
 export default function SignupPage() {
-  const { user, signup } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { signup } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isSignupComplete, setIsSignupComplete] = useState(false);
 
   if (user) {
     return <Navigate to="/" replace />;
@@ -28,13 +29,15 @@ export default function SignupPage() {
 
     try {
       await signup({ email, password, display_name: displayName });
-      navigate("/");
+      setIsSignupComplete(true);
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.isValidationError) {
-          setError("入力内容を確認してください");
+        if (err.error.code === "CONFLICT") {
+          setError("このメールアドレスは既に登録されています");
+        } else if (err.isValidationError) {
+          setError("入力内容を確認してください（パスワードは8文字以上）");
         } else {
-          setError("サインアップに失敗しました。");
+          setError("サインアップに失敗しました");
         }
       } else {
         setError("予期しないエラーが発生しました");
@@ -44,6 +47,41 @@ export default function SignupPage() {
     }
   };
 
+  if (isSignupComplete) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <Card className="w-full max-w-md shadow-lg">
+          <CardContent className="p-6">
+            <div className="space-y-6 text-center">
+              <div className="flex justify-center">
+                <div className="rounded-full bg-primary/10 p-4">
+                  <MailCheck className="h-12 w-12 text-primary" />
+                </div>
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-bold">確認メールを送信しました</CardTitle>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{email}</span>
+                  {" "}に確認メールを送信しました。
+                  <br />
+                  メール内のリンクをクリックしてアカウントを有効化してください。
+                </p>
+              </div>
+              <div className="pt-2">
+                <Link
+                  to="/login"
+                  className="font-medium text-primary hover:underline text-sm"
+                >
+                  ログインページへ
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md shadow-lg">
@@ -51,7 +89,7 @@ export default function SignupPage() {
           <div className="space-y-6">
             <div className="text-center">
               <CardTitle className="text-2xl font-bold">Forma</CardTitle>
-              <p className="mt-2 text-sm text-gray-600">
+              <p className="mt-2 text-sm text-muted-foreground">
                 新しいアカウントを作成して
                 <br />
                 フォーム管理を始めましょう
@@ -90,8 +128,10 @@ export default function SignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  minLength={8}
                   disabled={isLoading}
                 />
+                <p className="text-xs text-muted-foreground">8文字以上</p>
               </div>
 
               {error && (
@@ -121,7 +161,7 @@ export default function SignupPage() {
             </form>
 
             <div className="text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 すでにアカウントをお持ちの方は{" "}
                 <Link
                   to="/login"

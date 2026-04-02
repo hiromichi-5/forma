@@ -232,7 +232,7 @@ export function ResponseDetail({
                   </p>
                 </div>
               ) : (
-                timelineItems.map((item, index) => {
+                timelineItems.map((item) => {
                   if (item.type === "message") {
                     const message = item.data;
                     return (
