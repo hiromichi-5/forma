@@ -261,7 +261,7 @@ func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) e
 		return err
 	}
 
-	resetURL := uc.frontendBaseURL + "/reset-password?token=" + tokenStr
+	resetURL := uc.frontendBaseURL + "/password-reset/confirm?token=" + tokenStr
 	return uc.emailSender.SendEmail(ctx, repository.SendEmailInput{
 		To:           []string{email},
 		TemplateName: repository.TemplatePasswordReset,

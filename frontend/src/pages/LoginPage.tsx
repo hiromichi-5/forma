@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -10,6 +10,8 @@ import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const { user, login } = useAuth();
+  const location = useLocation();
+  const from = (location.state as { from?: string })?.from ?? "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -18,7 +20,7 @@ export default function LoginPage() {
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent">("idle");
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={from} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

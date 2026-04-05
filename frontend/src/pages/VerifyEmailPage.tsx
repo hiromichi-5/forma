@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardTitle } from "../components/ui/card";
 import { ApiError, apiClient } from "../lib/api";
@@ -9,6 +9,7 @@ export default function VerifyEmailPage() {
   const token = searchParams.get("token");
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const verifiedRef = useRef(false);
 
   useEffect(() => {
     if (!token) {
@@ -17,11 +18,21 @@ export default function VerifyEmailPage() {
       return;
     }
 
+    if (verifiedRef.current) {
+      setStatus("success");
+      return;
+    }
+
     const verify = async () => {
       try {
         await apiClient.verifyEmail({ token });
+        verifiedRef.current = true;
         setStatus("success");
       } catch (err) {
+        if (verifiedRef.current) {
+          setStatus("success");
+          return;
+        }
         setStatus("error");
         if (err instanceof ApiError) {
           if (err.error.code === "TOKEN_NOT_FOUND") {

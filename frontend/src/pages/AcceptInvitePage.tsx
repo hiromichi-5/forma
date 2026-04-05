@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Card, CardContent, CardTitle } from "../components/ui/card";
 import { ApiError, apiClient } from "../lib/api";
@@ -10,17 +10,27 @@ export default function AcceptInvitePage() {
   const { isLoading: authLoading, user } = useRequireAuth();
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const acceptedRef = useRef(false);
 
   useEffect(() => {
     if (authLoading || !user || !inviteId) return;
+    if (acceptedRef.current) {
+      setStatus("success");
+      return;
+    }
     if (status !== "idle") return;
 
     const accept = async () => {
       setStatus("loading");
       try {
         await apiClient.acceptInvite(inviteId);
+        acceptedRef.current = true;
         setStatus("success");
       } catch (err) {
+        if (acceptedRef.current) {
+          setStatus("success");
+          return;
+        }
         setStatus("error");
         if (err instanceof ApiError) {
           switch (err.error.code) {
