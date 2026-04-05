@@ -101,6 +101,36 @@ func (uc *AuthUseCase) Signup(
 		return uuid.UUID{}, err
 	}
 
+	// 既存ユーザーが未認証の場合はトークンを再発行する
+	existing, err := uc.userRepo.GetByEmail(ctx, email)
+	if err == nil {
+		if existing.VerifiedAt != nil {
+			return uuid.UUID{}, entity.NewError(entity.CodeConflict)
+		}
+
+		var tokenStr string
+		if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
+			if err := repos.User.DeleteEmailVerificationTokensByUser(ctx, existing.ID); err != nil {
+				return err
+			}
+			tokenStr, err = uc.issueEmailVerificationTokenTx(ctx, repos.User, existing.ID)
+			return err
+		}); err != nil {
+			return uuid.UUID{}, err
+		}
+
+		if err := uc.sendEmailVerification(ctx, email, tokenStr); err != nil {
+			return uuid.UUID{}, err
+		}
+
+		logger.From(ctx).Info("user signed up (resend)", "user_id", existing.ID.String())
+
+		return existing.ID, nil
+	}
+	if !errors.Is(err, repository.ErrNotFound) {
+		return uuid.UUID{}, err
+	}
+
 	var (
 		createdUserID uuid.UUID
 		tokenStr      string

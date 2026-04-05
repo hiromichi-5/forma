@@ -12,6 +12,7 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
+//go:embed templates
 var templateFS embed.FS
 
 var _ repository.EmailSender = (*EmailSender)(nil)
