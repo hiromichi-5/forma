@@ -19,9 +19,10 @@ import (
 )
 
 var (
-	testPool    *pgxpool.Pool
-	testServer  *httptest.Server
-	mockFetcher *MockFormFetcher
+	testPool        *pgxpool.Pool
+	testServer      *httptest.Server
+	mockFetcher     *MockFormFetcher
+	mockEmailSender *MockEmailSender
 )
 
 func TestMain(m *testing.M) {
@@ -31,8 +32,14 @@ func TestMain(m *testing.M) {
 	testPool = pool
 
 	mockFetcher = &MockFormFetcher{}
+	mockEmailSender = &MockEmailSender{}
 	router := app.NewRouter(
-		app.Deps{Pool: pool, Fetcher: mockFetcher},
+		app.Deps{
+			Pool:            pool,
+			Fetcher:         mockFetcher,
+			EmailSender:     mockEmailSender,
+			FrontendBaseURL: "http://localhost:5173",
+		},
 		app.Option{CookieSecure: false},
 	)
 	testServer = httptest.NewServer(router)
@@ -42,6 +49,17 @@ func TestMain(m *testing.M) {
 	testServer.Close()
 	cleanup()
 	os.Exit(code)
+}
+
+type MockEmailSender struct {
+	SendEmailFunc func(ctx context.Context, input repository.SendEmailInput) error
+}
+
+func (m *MockEmailSender) SendEmail(ctx context.Context, input repository.SendEmailInput) error {
+	if m.SendEmailFunc != nil {
+		return m.SendEmailFunc(ctx, input)
+	}
+	return nil
 }
 
 type MockFormFetcher struct {

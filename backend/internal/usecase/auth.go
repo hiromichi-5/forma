@@ -18,21 +18,27 @@ import (
 const tokenTTL = 24 * time.Hour
 
 type AuthUseCase struct {
-	userRepo      repository.UserRepository
-	uow           repository.UnitOfWork[repository.AuthRepos]
-	now           func() time.Time
-	generateToken func() (string, error)
+	userRepo        repository.UserRepository
+	uow             repository.UnitOfWork[repository.AuthRepos]
+	emailSender     repository.EmailSender
+	frontendBaseURL string
+	now             func() time.Time
+	generateToken   func() (string, error)
 }
 
 func NewAuthUseCase(
 	userRepo repository.UserRepository,
 	uow repository.UnitOfWork[repository.AuthRepos],
+	emailSender repository.EmailSender,
+	frontendBaseURL string,
 ) *AuthUseCase {
 	return &AuthUseCase{
-		userRepo:      userRepo,
-		uow:           uow,
-		now:           time.Now,
-		generateToken: defaultToken,
+		userRepo:        userRepo,
+		uow:             uow,
+		emailSender:     emailSender,
+		frontendBaseURL: frontendBaseURL,
+		now:             time.Now,
+		generateToken:   defaultToken,
 	}
 }
 
@@ -95,7 +101,10 @@ func (uc *AuthUseCase) Signup(
 		return uuid.UUID{}, err
 	}
 
-	var createdUserID uuid.UUID
+	var (
+		createdUserID uuid.UUID
+		tokenStr      string
+	)
 	if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
 		user, err := repos.User.Create(ctx, entity.User{
 			ID:           uuid.New(),
@@ -111,8 +120,13 @@ func (uc *AuthUseCase) Signup(
 		}
 		createdUserID = user.ID
 
-		return uc.issueEmailVerificationTokenTx(ctx, repos.User, user.ID)
+		tokenStr, err = uc.issueEmailVerificationTokenTx(ctx, repos.User, user.ID)
+		return err
 	}); err != nil {
+		return uuid.UUID{}, err
+	}
+
+	if err := uc.sendEmailVerification(ctx, email, tokenStr); err != nil {
 		return uuid.UUID{}, err
 	}
 
@@ -179,12 +193,18 @@ func (uc *AuthUseCase) ResendEmailVerification(ctx context.Context, email string
 		return nil
 	}
 
-	return uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
+	var tokenStr string
+	if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
 		if err := repos.User.DeleteEmailVerificationTokensByUser(ctx, user.ID); err != nil {
 			return err
 		}
-		return uc.issueEmailVerificationTokenTx(ctx, repos.User, user.ID)
-	})
+		tokenStr, err = uc.issueEmailVerificationTokenTx(ctx, repos.User, user.ID)
+		return err
+	}); err != nil {
+		return err
+	}
+
+	return uc.sendEmailVerification(ctx, email, tokenStr)
 }
 
 func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) error {
@@ -200,11 +220,22 @@ func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) e
 		return err
 	}
 
-	return uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
+	var tokenStr string
+	if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
 		if err := repos.User.DeletePasswordResetTokensByUser(ctx, user.ID); err != nil {
 			return err
 		}
-		return uc.issuePasswordResetTokenTx(ctx, repos.User, user.ID)
+		tokenStr, err = uc.issuePasswordResetTokenTx(ctx, repos.User, user.ID)
+		return err
+	}); err != nil {
+		return err
+	}
+
+	resetURL := uc.frontendBaseURL + "/reset-password?token=" + tokenStr
+	return uc.emailSender.SendEmail(ctx, repository.SendEmailInput{
+		To:           []string{email},
+		TemplateName: repository.TemplatePasswordReset,
+		TemplateData: map[string]string{"reset_url": resetURL},
 	})
 }
 
@@ -246,14 +277,23 @@ func (uc *AuthUseCase) ConfirmPasswordReset(ctx context.Context, token, newPassw
 	})
 }
 
+func (uc *AuthUseCase) sendEmailVerification(ctx context.Context, email, token string) error {
+	verifyURL := uc.frontendBaseURL + "/verify-email?token=" + token
+	return uc.emailSender.SendEmail(ctx, repository.SendEmailInput{
+		To:           []string{email},
+		TemplateName: repository.TemplateEmailVerification,
+		TemplateData: map[string]string{"verify_url": verifyURL},
+	})
+}
+
 func (uc *AuthUseCase) issueEmailVerificationTokenTx(
 	ctx context.Context,
 	userRepo repository.UserRepository,
 	userID uuid.UUID,
-) error {
+) (string, error) {
 	token, err := uc.generateToken()
 	if err != nil {
-		return err
+		return "", err
 	}
 	_, err = userRepo.CreateEmailVerificationToken(ctx, entity.EmailVerificationToken{
 		ID:        uuid.New(),
@@ -261,17 +301,20 @@ func (uc *AuthUseCase) issueEmailVerificationTokenTx(
 		Token:     token,
 		ExpiresAt: uc.now().Add(tokenTTL),
 	})
-	return err
+	if err != nil {
+		return "", err
+	}
+	return token, nil
 }
 
 func (uc *AuthUseCase) issuePasswordResetTokenTx(
 	ctx context.Context,
 	userRepo repository.UserRepository,
 	userID uuid.UUID,
-) error {
+) (string, error) {
 	token, err := uc.generateToken()
 	if err != nil {
-		return err
+		return "", err
 	}
 	_, err = userRepo.CreatePasswordResetToken(ctx, entity.PasswordResetToken{
 		ID:        uuid.New(),
@@ -279,5 +322,8 @@ func (uc *AuthUseCase) issuePasswordResetTokenTx(
 		Token:     token,
 		ExpiresAt: uc.now().Add(tokenTTL),
 	})
-	return err
+	if err != nil {
+		return "", err
+	}
+	return token, nil
 }

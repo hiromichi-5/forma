@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px">
+  <h2>フォームへの招待</h2>
+  <p>Forma のフォームに <strong>{{role}}</strong> として招待されました。</p>
+  <p>以下のボタンをクリックして、招待を承認してください。</p>
+  <p style="margin: 32px 0">
+    <a href="{{accept_url}}"
+       style="background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold">
+      招待を承認する
+    </a>
+  </p>
+  <p style="color: #6b7280; font-size: 14px">
+    ボタンが動作しない場合は、以下の URL をブラウザに貼り付けてください。
+  </p>
+  <p style="color: #6b7280; font-size: 14px; word-break: break-all">{{accept_url}}</p>
+  <p style="color: #6b7280; font-size: 14px">この招待は 7 日間有効です。</p>
+  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0">
+  <p style="color: #9ca3af; font-size: 12px">
+    このメールに心当たりがない場合は、無視してください。
+  </p>
+</body>
+</html>

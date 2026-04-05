@@ -33,7 +33,10 @@ func newTicketRepo() repository.TicketRepository { return postgres.NewTicketRepo
 func newInviteRepo() repository.InviteRepository { return postgres.NewInviteRepository(testPool) }
 
 func newAuthUseCase() *usecase.AuthUseCase {
-	return usecase.NewAuthUseCase(newUserRepo(), postgres.NewAuthUoW(testPool))
+	return usecase.NewAuthUseCase(
+		newUserRepo(), postgres.NewAuthUoW(testPool),
+		&mockEmailSender{}, "http://localhost:5173",
+	)
 }
 
 func newProfileUseCase() *usecase.ProfileUseCase {
@@ -55,6 +58,7 @@ func newInviteUseCase() *usecase.InviteUseCase {
 	return usecase.NewInviteUseCase(
 		newInviteRepo(), newMemberRepo(), newUserRepo(),
 		postgres.NewInviteUoW(testPool),
+		&mockEmailSender{}, "http://localhost:5173",
 	)
 }
 
@@ -76,6 +80,17 @@ func newSyncUseCase(fetcher repository.FormFetcher) *usecase.SyncUseCase {
 	return usecase.NewSyncUseCase(
 		newFormRepo(), newTicketRepo(), newStatusRepo(), newMemberRepo(), fetcher,
 	)
+}
+
+type mockEmailSender struct {
+	sendEmailFunc func(ctx context.Context, input repository.SendEmailInput) error
+}
+
+func (m *mockEmailSender) SendEmail(ctx context.Context, input repository.SendEmailInput) error {
+	if m.sendEmailFunc != nil {
+		return m.sendEmailFunc(ctx, input)
+	}
+	return nil
 }
 
 type mockFormFetcher struct {

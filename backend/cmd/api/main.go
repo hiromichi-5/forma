@@ -9,9 +9,11 @@ import (
 	"os"
 	"strings"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/gin-gonic/gin"
 	"github.com/hiromichi-5/forma/backend/internal/app"
 	"github.com/hiromichi-5/forma/backend/internal/infra/google"
+	"github.com/hiromichi-5/forma/backend/internal/infra/ses"
 	"github.com/hiromichi-5/forma/backend/internal/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/viper"
@@ -67,13 +69,45 @@ func run() error {
 		return fmt.Errorf("forms client: %w", err)
 	}
 
+	frontendBaseURL := viper.GetString("FRONTEND_BASE_URL")
+	if frontendBaseURL == "" {
+		frontendBaseURL = "http://localhost:5173"
+	}
+
+	sesFrom := viper.GetString("SES_FROM_ADDRESS")
+	if sesFrom == "" {
+		return fmt.Errorf("SES_FROM_ADDRESS required")
+	}
+	sesReplyTo := viper.GetString("SES_REPLY_TO_ADDRESS")
+
+	awsRegion := viper.GetString("AWS_REGION")
+	var awsOpts []func(*awsconfig.LoadOptions) error
+	if awsRegion != "" {
+		awsOpts = append(awsOpts, awsconfig.WithRegion(awsRegion))
+	}
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsOpts...)
+	if err != nil {
+		return fmt.Errorf("aws config: %w", err)
+	}
+
+	var replyTo []string
+	if sesReplyTo != "" {
+		replyTo = []string{sesReplyTo}
+	}
+	emailSender := ses.NewEmailSender(awsCfg, sesFrom, replyTo)
+
 	allowedOrigins := viper.GetString("ALLOWED_ORIGINS")
 	if allowedOrigins == "" {
 		allowedOrigins = "http://localhost:5173"
 	}
 
 	r := app.NewRouter(
-		app.Deps{Pool: pool, Fetcher: fetcher},
+		app.Deps{
+			Pool:            pool,
+			Fetcher:         fetcher,
+			EmailSender:     emailSender,
+			FrontendBaseURL: frontendBaseURL,
+		},
 		app.Option{
 			CookieSecure:   appEnv == "production",
 			AllowedOrigins: strings.Split(allowedOrigins, ","),
