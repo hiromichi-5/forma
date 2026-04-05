@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { UserPlus, X, Shield, User } from "lucide-react"
-import { apiClient } from "@/lib/api"
+import { Mail, X, Shield, User, Clock } from "lucide-react"
+import { apiClient, ApiError } from "@/lib/api"
+import type { FormInvite } from "@/types"
 
 type MemberView = {
   id: string
@@ -23,63 +24,89 @@ type MembersDialogProps = {
   onOpenChange: (open: boolean) => void
 }
 
+const ERROR_MESSAGES: Record<string, string> = {
+  ALREADY_MEMBER: "このメールアドレスは既にメンバーです",
+  ACTIVE_INVITE_ALREADY_EXISTS: "このメールアドレスには既に有効な招待があります",
+  FORBIDDEN: "この操作を行う権限がありません",
+}
+
 export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps) {
   const [members, setMembers] = useState<MemberView[]>([])
-  const [newMemberEmail, setNewMemberEmail] = useState("")
-  const [newMemberRole, setNewMemberRole] = useState<"admin" | "editor">("editor")
+  const [invites, setInvites] = useState<FormInvite[]>([])
+  const [inviteEmail, setInviteEmail] = useState("")
+  const [inviteRole, setInviteRole] = useState<"admin" | "editor">("editor")
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
 
   const toRoleValue = (value: string): "admin" | "editor" => (value === "admin" ? "admin" : "editor")
 
-  const loadMembers = async () => {
+  const loadData = async () => {
     setIsLoading(true)
     setErrorMessage("")
     try {
-      // 外部API(バックエンド)との同期のための処理
-      const response = await apiClient.getMembers(formId)
+      const [membersRes, invitesRes] = await Promise.all([
+        apiClient.getMembers(formId),
+        apiClient.listInvites(formId),
+      ])
       setMembers(
-        response.members.map((member) => ({
+        membersRes.members.map((member) => ({
           id: member.id,
           name: member.display_name,
           email: member.email,
           role: member.role,
         }))
       )
+      setInvites(invitesRes.invites)
     } catch (error) {
-      console.error("Failed to load members:", error)
-      setErrorMessage("メンバーの取得に失敗しました")
+      console.error("Failed to load data:", error)
+      setErrorMessage("データの取得に失敗しました")
     } finally {
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    // 外部API(バックエンド)との同期のための処理
-    void loadMembers()
+    void loadData()
   }, [formId])
 
-  const handleAddMember = async () => {
-    if (!newMemberEmail) return
+  const handleInvite = async () => {
+    if (!inviteEmail) return
+    setErrorMessage("")
 
     try {
-      await apiClient.addMember(formId, {
-        email: newMemberEmail,
-        role: newMemberRole,
+      await apiClient.createInvite(formId, {
+        email: inviteEmail,
+        role: inviteRole,
       })
-      setNewMemberEmail("")
-      setNewMemberRole("editor")
-      await loadMembers()
+      setInviteEmail("")
+      setInviteRole("editor")
+      await loadData()
     } catch (error) {
-      console.error("Failed to add member:", error)
-      setErrorMessage("メンバーの追加に失敗しました")
+      console.error("Failed to create invite:", error)
+      if (error instanceof ApiError) {
+        setErrorMessage(ERROR_MESSAGES[error.error.code] ?? "招待の送信に失敗しました")
+      } else {
+        setErrorMessage("招待の送信に失敗しました")
+      }
+    }
+  }
+
+  const handleRevokeInvite = async (inviteId: string) => {
+    setErrorMessage("")
+    try {
+      await apiClient.revokeInvite(formId, inviteId)
+      await loadData()
+    } catch (error) {
+      console.error("Failed to revoke invite:", error)
+      setErrorMessage("招待の取消に失敗しました")
     }
   }
 
   const handleRemoveMember = async (id: string) => {
+    setErrorMessage("")
     try {
       await apiClient.removeMember(formId, id)
-      await loadMembers()
+      await loadData()
     } catch (error) {
       console.error("Failed to remove member:", error)
       setErrorMessage("メンバーの削除に失敗しました")
@@ -87,13 +114,19 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
   }
 
   const handleRoleChange = async (id: string, role: "admin" | "editor") => {
+    setErrorMessage("")
     try {
       await apiClient.changeMemberRole(formId, id, { role })
-      await loadMembers()
+      await loadData()
     } catch (error) {
       console.error("Failed to change member role:", error)
       setErrorMessage("権限変更に失敗しました")
     }
+  }
+
+  const formatExpiresAt = (expiresAt: string) => {
+    const date = new Date(expiresAt)
+    return `${date.getMonth() + 1}/${date.getDate()} まで`
   }
 
   return (
@@ -105,8 +138,12 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
         </DialogHeader>
 
         <div className="space-y-6">
+          {errorMessage && (
+            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{errorMessage}</div>
+          )}
+
           <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-            <h3 className="text-sm font-semibold text-foreground">新しいメンバーを追加</h3>
+            <h3 className="text-sm font-semibold text-foreground">メンバーを招待</h3>
             <div className="flex gap-2">
               <div className="flex-1 space-y-2">
                 <Label htmlFor="email" className="text-xs">
@@ -116,13 +153,13 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
                   id="email"
                   type="email"
                   placeholder="example@company.com"
-                  value={newMemberEmail}
-                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
                 />
               </div>
               <div className="w-[140px] space-y-2">
                 <Label className="text-xs">権限</Label>
-                <Select value={newMemberRole} onValueChange={(v) => setNewMemberRole(toRoleValue(v))}>
+                <Select value={inviteRole} onValueChange={(v) => setInviteRole(toRoleValue(v))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -133,22 +170,53 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
                 </Select>
               </div>
               <div className="flex items-end">
-                <Button onClick={handleAddMember} className="gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  追加
+                <Button onClick={handleInvite} className="gap-2">
+                  <Mail className="h-4 w-4" />
+                  招待
                 </Button>
               </div>
             </div>
           </div>
 
+          {invites.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground">保留中の招待 ({invites.length})</h3>
+              <div className="space-y-2">
+                {invites.map((invite) => (
+                  <div key={invite.id} className="flex items-center justify-between p-3 bg-card border border-dashed rounded-lg">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm text-foreground">{invite.email}</p>
+                        <p className="text-xs text-muted-foreground">{formatExpiresAt(invite.expires_at)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">
+                        {invite.role === "admin" ? "管理者" : "編集者"}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRevokeInvite(invite.id)}
+                        className="h-8 w-8"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground">現在のメンバー ({members.length})</h3>
-            {errorMessage && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{errorMessage}</div>
-            )}
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {isLoading && (
-                <div className="p-3 text-sm text-muted-foreground">メンバーを読み込み中...</div>
+                <div className="p-3 text-sm text-muted-foreground">読み込み中...</div>
               )}
               {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between p-3 bg-card border rounded-lg">

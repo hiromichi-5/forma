@@ -15,8 +15,10 @@ import (
 )
 
 type Deps struct {
-	Pool    *pgxpool.Pool
-	Fetcher repository.FormFetcher
+	Pool            *pgxpool.Pool
+	Fetcher         repository.FormFetcher
+	EmailSender     repository.EmailSender
+	FrontendBaseURL string
 }
 
 type Option struct {
@@ -48,7 +50,12 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	ticketRepo := postgres.NewTicketRepository(deps.Pool)
 	inviteRepo := postgres.NewInviteRepository(deps.Pool)
 
-	authUC := usecase.NewAuthUseCase(userRepo, postgres.NewAuthUoW(deps.Pool))
+	authUC := usecase.NewAuthUseCase(
+		userRepo,
+		postgres.NewAuthUoW(deps.Pool),
+		deps.EmailSender,
+		deps.FrontendBaseURL,
+	)
 	profileUC := usecase.NewProfileUseCase(userRepo)
 	formUC := usecase.NewFormUseCase(
 		formRepo, memberRepo, statusRepo, deps.Fetcher,
@@ -58,6 +65,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	inviteUC := usecase.NewInviteUseCase(
 		inviteRepo, memberRepo, userRepo,
 		postgres.NewInviteUoW(deps.Pool),
+		deps.EmailSender, deps.FrontendBaseURL,
 	)
 	statusUC := usecase.NewStatusUseCase(
 		statusRepo, memberRepo, ticketRepo,

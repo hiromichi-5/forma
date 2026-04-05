@@ -6,7 +6,10 @@ import (
 	"testing"
 
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/infra/postgres"
+	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
+	"github.com/hiromichi-5/forma/backend/internal/usecase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,6 +69,44 @@ func TestInviteUseCase_CreateInvite(t *testing.T) {
 		var appErr *entity.Error
 		require.True(t, errors.As(err, &appErr))
 		assert.Equal(t, entity.CodeForbidden, appErr.Code)
+	})
+
+	t.Run("準正常系: メール送信失敗時に招待レコードが削除されること", func(t *testing.T) {
+		truncate(t)
+		ctx := context.Background()
+		adminID := testutil.CreateVerifiedUser(
+			t, ctx, testPool, "admin@example.com", "password123", "Admin",
+		)
+		formID, _ := testutil.CreateForm(t, ctx, testPool, "gform1", "Form", adminID)
+
+		emailErr := errors.New("ses error")
+		uc := usecase.NewInviteUseCase(
+			newInviteRepo(),
+			newMemberRepo(),
+			newUserRepo(),
+			postgres.NewInviteUoW(testPool),
+			&mockEmailSender{
+				sendEmailFunc: func(_ context.Context, _ repository.SendEmailInput) error {
+					return emailErr
+				},
+			},
+			"http://localhost:5173",
+		)
+
+		_, err := uc.CreateInvite(ctx, formID, adminID, "invitee@example.com", entity.RoleEditor)
+		require.ErrorIs(t, err, emailErr)
+
+		// 招待が残っていないことを確認（再招待が成功すること）
+		ucOK := newInviteUseCase()
+		invite, err := ucOK.CreateInvite(
+			ctx,
+			formID,
+			adminID,
+			"invitee@example.com",
+			entity.RoleEditor,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "invitee@example.com", invite.Email)
 	})
 
 	t.Run("準正常系: 既にメンバーのユーザーを招待すると ALREADY_MEMBER エラーになること", func(t *testing.T) {

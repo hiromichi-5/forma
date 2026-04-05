@@ -33,17 +33,17 @@ func TestAuthScenario(t *testing.T) {
 		userID = body["id"]
 	})
 
-	t.Run("signup: 重複したメールアドレスでの登録は409で失敗する", func(t *testing.T) {
+	t.Run("signup: 未認証ユーザーの再signupでトークンが再発行される", func(t *testing.T) {
 		resp := postJSON(t, http.DefaultClient, "/v1/auth/signup", map[string]string{
 			"email":        "test-user@example.com",
 			"password":     "password123",
 			"display_name": "Test User 2",
 		})
-		var body map[string]any
+		var body map[string]string
 		readJSON(t, resp, &body)
 
-		assert.Equal(t, http.StatusConflict, resp.StatusCode)
-		assert.Equal(t, "CONFLICT", body["code"])
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
+		assert.Equal(t, userID, body["id"])
 	})
 
 	t.Run("login: メール未認証のユーザは403でログインできない", func(t *testing.T) {
@@ -87,6 +87,19 @@ func TestAuthScenario(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.NotEmpty(t, body["session_id"])
+	})
+
+	t.Run("signup: 認証済みユーザーが再度signupすると409で失敗する", func(t *testing.T) {
+		resp := postJSON(t, http.DefaultClient, "/v1/auth/signup", map[string]string{
+			"email":        "test-user@example.com",
+			"password":     "password123",
+			"display_name": "Test User 2",
+		})
+		var body map[string]any
+		readJSON(t, resp, &body)
+
+		assert.Equal(t, http.StatusConflict, resp.StatusCode)
+		assert.Equal(t, "CONFLICT", body["code"])
 	})
 
 	t.Run("login: パスワードの誤りは401でログインできない", func(t *testing.T) {

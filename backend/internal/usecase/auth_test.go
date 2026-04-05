@@ -22,15 +22,39 @@ func TestAuthUseCase_Signup(t *testing.T) {
 		assert.NotEmpty(t, userID)
 	})
 
-	t.Run("準正常系: 重複メールアドレスで CONFLICT エラーになること", func(t *testing.T) {
+	t.Run("正常系: 未認証ユーザーが再度signupするとトークンが再発行されること", func(t *testing.T) {
 		truncate(t)
 		uc := newAuthUseCase()
 		ctx := context.Background()
 
-		_, err := uc.Signup(ctx, "dup@example.com", "password123", "User1")
+		userID, err := uc.Signup(ctx, "dup@example.com", "password123", "User1")
 		require.NoError(t, err)
 
-		_, err = uc.Signup(ctx, "dup@example.com", "password123", "User2")
+		before := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
+
+		userID2, err := uc.Signup(ctx, "dup@example.com", "password123", "User2")
+		require.NoError(t, err)
+		assert.Equal(t, userID, userID2)
+
+		after := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
+		assert.NotEqual(t, before, after)
+	})
+
+	t.Run("準正常系: 認証済みユーザーの重複メールアドレスで CONFLICT エラーになること", func(t *testing.T) {
+		truncate(t)
+		uc := newAuthUseCase()
+		ctx := context.Background()
+
+		testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"verified@example.com",
+			"password123",
+			"User1",
+		)
+
+		_, err := uc.Signup(ctx, "verified@example.com", "password123", "User2")
 		require.Error(t, err)
 		var appErr *entity.Error
 		require.True(t, errors.As(err, &appErr))

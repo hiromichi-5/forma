@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { ThemeProvider } from "./components/theme-provider";
 import FormsListPage from "./pages/FormsListPage";
@@ -23,13 +24,14 @@ type RequireAuthProps = {
 
 function RequireAuth({ children }: RequireAuthProps) {
   const { isLoading, shouldRedirect } = useRequireAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return <div className="p-6 text-sm text-muted-foreground">読み込み中...</div>;
   }
 
   if (shouldRedirect) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   return children;

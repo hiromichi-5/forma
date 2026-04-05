@@ -7,17 +7,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/logger"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
 const inviteTTL = 7 * 24 * time.Hour
 
 type InviteUseCase struct {
-	inviteRepo repository.InviteRepository
-	memberRepo repository.MemberRepository
-	userRepo   repository.UserRepository
-	uow        repository.UnitOfWork[repository.InviteRepos]
-	now        func() time.Time
+	inviteRepo      repository.InviteRepository
+	memberRepo      repository.MemberRepository
+	userRepo        repository.UserRepository
+	uow             repository.UnitOfWork[repository.InviteRepos]
+	emailSender     repository.EmailSender
+	frontendBaseURL string
+	now             func() time.Time
 }
 
 func NewInviteUseCase(
@@ -25,13 +28,17 @@ func NewInviteUseCase(
 	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
 	uow repository.UnitOfWork[repository.InviteRepos],
+	emailSender repository.EmailSender,
+	frontendBaseURL string,
 ) *InviteUseCase {
 	return &InviteUseCase{
-		inviteRepo: inviteRepo,
-		memberRepo: memberRepo,
-		userRepo:   userRepo,
-		uow:        uow,
-		now:        time.Now,
+		inviteRepo:      inviteRepo,
+		memberRepo:      memberRepo,
+		userRepo:        userRepo,
+		uow:             uow,
+		emailSender:     emailSender,
+		frontendBaseURL: frontendBaseURL,
+		now:             time.Now,
 	}
 }
 
@@ -66,6 +73,25 @@ func (uc *InviteUseCase) CreateInvite(
 		}
 		return entity.Invite{}, err
 	}
+
+	acceptURL := uc.frontendBaseURL + "/invites/" + invite.ID.String() + "/accept"
+	if err := uc.emailSender.SendEmail(ctx, repository.SendEmailInput{
+		To:           []string{invite.Email},
+		TemplateName: repository.TemplateInvite,
+		TemplateData: map[string]string{
+			"accept_url": acceptURL,
+			"role":       invite.Role,
+		},
+	}); err != nil {
+		_ = uc.inviteRepo.Delete(ctx, invite.ID)
+		return entity.Invite{}, err
+	}
+
+	logger.From(ctx).Info("invite created",
+		"invite_id", invite.ID.String(),
+		"form_id", formID.String(),
+	)
+
 	return invite, nil
 }
 
@@ -150,7 +176,16 @@ func (uc *InviteUseCase) AcceptInvite(ctx context.Context, inviteID, userID uuid
 			return err
 		}
 
-		return repos.Member.Upsert(ctx, userID, invite.FormID, invite.Role)
+		if err := repos.Member.Upsert(ctx, userID, invite.FormID, invite.Role); err != nil {
+			return err
+		}
+
+		logger.From(ctx).Info("invite accepted",
+			"invite_id", inviteID.String(),
+			"form_id", invite.FormID.String(),
+		)
+
+		return nil
 	})
 }
 
