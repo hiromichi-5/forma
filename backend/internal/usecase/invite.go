@@ -82,6 +82,7 @@ func (uc *InviteUseCase) CreateInvite(
 			"role":       invite.Role,
 		},
 	}); err != nil {
+		_ = uc.inviteRepo.Delete(ctx, invite.ID)
 		return entity.Invite{}, err
 	}
 
