@@ -23,6 +23,7 @@ type Deps struct {
 
 type Option struct {
 	CookieSecure   bool
+	CookieDomain   string
 	AllowedOrigins []string
 }
 
@@ -80,6 +81,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	cookieCfg := handler.CookieConfig{
 		Name:     "forma_token",
 		Path:     "/",
+		Domain:   opt.CookieDomain,
 		Secure:   opt.CookieSecure,
 		SameSite: http.SameSiteLaxMode,
 	}
