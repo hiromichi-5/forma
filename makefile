@@ -27,7 +27,7 @@ fmt:
 	golangci-lint fmt -c $(GOLANGCI_CONFIG)
 
 migrate:
-	goose -dir backend/migrations postgres "$$PG_DSN" up
+	MIGRATION_DIR=backend/migrations go run ./backend/cmd/migrate
 
 sqlc:
 	sqlc generate
