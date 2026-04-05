@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/logger"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
@@ -85,6 +86,11 @@ func (uc *InviteUseCase) CreateInvite(
 		_ = uc.inviteRepo.Delete(ctx, invite.ID)
 		return entity.Invite{}, err
 	}
+
+	logger.From(ctx).Info("invite created",
+		"invite_id", invite.ID.String(),
+		"form_id", formID.String(),
+	)
 
 	return invite, nil
 }
@@ -170,7 +176,16 @@ func (uc *InviteUseCase) AcceptInvite(ctx context.Context, inviteID, userID uuid
 			return err
 		}
 
-		return repos.Member.Upsert(ctx, userID, invite.FormID, invite.Role)
+		if err := repos.Member.Upsert(ctx, userID, invite.FormID, invite.Role); err != nil {
+			return err
+		}
+
+		logger.From(ctx).Info("invite accepted",
+			"invite_id", inviteID.String(),
+			"form_id", invite.FormID.String(),
+		)
+
+		return nil
 	})
 }
 

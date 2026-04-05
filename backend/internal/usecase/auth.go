@@ -189,7 +189,7 @@ func (uc *AuthUseCase) VerifyEmail(ctx context.Context, token string) error {
 		return err
 	}
 
-	return uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
+	if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
 		if err := repos.User.UseEmailVerificationToken(ctx, t.ID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return entity.NewError(entity.CodeTokenNotFound)
@@ -203,7 +203,13 @@ func (uc *AuthUseCase) VerifyEmail(ctx context.Context, token string) error {
 			return err
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	logger.From(ctx).Info("email verified", "user_id", t.UserID.String())
+
+	return nil
 }
 
 func (uc *AuthUseCase) ResendEmailVerification(ctx context.Context, email string) error {
@@ -234,7 +240,13 @@ func (uc *AuthUseCase) ResendEmailVerification(ctx context.Context, email string
 		return err
 	}
 
-	return uc.sendEmailVerification(ctx, email, tokenStr)
+	if err := uc.sendEmailVerification(ctx, email, tokenStr); err != nil {
+		return err
+	}
+
+	logger.From(ctx).Info("email verification resent", "user_id", user.ID.String())
+
+	return nil
 }
 
 func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) error {
@@ -262,11 +274,17 @@ func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) e
 	}
 
 	resetURL := uc.frontendBaseURL + "/password-reset/confirm?token=" + tokenStr
-	return uc.emailSender.SendEmail(ctx, repository.SendEmailInput{
+	if err := uc.emailSender.SendEmail(ctx, repository.SendEmailInput{
 		To:           []string{email},
 		TemplateName: repository.TemplatePasswordReset,
 		TemplateData: map[string]string{"reset_url": resetURL},
-	})
+	}); err != nil {
+		return err
+	}
+
+	logger.From(ctx).Info("password reset requested", "user_id", user.ID.String())
+
+	return nil
 }
 
 func (uc *AuthUseCase) ConfirmPasswordReset(ctx context.Context, token, newPassword string) error {
@@ -290,7 +308,7 @@ func (uc *AuthUseCase) ConfirmPasswordReset(ctx context.Context, token, newPassw
 		return err
 	}
 
-	return uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
+	if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
 		if err := repos.User.UsePasswordResetToken(ctx, t.ID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return entity.NewError(entity.CodeTokenNotFound)
@@ -304,7 +322,13 @@ func (uc *AuthUseCase) ConfirmPasswordReset(ctx context.Context, token, newPassw
 			return err
 		}
 		return repos.User.DeletePasswordResetTokensByUser(ctx, t.UserID)
-	})
+	}); err != nil {
+		return err
+	}
+
+	logger.From(ctx).Info("password reset completed", "user_id", t.UserID.String())
+
+	return nil
 }
 
 func (uc *AuthUseCase) sendEmailVerification(ctx context.Context, email, token string) error {
