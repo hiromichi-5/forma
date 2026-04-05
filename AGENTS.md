@@ -22,6 +22,7 @@ docs
 │   ├── 001-clean-architecture.md
 │   ├── 002-transaction-management.md
 │   ├── 003-error-code-design.md
+│   ├── 004-invite-email-failure-handling.md
 │   └── TEMPLATE.md
 ├── api 
 │   ├── auth.md
@@ -44,6 +45,7 @@ docs
 │   └── TEMPLATE.md
 ├── guides
 │   ├── commands.md
+│   ├── deploy.md
 │   ├── getting-started.md
 │   └── TEMPLATE.md
 └── rules 

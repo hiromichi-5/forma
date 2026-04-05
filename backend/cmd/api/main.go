@@ -16,6 +16,7 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/infra/ses"
 	"github.com/hiromichi-5/forma/backend/internal/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -28,17 +29,20 @@ func main() {
 }
 
 func run() error {
-	viper.AutomaticEnv()
-	appEnv := viper.GetString("APP_ENV")
+	appEnv := os.Getenv("APP_ENV")
 	if appEnv == "" {
 		appEnv = "local"
 	}
+	if appEnv != "production" {
+		_ = godotenv.Load(".env.local")
+	}
+	viper.AutomaticEnv()
 	logLevel := viper.GetString("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = "INFO"
 	}
 	logger.Setup(appEnv, logLevel)
-	slog.Info("application startup initiated", "env", appEnv, "log_level", logLevel)
+	slog.Info("application startup initiated", "env", appEnv, "log_level", logLevel) //nolint:gosec
 
 	addr := viper.GetString("HTTP_ADDR")
 	if addr == "" {
@@ -101,6 +105,8 @@ func run() error {
 		allowedOrigins = "http://localhost:5173"
 	}
 
+	cookieDomain := viper.GetString("COOKIE_DOMAIN")
+
 	r := app.NewRouter(
 		app.Deps{
 			Pool:            pool,
@@ -110,6 +116,7 @@ func run() error {
 		},
 		app.Option{
 			CookieSecure:   appEnv == "production",
+			CookieDomain:   cookieDomain,
 			AllowedOrigins: strings.Split(allowedOrigins, ","),
 		},
 	)
