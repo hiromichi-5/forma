@@ -128,14 +128,15 @@ func run() error {
 	swaggerUser := viper.GetString("SWAGGER_USER")
 	swaggerPassword := viper.GetString("SWAGGER_PASSWORD")
 	if appEnv != "production" || (swaggerUser != "" && swaggerPassword != "") {
-		docs := r.Group("/")
-		if swaggerUser != "" && swaggerPassword != "" {
-			docs.Use(gin.BasicAuth(gin.Accounts{swaggerUser: swaggerPassword}))
+		swaggerAuth := func(c *gin.Context) {
+			if swaggerUser != "" && swaggerPassword != "" {
+				gin.BasicAuth(gin.Accounts{swaggerUser: swaggerPassword})(c)
+			}
 		}
-		docs.GET("/openapi.yaml", func(c *gin.Context) {
+		r.GET("/openapi.yaml", swaggerAuth, func(c *gin.Context) {
 			c.File("openapi/openapi.yaml")
 		})
-		docs.GET("/swagger/*any", ginSwagger.WrapHandler(
+		r.GET("/swagger/*any", swaggerAuth, ginSwagger.WrapHandler(
 			swaggerFiles.Handler,
 			ginSwagger.URL("/openapi.yaml"),
 			ginSwagger.DocExpansion("list"),
