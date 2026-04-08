@@ -12,3 +12,4 @@ backend/linters-report.json
 docs/archive/*
 .sample-claude/*
 .claude/settings.local.json
+.claude/settings.json

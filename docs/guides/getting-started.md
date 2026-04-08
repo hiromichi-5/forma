@@ -61,7 +61,7 @@ make dev
 別ターミナルで以下を実行します。
 
 ```bash
-curl http://localhost:8080/healthz
+curl http://localhost:8080/health
 ```
 
 `ok`が返れば成功です。

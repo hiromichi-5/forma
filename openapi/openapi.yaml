@@ -370,7 +370,7 @@ security:
   - cookieAuth: []
 
 paths:
-  /healthz:
+  /health:
     get:
       summary: ヘルスチェック
       security: []
