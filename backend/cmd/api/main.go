@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -11,6 +12,7 @@ import (
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/gin-gonic/gin"
+	openapispec "github.com/hiromichi-5/forma/backend/internal/api"
 	"github.com/hiromichi-5/forma/backend/internal/app"
 	"github.com/hiromichi-5/forma/backend/internal/infra/google"
 	"github.com/hiromichi-5/forma/backend/internal/infra/ses"
@@ -134,7 +136,21 @@ func run() error {
 			}
 		}
 		r.GET("/openapi.yaml", swaggerAuth, func(c *gin.Context) {
-			c.File("openapi/openapi.yaml")
+			swagger, err := openapispec.GetSwagger()
+			if err != nil {
+				slog.Error("failed to load embedded openapi spec", "error", err)
+				c.Status(http.StatusInternalServerError)
+				return
+			}
+
+			data, err := json.Marshal(swagger)
+			if err != nil {
+				slog.Error("failed to marshal embedded openapi spec", "error", err)
+				c.Status(http.StatusInternalServerError)
+				return
+			}
+
+			c.Data(http.StatusOK, "application/json; charset=utf-8", data)
 		})
 		r.GET("/swagger/*any", swaggerAuth, ginSwagger.WrapHandler(
 			swaggerFiles.Handler,
