@@ -130,7 +130,7 @@ func run() error {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(
 			swaggerFiles.Handler,
 			ginSwagger.URL("/openapi.yaml"),
-			ginSwagger.DocExpansion("none"),
+			ginSwagger.DocExpansion("list"),
 		))
 	}
 
