@@ -25,7 +25,7 @@ func RequestLogger() gin.HandlerFunc {
 
 		c.Next()
 
-		if c.Request.URL.Path == "/healthz" {
+		if c.Request.URL.Path == "/health" {
 			return
 		}
 

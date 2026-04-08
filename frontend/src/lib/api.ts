@@ -368,8 +368,8 @@ class ApiClient {
 
   // Health
 
-  async healthz(): Promise<string> {
-    return this.request<string>("/healthz");
+  async health(): Promise<string> {
+    return this.request<string>("/health");
   }
 }
 
