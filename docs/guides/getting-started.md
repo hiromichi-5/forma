@@ -65,3 +65,5 @@ curl http://localhost:8080/healthz
 ```
 
 `ok`が返れば成功です。
+
+<http://localhost:8080/swagger/index.html> でSwagger UIも確認できます。
