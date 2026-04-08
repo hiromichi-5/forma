@@ -125,9 +125,15 @@ func run() error {
 		c.String(http.StatusOK, "ok")
 	})
 
-	if appEnv != "production" {
-		r.StaticFile("/openapi.yaml", "openapi/openapi.yaml")
-		r.GET("/swagger/*any", ginSwagger.WrapHandler(
+	swaggerUser := viper.GetString("SWAGGER_USER")
+	swaggerPassword := viper.GetString("SWAGGER_PASSWORD")
+	if appEnv != "production" || (swaggerUser != "" && swaggerPassword != "") {
+		docs := r.Group("/")
+		if swaggerUser != "" && swaggerPassword != "" {
+			docs.Use(gin.BasicAuth(gin.Accounts{swaggerUser: swaggerPassword}))
+		}
+		docs.StaticFile("/openapi.yaml", "openapi/openapi.yaml")
+		docs.GET("/swagger/*any", ginSwagger.WrapHandler(
 			swaggerFiles.Handler,
 			ginSwagger.URL("/openapi.yaml"),
 			ginSwagger.DocExpansion("list"),

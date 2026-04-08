@@ -5,6 +5,7 @@ info:
   version: 0.1.0
 servers:
   - url: http://localhost:8080
+  - url: https://api.forma.hiromichi.dev
 
 components:
   securitySchemes:
