@@ -132,7 +132,9 @@ func run() error {
 		if swaggerUser != "" && swaggerPassword != "" {
 			docs.Use(gin.BasicAuth(gin.Accounts{swaggerUser: swaggerPassword}))
 		}
-		docs.StaticFile("/openapi.yaml", "openapi/openapi.yaml")
+		docs.GET("/openapi.yaml", func(c *gin.Context) {
+			c.File("openapi/openapi.yaml")
+		})
 		docs.GET("/swagger/*any", ginSwagger.WrapHandler(
 			swaggerFiles.Handler,
 			ginSwagger.URL("/openapi.yaml"),
