@@ -79,7 +79,7 @@ OTel Semantic Conventionsに準拠しつつ、slogの標準キー（`time`, `lev
 
 ### JSON形式での出力例
 
-```json
+```jsonc
 // 起動時
 {"time":"2026-04-02T13:43:25.208263+09:00","level":"INFO","msg":"application startup initiated","service.name":"forma-api","deployment.environment":"production","env":"production","log_level":"DEBUG"}
 {"time":"2026-04-02T13:43:25.210354+09:00","level":"INFO","msg":"database connection established","service.name":"forma-api","deployment.environment":"production"}

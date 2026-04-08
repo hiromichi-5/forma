@@ -39,9 +39,9 @@ Go Generics を用いた `UnitOfWork[T]` interface により、各 UseCase は�
 
 ### 受け入れるトレードオフ (Accepted Trade-offs)
 
-- **デュアルアクセスパス:** tx 不要な操作では `uc.formRepo`（DI 注入）、tx 必要な操作では `repos.Form`（UnitOfWork から取得）の2ルートが存在する
+- **アクセスパスが複数存在してしまう:** tx 不要な操作では `uc.formRepo`（DI 注入）、tx 必要な操作では `repos.Form`（UnitOfWork から取得）の2ルートが存在する
 - **ユースケースごとの Repos struct:** UseCase ごとに Repos struct を定義するため、struct の数が UseCase 数に比例して増える
-- **同一 UseCase 内の余剰フィールド:** per-usecase 粒度のため、一部のメソッドでは不要なリポジトリフィールドが Repos に含まれる場合がある
+- **同一 UseCase 内の余剰フィールド:** ユースケースごと粒度のため、一部のメソッドでは不要なリポジトリフィールドが Repos に含まれる場合がある
 
 ## 検討した別の選択肢 (Alternatives Considered)
 
@@ -57,7 +57,7 @@ Go Generics を用いた `UnitOfWork[T]` interface により、各 UseCase は�
 - メリット: usecase 層で完結するため、トランザクション管理が明示的になる。複数 repository を跨いだトランザクション管理が容易。
 - デメリット: usecaseにdbの実装詳細が入り込む。
 
-**不採用理由:* usecase 層で DB の実装詳細に依存するのは現在のアーキテクチャの方針に反するため、採用しない。
+**不採用理由:** usecase 層で DB の実装詳細に依存するのは現在のアーキテクチャの方針に反するため、採用しない。
 
 ### Context 埋め込み方式
 
