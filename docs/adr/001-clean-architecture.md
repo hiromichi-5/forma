@@ -3,7 +3,7 @@
 ## 背景・課題 (Background/Problem)
 
 - `Service` 構造体が forms, tickets, members, invites, statuses, sync のすべてを抱える God Object になっていた
-- ハンドラーの依存パターンが不統一（interface 経由と concrete 型直接参照が混在）
+- ハンドラーの依存パターンが不統一（interface 経由と直接参照が混在）
 - `pgtype.UUID`, `pgtype.Text` などの DB 型がサービス層のビジネスロジックに侵食していた
 - 各ハンドラーでドメインエラー → HTTP ステータスの switch 文が重複していた
 - ハンドラーにビジネスロジックが漏れていた（URL パース等）

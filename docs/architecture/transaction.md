@@ -103,22 +103,6 @@ err := uc.uow.Do(ctx, func(repos repository.FormRepos) error {
 form, err := uc.formRepo.GetByID(ctx, formID)
 ```
 
-## TX が必要な操作一覧
-
-| UseCase | 操作 | TX 内で行うこと |
-| --- | --- | --- |
-| **AuthUseCase.Signup** | ユーザー登録 | ユーザー作成 + メール検証トークン作成 |
-| **AuthUseCase.VerifyEmail** | メール認証 | トークン使用済みにする + ユーザーの認証日時を設定 |
-| **AuthUseCase.ResendEmailVerification** | メール再送 | 既存トークン削除 + 新規トークン作成 |
-| **AuthUseCase.RequestPasswordReset** | パスワードリセット要求 | 既存トークン削除 + 新規トークン作成 |
-| **AuthUseCase.ConfirmPasswordReset** | パスワードリセット確認 | トークン使用済みにする + パスワード更新 + トークン削除 |
-| **FormUseCase.RegisterForm** | フォーム登録 | フォーム作成 + Admin メンバー作成 + デフォルトステータス3件作成 |
-| **InviteUseCase.DeleteInvite** | 招待削除 | 招待を SELECT FOR UPDATE → フォーム所属確認 → 削除 |
-| **InviteUseCase.AcceptInvite** | 招待承諾 | 招待を SELECT FOR UPDATE → 有効性検証 → Accept + メンバー追加 |
-| **StatusUseCase.CreateStatus** | ステータス作成（isDefault=true の場合） | ステータス作成 + デフォルト設定 |
-| **StatusUseCase.UpdateStatus** | ステータス更新（isDefault=true の場合） | ステータス更新 + 現在のデフォルトを解除 + 新しいデフォルトを設定 |
-| **TicketUseCase.UpdateTicket** | チケット更新 | 最新状態を再取得 → ステータス/担当者/優先度更新 + 変更履歴記録 |
-
 ## 新しい TX 対象操作の追加手順
 
 ### 既存の UnitOfWork を使う場合
