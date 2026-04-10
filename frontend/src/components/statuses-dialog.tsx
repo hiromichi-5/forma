@@ -93,11 +93,13 @@ export function StatusesDialog({
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isDeleteDialogOpen) {
+      return
+    }
     if (!nextOpen) {
       cancelEdit()
       resetNewFields()
       setDeleteTarget(null)
-      setIsDeleteDialogOpen(false)
       setDeleteError("")
       setErrorMessage("")
     }
@@ -166,8 +168,8 @@ export function StatusesDialog({
       setDeleteTarget(null)
     } catch (error) {
       console.error("Failed to delete status:", error)
-      if (error instanceof ApiError && error.status === 409) {
-        setDeleteError("このステータスは使用中のため削除できません")
+      if (error instanceof ApiError) {
+        setDeleteError(error.message)
       } else {
         setDeleteError("ステータスの削除に失敗しました")
       }
