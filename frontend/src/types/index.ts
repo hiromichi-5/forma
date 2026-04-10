@@ -1,5 +1,34 @@
 export type Role = "admin" | "editor";
 
+export type ErrorCode =
+  | "INVALID_CREDENTIALS"
+  | "INVALID_SESSION"
+  | "EMAIL_NOT_VERIFIED"
+  | "FORBIDDEN"
+  | "RESOURCE_HIDDEN"
+  | "USER_NOT_FOUND"
+  | "FORM_NOT_FOUND"
+  | "FORM_NOT_SHARED"
+  | "TOKEN_NOT_FOUND"
+  | "INVITE_NOT_FOUND"
+  | "INVITE_EXPIRED"
+  | "ALREADY_MEMBER"
+  | "INCORRECT_PASSWORD"
+  | "LAST_ADMIN"
+  | "CONFLICT"
+  | "FORM_ALREADY_REGISTERED"
+  | "ACTIVE_INVITE_ALREADY_EXISTS"
+  | "STATUS_CONFLICT"
+  | "VALIDATION_ERROR"
+  | "NETWORK_ERROR"
+  | "INTERNAL";
+
+export type FieldErrorCode =
+  | "REQUIRED"
+  | "TOO_SHORT"
+  | "INVALID_FORMAT"
+  | "INVALID_VALUE";
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -214,11 +243,11 @@ export interface ListTicketHistoriesResponse {
 
 export interface ErrorField {
   field: string;
-  code: string;
+  code: FieldErrorCode;
 }
 
 export interface ErrorResponse {
-  code: string;
+  code: ErrorCode;
   message?: string;
   fields?: ErrorField[];
 }

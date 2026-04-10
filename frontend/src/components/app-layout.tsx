@@ -23,6 +23,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { apiClient } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { FormSummary } from "@/types";
 import { toast } from "sonner";
 import { MembersDialog } from "./members-dialog";
@@ -173,7 +174,22 @@ export function AppLayout({ children }: AppLayoutProps) {
                                 await apiClient.syncForm(form.id);
                                 toast.success("フォームを同期しました");
                               } catch (error) {
-                                toast.error("同期に失敗しました");
+                                toast.error(
+                                  getApiErrorMessage(
+                                    error,
+                                    {
+                                      RESOURCE_HIDDEN:
+                                        "フォームが見つからないか、アクセス権がありません",
+                                      FORM_NOT_FOUND: "フォームが見つかりません",
+                                      FORM_NOT_SHARED:
+                                        "フォームがサービスアカウントに共有されていません",
+                                      INVALID_SESSION:
+                                        "セッションの有効期限が切れました。ログインし直してください",
+                                      NETWORK_ERROR: "ネットワークエラーが発生しました",
+                                    },
+                                    "同期に失敗しました"
+                                  )
+                                );
                                 console.error("Failed to sync form:", error);
                               }
                             }}

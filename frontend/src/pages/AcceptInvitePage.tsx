@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { ApiError, apiClient } from "../lib/api";
+import { apiClient } from "../lib/api";
+import { getApiErrorMessage } from "../lib/api-error";
 import { useRequireAuth } from "../hooks/useAuth";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 
@@ -32,26 +33,21 @@ export default function AcceptInvitePage() {
           return;
         }
         setStatus("error");
-        if (err instanceof ApiError) {
-          switch (err.error.code) {
-            case "INVITE_NOT_FOUND":
-              setErrorMessage("この招待は存在しないか、既に使用されています");
-              break;
-            case "INVITE_EXPIRED":
-              setErrorMessage("この招待は期限切れです");
-              break;
-            case "RESOURCE_HIDDEN":
-              setErrorMessage("この招待はあなたのメールアドレス宛ではありません");
-              break;
-            case "ALREADY_MEMBER":
-              setErrorMessage("既にこのフォームのメンバーです");
-              break;
-            default:
-              setErrorMessage("招待の受諾に失敗しました");
-          }
-        } else {
-          setErrorMessage("予期しないエラーが発生しました");
-        }
+        setErrorMessage(
+          getApiErrorMessage(
+            err,
+            {
+              INVITE_NOT_FOUND: "この招待は存在しないか、既に使用されています",
+              INVITE_EXPIRED: "この招待は期限切れです",
+              RESOURCE_HIDDEN: "この招待はあなたのメールアドレス宛ではありません",
+              USER_NOT_FOUND: "アカウントが見つかりません。ログインし直してください",
+              ALREADY_MEMBER: "既にこのフォームのメンバーです",
+              INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
+              NETWORK_ERROR: "ネットワークエラーが発生しました",
+            },
+            "招待の受諾に失敗しました"
+          )
+        );
       }
     };
 

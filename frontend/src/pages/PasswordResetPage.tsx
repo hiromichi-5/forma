@@ -4,7 +4,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { ApiError, apiClient } from "../lib/api";
+import { apiClient } from "../lib/api";
+import { getApiErrorMessage } from "../lib/api-error";
 import { Loader2, MailCheck } from "lucide-react";
 
 export default function PasswordResetPage() {
@@ -22,11 +23,16 @@ export default function PasswordResetPage() {
       await apiClient.passwordReset({ email });
       setIsSent(true);
     } catch (err) {
-      if (err instanceof ApiError && err.isValidationError) {
-        setError("有効なメールアドレスを入力してください");
-      } else {
-        setError("予期しないエラーが発生しました");
-      }
+      setError(
+        getApiErrorMessage(
+          err,
+          {
+            VALIDATION_ERROR: "有効なメールアドレスを入力してください",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "リセットメールの送信に失敗しました"
+        )
+      );
     } finally {
       setIsLoading(false);
     }

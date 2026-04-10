@@ -23,9 +23,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { apiClient } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "sonner";
 import type { UserProfile } from "@/types";
 import { Loader2 } from "lucide-react";
+
+const sessionExpiredMessage =
+  "セッションの有効期限が切れました。ログインし直してください";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -50,7 +54,17 @@ export default function SettingsPage() {
         setDisplayName(data.display_name);
       } catch (error) {
         console.error("Failed to load profile:", error);
-        toast.error("プロフィールの読み込みに失敗しました");
+        toast.error(
+          getApiErrorMessage(
+            error,
+            {
+              INVALID_SESSION: sessionExpiredMessage,
+              USER_NOT_FOUND: "アカウントが見つかりません",
+              NETWORK_ERROR: "ネットワークエラーが発生しました",
+            },
+            "プロフィールの読み込みに失敗しました"
+          )
+        );
       } finally {
         setIsLoading(false);
       }
@@ -73,7 +87,18 @@ export default function SettingsPage() {
       toast.success("プロフィールを更新しました");
     } catch (error) {
       console.error("Failed to update profile:", error);
-      toast.error("プロフィールの更新に失敗しました");
+      toast.error(
+        getApiErrorMessage(
+          error,
+          {
+            INVALID_SESSION: sessionExpiredMessage,
+            VALIDATION_ERROR: "表示名を入力してください",
+            USER_NOT_FOUND: "アカウントが見つかりません",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "プロフィールの更新に失敗しました"
+        )
+      );
     } finally {
       setIsSavingProfile(false);
     }
@@ -107,7 +132,19 @@ export default function SettingsPage() {
       toast.success("パスワードを変更しました");
     } catch (error) {
       console.error("Failed to change password:", error);
-      toast.error("パスワードの変更に失敗しました");
+      toast.error(
+        getApiErrorMessage(
+          error,
+          {
+            INVALID_SESSION: sessionExpiredMessage,
+            VALIDATION_ERROR: "入力内容を確認してください",
+            INCORRECT_PASSWORD: "現在のパスワードが正しくありません",
+            USER_NOT_FOUND: "アカウントが見つかりません",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "パスワードの変更に失敗しました"
+        )
+      );
     } finally {
       setIsChangingPassword(false);
     }
@@ -121,7 +158,17 @@ export default function SettingsPage() {
       navigate("/login");
     } catch (error) {
       console.error("Failed to delete account:", error);
-      toast.error("アカウントの削除に失敗しました");
+      toast.error(
+        getApiErrorMessage(
+          error,
+          {
+            INVALID_SESSION: sessionExpiredMessage,
+            USER_NOT_FOUND: "アカウントが見つかりません",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "アカウントの削除に失敗しました"
+        )
+      );
     } finally {
       setIsDeletingAccount(false);
     }

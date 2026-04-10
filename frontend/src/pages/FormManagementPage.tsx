@@ -9,8 +9,10 @@ import { MembersDialog } from "@/components/members-dialog"
 import { StatusesDialog } from "@/components/statuses-dialog"
 import { useFormResponses } from "@/hooks/use-form-responses"
 import { apiClient } from "@/lib/api"
+import { getApiErrorMessage } from "@/lib/api-error"
 import type { FormResponse } from "@/types/form-response"
 import type { Member, FormStatus, Form, FormQuestion } from "@/types"
+import { toast } from "sonner"
 
 export default function FormManagementPage() {
   const params = useParams()
@@ -70,6 +72,19 @@ export default function FormManagementPage() {
       setForm((prev) => (prev ? { ...prev, title_question_id: questionId } : null))
     } catch (error) {
       console.error("Failed to update title question:", error)
+      toast.error(
+        getApiErrorMessage(
+          error,
+          {
+            VALIDATION_ERROR: "タイトルに設定する質問を確認してください",
+            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+            FORM_NOT_FOUND: "フォームが見つかりません",
+            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "タイトル質問の更新に失敗しました"
+        )
+      )
     }
   }
 

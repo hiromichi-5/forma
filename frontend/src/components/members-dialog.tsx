@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Mail, X, Shield, User, Clock } from "lucide-react"
-import { apiClient, ApiError } from "@/lib/api"
+import { apiClient } from "@/lib/api"
+import { getApiErrorMessage } from "@/lib/api-error"
 import type { FormInvite } from "@/types"
 
 type MemberView = {
@@ -24,11 +25,14 @@ type MembersDialogProps = {
   onOpenChange: (open: boolean) => void
 }
 
-const ERROR_MESSAGES: Record<string, string> = {
+const inviteErrorMessages = {
   ALREADY_MEMBER: "このメールアドレスは既にメンバーです",
   ACTIVE_INVITE_ALREADY_EXISTS: "このメールアドレスには既に有効な招待があります",
   FORBIDDEN: "この操作を行う権限がありません",
-}
+  RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+  INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
+  NETWORK_ERROR: "ネットワークエラーが発生しました",
+} as const
 
 export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps) {
   const [members, setMembers] = useState<MemberView[]>([])
@@ -40,7 +44,7 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
 
   const toRoleValue = (value: string): "admin" | "editor" => (value === "admin" ? "admin" : "editor")
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage("")
     try {
@@ -59,15 +63,26 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
       setInvites(invitesRes.invites)
     } catch (error) {
       console.error("Failed to load data:", error)
-      setErrorMessage("データの取得に失敗しました")
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          {
+            FORBIDDEN: "この操作を行う権限がありません",
+            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "データの取得に失敗しました"
+        )
+      )
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [formId])
 
   useEffect(() => {
     void loadData()
-  }, [formId])
+  }, [loadData])
 
   const handleInvite = async () => {
     if (!inviteEmail) return
@@ -83,11 +98,16 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
       await loadData()
     } catch (error) {
       console.error("Failed to create invite:", error)
-      if (error instanceof ApiError) {
-        setErrorMessage(ERROR_MESSAGES[error.error.code] ?? "招待の送信に失敗しました")
-      } else {
-        setErrorMessage("招待の送信に失敗しました")
-      }
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          {
+            ...inviteErrorMessages,
+            VALIDATION_ERROR: "招待する権限またはメールアドレスを確認してください",
+          },
+          "招待の送信に失敗しました"
+        )
+      )
     }
   }
 
@@ -98,7 +118,19 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
       await loadData()
     } catch (error) {
       console.error("Failed to revoke invite:", error)
-      setErrorMessage("招待の取消に失敗しました")
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          {
+            FORBIDDEN: "この操作を行う権限がありません",
+            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+            INVITE_NOT_FOUND: "招待は既に存在しないか、別フォームのものです",
+            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "招待の取消に失敗しました"
+        )
+      )
     }
   }
 
@@ -109,7 +141,19 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
       await loadData()
     } catch (error) {
       console.error("Failed to remove member:", error)
-      setErrorMessage("メンバーの削除に失敗しました")
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          {
+            FORBIDDEN: "この操作を行う権限がありません",
+            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+            LAST_ADMIN: "最後の管理者は削除できません",
+            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "メンバーの削除に失敗しました"
+        )
+      )
     }
   }
 
@@ -120,7 +164,20 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
       await loadData()
     } catch (error) {
       console.error("Failed to change member role:", error)
-      setErrorMessage("権限変更に失敗しました")
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          {
+            FORBIDDEN: "この操作を行う権限がありません",
+            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+            LAST_ADMIN: "最後の管理者を編集者に変更することはできません",
+            VALIDATION_ERROR: "変更する権限を確認してください",
+            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "権限変更に失敗しました"
+        )
+      )
     }
   }
 
