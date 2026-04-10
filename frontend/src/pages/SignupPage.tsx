@@ -5,7 +5,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { ApiError } from "../lib/api";
+import { getApiErrorMessage } from "../lib/api-error";
 import { Loader2, MailCheck } from "lucide-react";
 
 export default function SignupPage() {
@@ -31,17 +31,17 @@ export default function SignupPage() {
       await signup({ email, password, display_name: displayName });
       setIsSignupComplete(true);
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.error.code === "CONFLICT") {
-          setError("このメールアドレスは既に登録されています");
-        } else if (err.isValidationError) {
-          setError("入力内容を確認してください（パスワードは8文字以上）");
-        } else {
-          setError("サインアップに失敗しました");
-        }
-      } else {
-        setError("予期しないエラーが発生しました");
-      }
+      setError(
+        getApiErrorMessage(
+          err,
+          {
+            CONFLICT: "このメールアドレスは既に登録されています",
+            VALIDATION_ERROR: "入力内容を確認してください（パスワードは8文字以上）",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "サインアップに失敗しました"
+        )
+      );
     } finally {
       setIsLoading(false);
     }

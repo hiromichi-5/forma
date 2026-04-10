@@ -32,11 +32,12 @@ func toUserProfileResp(u entity.User) userProfileResp {
 }
 
 type formResp struct {
-	ID          string  `json:"id"`
-	FormID      string  `json:"form_id"`
-	Title       string  `json:"title"`
-	Description *string `json:"description"`
-	CreatedAt   string  `json:"created_at"`
+	ID              string  `json:"id"`
+	FormID          string  `json:"form_id"`
+	Title           string  `json:"title"`
+	Description     *string `json:"description"`
+	TitleQuestionID *string `json:"title_question_id"`
+	CreatedAt       string  `json:"created_at"`
 }
 
 type formSummaryResp struct {
@@ -47,11 +48,12 @@ type formSummaryResp struct {
 
 func toFormResp(f entity.Form) formResp {
 	return formResp{
-		ID:          f.ID.String(),
-		FormID:      f.FormID,
-		Title:       f.Title,
-		Description: f.Description,
-		CreatedAt:   f.CreatedAt.UTC().Format(time.RFC3339),
+		ID:              f.ID.String(),
+		FormID:          f.FormID,
+		Title:           f.Title,
+		Description:     f.Description,
+		TitleQuestionID: f.TitleQuestionID,
+		CreatedAt:       f.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

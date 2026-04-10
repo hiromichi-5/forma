@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { apiClient } from "@/lib/api";
-import { ApiError } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type RegisterFormDialogProps = {
   onRegistered: () => Promise<void>;
@@ -42,11 +42,21 @@ export function RegisterFormDialog({ onRegistered }: RegisterFormDialogProps) {
       await onRegistered();
       handleClose();
     } catch (error) {
-      if (error instanceof ApiError && error.isValidationError) {
-        setErrorMessage("フォームURLを確認してください");
-      } else {
-        setErrorMessage("フォーム連携に失敗しました");
-      }
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          {
+            VALIDATION_ERROR: "Googleフォームの編集画面 URL またはフォーム ID を入力してください",
+            FORM_NOT_FOUND: "指定されたフォームが見つかりません",
+            FORM_NOT_SHARED:
+              "フォームがサービスアカウントに共有されていません。共有設定を確認してください",
+            FORM_ALREADY_REGISTERED: "このフォームは既に登録されています",
+            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "フォーム連携に失敗しました"
+        )
+      );
     } finally {
       setIsLoading(false);
     }

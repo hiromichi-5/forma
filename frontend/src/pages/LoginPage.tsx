@@ -5,7 +5,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { ApiError, apiClient } from "../lib/api";
+import { apiClient } from "../lib/api";
+import { getApiErrorMessage, hasApiErrorCode } from "../lib/api-error";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -32,19 +33,21 @@ export default function LoginPage() {
     try {
       await login({ email, password });
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.error.code === "EMAIL_NOT_VERIFIED") {
-          setError("メールアドレスが未認証です。確認メールをご確認ください。");
-          setShowResendVerification(true);
-        } else if (err.isUnauthorized) {
-          setError("メールアドレスまたはパスワードが間違っています");
-        } else if (err.isValidationError) {
-          setError("入力内容を確認してください");
-        } else {
-          setError("ログインに失敗しました");
-        }
+      if (hasApiErrorCode(err, "EMAIL_NOT_VERIFIED")) {
+        setError("メールアドレスが未認証です。確認メールをご確認ください。");
+        setShowResendVerification(true);
       } else {
-        setError("予期しないエラーが発生しました");
+        setError(
+          getApiErrorMessage(
+            err,
+            {
+              INVALID_CREDENTIALS: "メールアドレスまたはパスワードが間違っています",
+              VALIDATION_ERROR: "入力内容を確認してください",
+              NETWORK_ERROR: "ネットワークエラーが発生しました",
+            },
+            "ログインに失敗しました"
+          )
+        );
       }
     } finally {
       setIsLoading(false);

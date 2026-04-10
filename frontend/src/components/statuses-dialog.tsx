@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ArrowDown, ArrowUp, Check, Pencil, Plus, Star, Trash2, X } from "lucide-react"
 import type { FormStatus } from "@/types"
-import { ApiError, apiClient } from "@/lib/api"
+import { apiClient } from "@/lib/api"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 type StatusesDialogProps = {
   formId: string
@@ -45,6 +46,13 @@ const createColorState = (color?: string | null): ColorInputState => ({
 
 const colorValueOrNull = (state: ColorInputState): string | null =>
   state.enabled ? state.value : null
+
+const defaultStatusErrorMessages = {
+  RESOURCE_HIDDEN: "フォームまたはステータスが見つかりません",
+  STATUS_CONFLICT: "ステータス名または表示順が重複しています",
+  INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
+  NETWORK_ERROR: "ネットワークエラーが発生しました",
+} as const
 
 export function StatusesDialog({
   formId,
@@ -93,11 +101,13 @@ export function StatusesDialog({
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isDeleteDialogOpen) {
+      return
+    }
     if (!nextOpen) {
       cancelEdit()
       resetNewFields()
       setDeleteTarget(null)
-      setIsDeleteDialogOpen(false)
       setDeleteError("")
       setErrorMessage("")
     }
@@ -122,7 +132,16 @@ export function StatusesDialog({
       resetNewFields()
     } catch (error) {
       console.error("Failed to create status:", error)
-      setErrorMessage("ステータスの追加に失敗しました")
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          {
+            ...defaultStatusErrorMessages,
+            VALIDATION_ERROR: "ステータス名と表示順を確認してください",
+          },
+          "ステータスの追加に失敗しました"
+        )
+      )
     } finally {
       setIsWorking(false)
     }
@@ -143,7 +162,16 @@ export function StatusesDialog({
       cancelEdit()
     } catch (error) {
       console.error("Failed to update status:", error)
-      setErrorMessage("ステータスの更新に失敗しました")
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          {
+            ...defaultStatusErrorMessages,
+            VALIDATION_ERROR: "ステータス名・色・表示順を確認してください",
+          },
+          "ステータスの更新に失敗しました"
+        )
+      )
     } finally {
       setIsWorking(false)
     }
@@ -166,11 +194,17 @@ export function StatusesDialog({
       setDeleteTarget(null)
     } catch (error) {
       console.error("Failed to delete status:", error)
-      if (error instanceof ApiError && error.status === 409) {
-        setDeleteError("このステータスは使用中のため削除できません")
-      } else {
-        setDeleteError("ステータスの削除に失敗しました")
-      }
+      setDeleteError(
+        getApiErrorMessage(
+          error,
+          {
+            ...defaultStatusErrorMessages,
+            VALIDATION_ERROR:
+              "このステータスは削除できません。使用中のチケットがないか確認してください",
+          },
+          "ステータスの削除に失敗しました"
+        )
+      )
     } finally {
       setIsWorking(false)
     }
@@ -193,7 +227,13 @@ export function StatusesDialog({
       )
     } catch (error) {
       console.error("Failed to set default status:", error)
-      setErrorMessage("デフォルトステータスの設定に失敗しました")
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          defaultStatusErrorMessages,
+          "デフォルトステータスの設定に失敗しました"
+        )
+      )
     } finally {
       setIsWorking(false)
     }
@@ -235,7 +275,13 @@ export function StatusesDialog({
       )
     } catch (error) {
       console.error("Failed to reorder status:", error)
-      setErrorMessage("表示順の更新に失敗しました")
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          defaultStatusErrorMessages,
+          "表示順の更新に失敗しました"
+        )
+      )
     } finally {
       setIsWorking(false)
     }

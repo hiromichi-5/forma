@@ -18,7 +18,7 @@ const buildQuestions = (answers: TicketAnswer[]): FormResponse["questions"] =>
     answer: answer.display_value,
   }))
 
-const normalizeRespondentEmail = (email: string | null): string =>
+const normalizeRespondentEmail = (email: string | null | undefined): string =>
   email ?? "メールアドレス未登録"
 
 const mapTicketDetailToFormResponse = (ticket: TicketDetail): FormResponse => {

@@ -4,7 +4,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { ApiError, apiClient } from "../lib/api";
+import { apiClient } from "../lib/api";
+import { getApiErrorMessage } from "../lib/api-error";
 import { CheckCircle, Loader2 } from "lucide-react";
 
 export default function PasswordResetConfirmPage() {
@@ -52,17 +53,17 @@ export default function PasswordResetConfirmPage() {
       await apiClient.passwordResetConfirm({ token, new_password: newPassword });
       setIsComplete(true);
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.error.code === "TOKEN_NOT_FOUND") {
-          setError("トークンが無効または期限切れです。再度リセットをリクエストしてください。");
-        } else if (err.isValidationError) {
-          setError("パスワードは8文字以上で入力してください");
-        } else {
-          setError("パスワードリセットに失敗しました");
-        }
-      } else {
-        setError("予期しないエラーが発生しました");
-      }
+      setError(
+        getApiErrorMessage(
+          err,
+          {
+            TOKEN_NOT_FOUND: "トークンが無効または期限切れです。再度リセットをリクエストしてください。",
+            VALIDATION_ERROR: "パスワードは8文字以上で入力してください",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "パスワードリセットに失敗しました"
+        )
+      );
     } finally {
       setIsLoading(false);
     }

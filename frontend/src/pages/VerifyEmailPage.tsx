@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { ApiError, apiClient } from "../lib/api";
+import { apiClient } from "../lib/api";
+import { getApiErrorMessage } from "../lib/api-error";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 
 export default function VerifyEmailPage() {
@@ -34,15 +35,17 @@ export default function VerifyEmailPage() {
           return;
         }
         setStatus("error");
-        if (err instanceof ApiError) {
-          if (err.error.code === "TOKEN_NOT_FOUND") {
-            setErrorMessage("トークンが無効または期限切れです");
-          } else {
-            setErrorMessage("認証に失敗しました");
-          }
-        } else {
-          setErrorMessage("予期しないエラーが発生しました");
-        }
+        setErrorMessage(
+          getApiErrorMessage(
+            err,
+            {
+              TOKEN_NOT_FOUND: "トークンが無効または期限切れです",
+              VALIDATION_ERROR: "認証トークンが不正です",
+              NETWORK_ERROR: "ネットワークエラーが発生しました",
+            },
+            "認証に失敗しました"
+          )
+        );
       }
     };
 
