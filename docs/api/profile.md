@@ -67,6 +67,7 @@
 
 | コード | HTTP | 条件 |
 | --- | --- | --- |
+| `INVALID_SESSION` | 401 | セッションが無効 |
 | `VALIDATION_ERROR` | 400 | 表示名が空 |
 | `USER_NOT_FOUND` | 404 | ユーザーが存在しない |
 
@@ -88,6 +89,7 @@
 
 | コード | HTTP | 条件 |
 | --- | --- | --- |
+| `INVALID_SESSION` | 401 | セッションが無効 |
 | `USER_NOT_FOUND` | 404 | ユーザーが存在しない |
 
 ## PATCH /v1/me/password
@@ -115,6 +117,7 @@
 
 | コード | HTTP | 条件 |
 | --- | --- | --- |
+| `INVALID_SESSION` | 401 | セッションが無効 |
 | `VALIDATION_ERROR` | 400 | 入力値が不正・新パスワードが8文字未満 |
 | `INCORRECT_PASSWORD` | 403 | 現在のパスワードが正しくない |
 | `USER_NOT_FOUND` | 404 | ユーザーが存在しない |
