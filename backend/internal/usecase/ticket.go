@@ -57,6 +57,7 @@ type TicketUseCase struct {
 	memberRepo repository.MemberRepository
 	userRepo   repository.UserRepository
 	uow        repository.UnitOfWork[repository.TicketRepos]
+	publisher  EventPublisher
 }
 
 func NewTicketUseCase(
@@ -66,6 +67,7 @@ func NewTicketUseCase(
 	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
 	uow repository.UnitOfWork[repository.TicketRepos],
+	publisher EventPublisher,
 ) *TicketUseCase {
 	return &TicketUseCase{
 		ticketRepo: ticketRepo,
@@ -74,6 +76,7 @@ func NewTicketUseCase(
 		memberRepo: memberRepo,
 		userRepo:   userRepo,
 		uow:        uow,
+		publisher:  publisher,
 	}
 }
 
@@ -305,6 +308,9 @@ func (uc *TicketUseCase) UpdateTicket(
 		return TicketDetail{}, err
 	}
 
+	//nolint:errcheck
+	uc.publisher.PublishTicketUpdated(ctx, TicketEvent{FormID: ticket.FormID, TicketID: ticketID})
+
 	return uc.GetTicket(ctx, ticketID, userID)
 }
 
@@ -325,6 +331,10 @@ func (uc *TicketUseCase) ListTicketHistories(
 	}
 
 	return uc.ticketRepo.ListHistories(ctx, ticketID)
+}
+
+func (uc *TicketUseCase) CheckFormAccess(ctx context.Context, formID, userID uuid.UUID) error {
+	return requireEditor(ctx, uc.memberRepo, formID, userID)
 }
 
 type changeRecorder struct {

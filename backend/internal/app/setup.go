@@ -6,6 +6,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/hiromichi-5/forma/backend/internal/infra/postgres"
+	"github.com/hiromichi-5/forma/backend/internal/infra/pubsub"
 	"github.com/hiromichi-5/forma/backend/internal/interfaces/handler"
 	"github.com/hiromichi-5/forma/backend/internal/interfaces/middleware"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
@@ -71,9 +72,11 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 		statusRepo, memberRepo, ticketRepo,
 		postgres.NewStatusUoW(deps.Pool),
 	)
+	hub := pubsub.NewMemoryHub()
 	ticketUC := usecase.NewTicketUseCase(
 		ticketRepo, formRepo, statusRepo, memberRepo, userRepo,
 		postgres.NewTicketUoW(deps.Pool),
+		hub,
 	)
 	syncUC := usecase.NewSyncUseCase(formRepo, ticketRepo, statusRepo, memberRepo, deps.Fetcher)
 
@@ -92,6 +95,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	sh := handler.NewStatusHandler(statusUC)
 	tkh := handler.NewTicketHandler(ticketUC)
 	thh := handler.NewTicketHistoryHandler(ticketUC)
+	sseh := handler.NewStreamHandler(ticketUC, hub)
 	syh := handler.NewSyncHandler(syncUC)
 
 	r.POST("/v1/auth/login", ah.PostV1AuthLogin)
@@ -135,6 +139,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	authz.PATCH("/forms/:form_id/statuses/:status_id", sh.PatchV1FormsIdStatusesStatusId)
 	authz.DELETE("/forms/:form_id/statuses/:status_id", sh.DeleteV1FormsIdStatusesStatusId)
 	authz.GET("/forms/:form_id/questions", fh.GetV1FormsFormIdQuestions)
+	authz.GET("/forms/:form_id/stream", sseh.GetV1FormsFormIdStream)
 	authz.POST("/invites/:invite_id/accept", ih.PostV1InvitesInviteIdAccept)
 
 	authz.GET("/tickets", tkh.GetV1Tickets)

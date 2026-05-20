@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/infra/postgres"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
@@ -73,6 +74,7 @@ func newTicketUseCase() *usecase.TicketUseCase {
 	return usecase.NewTicketUseCase(
 		newTicketRepo(), newFormRepo(), newStatusRepo(), newMemberRepo(), newUserRepo(),
 		postgres.NewTicketUoW(testPool),
+		&noopEventPublisher{},
 	)
 }
 
@@ -121,4 +123,15 @@ func (m *mockFormFetcher) ListResponses(
 func truncate(t *testing.T) {
 	t.Helper()
 	testutil.TruncateAll(t, context.Background(), testPool)
+}
+
+type noopEventPublisher struct{}
+
+func (n *noopEventPublisher) PublishTicketUpdated(_ context.Context, _ usecase.TicketEvent) error {
+	return nil
+}
+
+func (n *noopEventPublisher) Subscribe(_ uuid.UUID) (<-chan usecase.TicketEvent, func()) {
+	ch := make(chan usecase.TicketEvent)
+	return ch, func() { close(ch) }
 }

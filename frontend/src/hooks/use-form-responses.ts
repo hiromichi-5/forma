@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { FormResponse } from "@/types/form-response"
 import type { TicketAnswer, TicketDetail, TicketSummary } from "@/types"
 import { apiClient } from "@/lib/api"
+import { useTicketStream } from "@/hooks/use-ticket-stream"
 
 const buildResponsesMap = (answers: TicketAnswer[]): Record<string, string> =>
   answers.reduce<Record<string, string>>((acc, answer) => {
@@ -58,6 +59,12 @@ const mapSummaryToFormResponse = (ticket: TicketSummary): FormResponse => {
 export function useFormResponses(formId: string | null) {
   const [responses, setResponses] = useState<FormResponse[]>([])
   const [loading, setLoading] = useState(false)
+
+  const handleTicketUpdated = useCallback((ticket: TicketDetail) => {
+    setResponses((prev) => prev.map((r) => (r.id === ticket.id ? mapTicketDetailToFormResponse(ticket) : r)))
+  }, [])
+
+  useTicketStream(formId, handleTicketUpdated)
 
   useEffect(() => {
     if (!formId) return
