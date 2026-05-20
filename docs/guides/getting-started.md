@@ -30,7 +30,7 @@ go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 ローカル開発用の環境変数ファイルを作成してください。
 
 ```bash
-cp .env.example .env.local
+cp .env.local.example .env.local
 ```
 
 ### 4. データベースの起動

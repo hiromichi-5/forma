@@ -35,12 +35,11 @@ Go Generics を用いた `UnitOfWork[T]` interface により、各 UseCase は�
 - repository interface に tx の概念を持ち込まなくて良い
 - commit/rollback が `Do` 内に一元管理され、漏れがない
 - 各 UseCase が必要な repository のみ受け取る
-- 新しいリポジトリ追加が影響する UseCase の Repos struct のみ変更すればよい
 
 ### 受け入れるトレードオフ (Accepted Trade-offs)
 
 - **アクセスパスが複数存在してしまう:** tx 不要な操作では `uc.formRepo`（DI 注入）、tx 必要な操作では `repos.Form`（UnitOfWork から取得）の2ルートが存在する
-- **ユースケースごとの Repos struct:** UseCase ごとに Repos struct を定義するため、struct の数が UseCase 数に比例して増える
+- **ユースケースごとの Repos struct:** UseCase ごとに Repos struct を定義するため、struct の数が UseCase 数に合わせて増える
 - **同一 UseCase 内の余剰フィールド:** ユースケースごと粒度のため、一部のメソッドでは不要なリポジトリフィールドが Repos に含まれる場合がある
 
 ## 検討した別の選択肢 (Alternatives Considered)
@@ -52,7 +51,7 @@ Go Generics を用いた `UnitOfWork[T]` interface により、各 UseCase は�
 
 **不採用理由:** repository 層でトランザクション管理の概念を持ち込むのは現在のアーキテクチャの方針に反するため、採用しない。
 
-### usecase層での管理
+### usecase層での（単純な）管理
 
 - メリット: usecase 層で完結するため、トランザクション管理が明示的になる。複数 repository を跨いだトランザクション管理が容易。
 - デメリット: usecaseにdbの実装詳細が入り込む。
