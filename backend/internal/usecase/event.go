@@ -13,5 +13,4 @@ type TicketEvent struct {
 
 type EventPublisher interface {
 	PublishTicketUpdated(ctx context.Context, event TicketEvent) error
-	Subscribe(formID uuid.UUID) (<-chan TicketEvent, func())
 }

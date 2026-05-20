@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/infra/postgres"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
@@ -129,9 +128,4 @@ type noopEventPublisher struct{}
 
 func (n *noopEventPublisher) PublishTicketUpdated(_ context.Context, _ usecase.TicketEvent) error {
 	return nil
-}
-
-func (n *noopEventPublisher) Subscribe(_ uuid.UUID) (<-chan usecase.TicketEvent, func()) {
-	ch := make(chan usecase.TicketEvent)
-	return ch, func() { close(ch) }
 }
