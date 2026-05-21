@@ -10,14 +10,13 @@ Server-Sent Events（SSE）を使ってサーバーからクライアントへ�
 - チケット作成イベントの配信
 - 複数サーバーインスタンスへの対応
 
-
 ## 概要
 
 PATCH `/v1/tickets/:ticket_id` でチケットが更新されると、usecase 層がインメモリの `EventHub` にイベントを発行する。`EventHub` は同じ `form_id` を購読しているすべての SSE 接続にイベントをブロードキャストする。
 
 SSE クライアントはイベントを受け取るとチケット一覧のキャッシュを更新し、UI に即時反映する。
 
-```
+```text
 [User A] PATCH /v1/tickets/:id
          │
          ▼
@@ -69,7 +68,7 @@ type MemoryHub struct {
 
 ### SSE エンドポイント
 
-```
+```text
 GET /v1/forms/:form_id/stream
 ```
 
@@ -103,7 +102,7 @@ TicketEvent は ID のみ持ち、SSE ハンドラが `ticketUC.GetTicket()` で
 
 #### チケット更新 → SSE 配信
 
-```
+```text
 User A (browser)          Backend                           User B (browser)
      │                       │                                    │
      │  PATCH /tickets/:id   │                                    │
@@ -122,7 +121,7 @@ User A (browser)          Backend                           User B (browser)
 
 #### SSE 接続確立
 
-```
+```text
 User B (browser)          Backend
      │                        │
      │  GET /v1/forms/:id/stream
@@ -171,7 +170,6 @@ func (h *MemoryHub) PublishTicketUpdated(_ context.Context, event TicketEvent) e
 ```
 
 バッファサイズを8として、一時的にイベントが溜まることを許容する。チャネルが埋まっている場合は遅いクライアントへのイベントを drop する。クリティカルなデータではなく UIのリアルタイム更新のため許容する。
-
 
 ### フロントエンド
 
