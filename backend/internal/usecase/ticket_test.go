@@ -3,10 +3,12 @@ package usecase_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/hiromichi-5/forma/backend/internal/entity"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
+	"github.com/hiromichi-5/forma/backend/internal/usecase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -127,6 +129,58 @@ func TestTicketUseCase_GetTicket(t *testing.T) {
 }
 
 func TestTicketUseCase_UpdateTicket(t *testing.T) {
+	t.Run("正常系: チケット更新に成功すると更新イベントを発行すること", func(t *testing.T) {
+		truncate(t)
+		ctx := context.Background()
+		adminID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"admin@example.com",
+			"password123",
+			"Admin",
+		)
+		formID, defaultStatusID := testutil.CreateForm(t, ctx, testPool, "gform1", "Form", adminID)
+		ticketID := testutil.CreateTicket(t, ctx, testPool, formID, defaultStatusID, "resp-1")
+
+		statusUC := newStatusUseCase()
+		statuses, err := statusUC.ListStatuses(ctx, formID, adminID)
+		require.NoError(t, err)
+		newStatusID := statuses[1].ID
+
+		publisher := &recordingEventPublisher{}
+		uc := newTicketUseCaseWithPublisher(publisher)
+		_, err = uc.UpdateTicket(ctx, ticketID, adminID, &newStatusID, nil, false, nil)
+		require.NoError(t, err)
+
+		events := publisher.events()
+		require.Len(t, events, 1)
+		assert.Equal(t, formID, events[0].FormID)
+		assert.Equal(t, ticketID, events[0].TicketID)
+	})
+
+	t.Run("準正常系: チケット更新に失敗した場合は更新イベントを発行しないこと", func(t *testing.T) {
+		truncate(t)
+		ctx := context.Background()
+		adminID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"admin@example.com",
+			"password123",
+			"Admin",
+		)
+		formID, defaultStatusID := testutil.CreateForm(t, ctx, testPool, "gform1", "Form", adminID)
+		ticketID := testutil.CreateTicket(t, ctx, testPool, formID, defaultStatusID, "resp-1")
+
+		publisher := &recordingEventPublisher{}
+		uc := newTicketUseCaseWithPublisher(publisher)
+		invalid := "invalid"
+		_, err := uc.UpdateTicket(ctx, ticketID, adminID, nil, nil, false, &invalid)
+		require.Error(t, err)
+		assert.Empty(t, publisher.events())
+	})
+
 	t.Run("正常系: ステータスを変更すると履歴が記録されること", func(t *testing.T) {
 		truncate(t)
 		ctx := context.Background()
@@ -253,6 +307,26 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 		require.True(t, errors.As(err, &appErr))
 		assert.Equal(t, entity.CodeValidation, appErr.Code)
 	})
+}
+
+type recordingEventPublisher struct {
+	mu     sync.Mutex
+	record []usecase.TicketEvent
+}
+
+func (p *recordingEventPublisher) PublishTicketUpdated(_ context.Context, event usecase.TicketEvent) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.record = append(p.record, event)
+	return nil
+}
+
+func (p *recordingEventPublisher) events() []usecase.TicketEvent {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make([]usecase.TicketEvent, len(p.record))
+	copy(out, p.record)
+	return out
 }
 
 func TestTicketUseCase_ListTicketHistories(t *testing.T) {

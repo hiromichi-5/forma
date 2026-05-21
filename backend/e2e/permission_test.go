@@ -205,6 +205,15 @@ func TestPermissionScenario(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 
+	t.Run("非メンバー: SSEストリームに404で接続できない", func(t *testing.T) {
+		resp := get(t, nonMemberClient, fmt.Sprintf("/v1/forms/%s/stream", formID))
+		var body map[string]any
+		readJSON(t, resp, &body)
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+		assert.Equal(t, "RESOURCE_HIDDEN", body["code"])
+	})
+
 	t.Run("未認証: フォーム詳細に401でアクセスできない", func(t *testing.T) {
 		resp := get(t, http.DefaultClient, "/v1/forms/"+formID)
 		var body map[string]any

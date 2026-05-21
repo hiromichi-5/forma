@@ -70,10 +70,14 @@ func newStatusUseCase() *usecase.StatusUseCase {
 }
 
 func newTicketUseCase() *usecase.TicketUseCase {
+	return newTicketUseCaseWithPublisher(&noopEventPublisher{})
+}
+
+func newTicketUseCaseWithPublisher(publisher usecase.EventPublisher) *usecase.TicketUseCase {
 	return usecase.NewTicketUseCase(
 		newTicketRepo(), newFormRepo(), newStatusRepo(), newMemberRepo(), newUserRepo(),
 		postgres.NewTicketUoW(testPool),
-		&noopEventPublisher{},
+		publisher,
 	)
 }
 
