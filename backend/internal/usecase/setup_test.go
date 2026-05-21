@@ -70,9 +70,14 @@ func newStatusUseCase() *usecase.StatusUseCase {
 }
 
 func newTicketUseCase() *usecase.TicketUseCase {
+	return newTicketUseCaseWithPublisher(&noopEventPublisher{})
+}
+
+func newTicketUseCaseWithPublisher(publisher usecase.EventPublisher) *usecase.TicketUseCase {
 	return usecase.NewTicketUseCase(
 		newTicketRepo(), newFormRepo(), newStatusRepo(), newMemberRepo(), newUserRepo(),
 		postgres.NewTicketUoW(testPool),
+		publisher,
 	)
 }
 
@@ -121,4 +126,10 @@ func (m *mockFormFetcher) ListResponses(
 func truncate(t *testing.T) {
 	t.Helper()
 	testutil.TruncateAll(t, context.Background(), testPool)
+}
+
+type noopEventPublisher struct{}
+
+func (n *noopEventPublisher) PublishTicketUpdated(_ context.Context, _ usecase.TicketEvent) error {
+	return nil
 }

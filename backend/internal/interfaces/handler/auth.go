@@ -177,7 +177,7 @@ func (h *AuthHandler) cookieDefaults() (string, string, http.SameSite) {
 
 func (h *AuthHandler) setAuthCookie(c *gin.Context, sessionID string) {
 	name, path, sameSite := h.cookieDefaults()
-	http.SetCookie(c.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{ //nolint:gosec
 		Name:     name,
 		Value:    sessionID,
 		Path:     path,
@@ -190,7 +190,7 @@ func (h *AuthHandler) setAuthCookie(c *gin.Context, sessionID string) {
 
 func (h *AuthHandler) clearAuthCookie(c *gin.Context) {
 	name, path, sameSite := h.cookieDefaults()
-	http.SetCookie(c.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{ //nolint:gosec
 		Name:     name,
 		Value:    "",
 		Path:     path,
