@@ -308,7 +308,7 @@ func (uc *TicketUseCase) UpdateTicket(
 		return TicketDetail{}, err
 	}
 
-	//nolint:errcheck
+	//nolint:errcheck,gosec
 	uc.publisher.PublishTicketUpdated(ctx, TicketEvent{FormID: ticket.FormID, TicketID: ticketID})
 
 	return uc.GetTicket(ctx, ticketID, userID)

@@ -92,10 +92,18 @@ func (h *StreamHandler) GetV1FormsFormIdStream(c *gin.Context) {
 			if err != nil {
 				continue
 			}
-			fmt.Fprintf(c.Writer, "event: ticket_updated\ndata: %s\n\n", b)
+			if _, err := fmt.Fprintf(
+				c.Writer,
+				"event: ticket_updated\ndata: %s\n\n",
+				b,
+			); err != nil {
+				return
+			}
 			c.Writer.Flush()
 		case <-ticker.C:
-			fmt.Fprintf(c.Writer, "event: ping\ndata: {}\n\n")
+			if _, err := fmt.Fprintf(c.Writer, "event: ping\ndata: {}\n\n"); err != nil {
+				return
+			}
 			c.Writer.Flush()
 		}
 	}

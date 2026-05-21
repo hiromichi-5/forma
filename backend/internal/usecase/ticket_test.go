@@ -314,7 +314,10 @@ type recordingEventPublisher struct {
 	record []usecase.TicketEvent
 }
 
-func (p *recordingEventPublisher) PublishTicketUpdated(_ context.Context, event usecase.TicketEvent) error {
+func (p *recordingEventPublisher) PublishTicketUpdated(
+	_ context.Context,
+	event usecase.TicketEvent,
+) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.record = append(p.record, event)
