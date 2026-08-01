@@ -46,7 +46,7 @@ export function RegisterFormDialog({ onRegistered }: RegisterFormDialogProps) {
         getApiErrorMessage(
           error,
           {
-            VALIDATION_ERROR: "Googleフォームの編集画面 URL またはフォーム ID を入力してください",
+            VALIDATION_ERROR: "Googleフォームの編集画面のURLを入力してください",
             FORM_NOT_FOUND: "指定されたフォームが見つかりません",
             FORM_NOT_SHARED:
               "フォームがサービスアカウントに共有されていません。共有設定を確認してください",
