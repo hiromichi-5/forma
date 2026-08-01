@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
@@ -15,12 +16,20 @@ import (
 
 var reFormID = regexp.MustCompile(`/forms/d/([a-zA-Z0-9_-]+)/`)
 
+type FormSyncer interface {
+	SyncFormOnce(
+		ctx context.Context,
+		formID, userID uuid.UUID,
+	) (newTickets int, lastSync time.Time, err error)
+}
+
 type FormUseCase struct {
 	formRepo   repository.FormRepository
 	memberRepo repository.MemberRepository
 	statusRepo repository.StatusRepository
 	fetcher    repository.FormFetcher
 	uow        repository.UnitOfWork[repository.FormRepos]
+	syncer     FormSyncer
 }
 
 func NewFormUseCase(
@@ -29,6 +38,7 @@ func NewFormUseCase(
 	statusRepo repository.StatusRepository,
 	fetcher repository.FormFetcher,
 	uow repository.UnitOfWork[repository.FormRepos],
+	syncer FormSyncer,
 ) *FormUseCase {
 	return &FormUseCase{
 		formRepo:   formRepo,
@@ -36,6 +46,7 @@ func NewFormUseCase(
 		statusRepo: statusRepo,
 		fetcher:    fetcher,
 		uow:        uow,
+		syncer:     syncer,
 	}
 }
 
@@ -103,6 +114,13 @@ func (uc *FormUseCase) RegisterForm(
 		"form_id", form.ID.String(),
 		"google_form_id", form.FormID,
 	)
+
+	if _, _, syncErr := uc.syncer.SyncFormOnce(ctx, form.ID, userID); syncErr != nil {
+		logger.From(ctx).Error("initial form sync failed",
+			"form_id", form.ID.String(),
+			"error", syncErr,
+		)
+	}
 
 	return form, nil
 }

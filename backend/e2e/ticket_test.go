@@ -91,22 +91,13 @@ func TestTicketScenario(t *testing.T) {
 	var ticketID string
 	var statusIDs []string
 
-	t.Run("sync: Google Formsのレスポンスを同期してチケットを作成できる", func(t *testing.T) {
+	t.Run("sync: フォーム登録時に自動同期済みのため再同期しても新規チケットが増えないこと", func(t *testing.T) {
 		resp := postJSON(t, client, fmt.Sprintf("/v1/forms/%s/sync", formID), nil)
 		var body map[string]any
 		readJSON(t, resp, &body)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, true, body["synced"])
-		assert.Equal(t, float64(2), body["new_tickets"])
-	})
-
-	t.Run("sync: 再同期で新規チケットが増えないこと", func(t *testing.T) {
-		resp := postJSON(t, client, fmt.Sprintf("/v1/forms/%s/sync", formID), nil)
-		var body map[string]any
-		readJSON(t, resp, &body)
-
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, float64(0), body["new_tickets"])
 	})
 

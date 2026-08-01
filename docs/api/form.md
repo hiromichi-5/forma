@@ -48,6 +48,9 @@ Google Forms をシステムに登録する。登録者は Admin メンバーと
 - URL からのフォーム ID 抽出は正規表現 `/forms/d/e/([a-zA-Z0-9_-]+)/` を使用
 - 20文字以上でスラッシュを含まない文字列はフォーム ID として直接受け付ける
 - フォームタイトルが空の場合、Google Form ID をタイトルとして使用する
+- 登録後、`POST /v1/forms/:form_id/sync` を実行する
+  - ただし同期に失敗しても登録自体は成功として扱う（`201 Created` を返す）。
+  - ユーザーは `POST /v1/forms/:form_id/sync` を呼び出すことで同期をやり直せる
 
 ## GET /v1/forms
 

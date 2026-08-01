@@ -58,9 +58,11 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 		deps.FrontendBaseURL,
 	)
 	profileUC := usecase.NewProfileUseCase(userRepo)
+	syncUC := usecase.NewSyncUseCase(formRepo, ticketRepo, statusRepo, memberRepo, deps.Fetcher)
 	formUC := usecase.NewFormUseCase(
 		formRepo, memberRepo, statusRepo, deps.Fetcher,
 		postgres.NewFormUoW(deps.Pool),
+		syncUC,
 	)
 	memberUC := usecase.NewMemberUseCase(memberRepo, userRepo)
 	inviteUC := usecase.NewInviteUseCase(
@@ -78,7 +80,6 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 		postgres.NewTicketUoW(deps.Pool),
 		hub,
 	)
-	syncUC := usecase.NewSyncUseCase(formRepo, ticketRepo, statusRepo, memberRepo, deps.Fetcher)
 
 	cookieCfg := handler.CookieConfig{
 		Name:     "forma_token",
