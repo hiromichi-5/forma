@@ -192,6 +192,28 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 	return nil
 }
 
+func (uc *FormUseCase) DeleteForm(
+	ctx context.Context,
+	formID, userID uuid.UUID,
+) error {
+	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+		return err
+	}
+
+	if err := uc.formRepo.Delete(ctx, formID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.NewError(entity.CodeFormNotFound)
+		}
+		return err
+	}
+
+	logger.From(ctx).Info("form deleted",
+		"form_id", formID.String(),
+	)
+
+	return nil
+}
+
 func (uc *FormUseCase) ListQuestions(
 	ctx context.Context,
 	formID, userID uuid.UUID,

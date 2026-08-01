@@ -145,6 +145,35 @@ Google Forms をシステムに登録する。登録者は Admin メンバーと
 
 ---
 
+## DELETE /v1/forms/:form_id
+
+フォームの登録を解除する。フォームに紐づくメンバー・招待・質問・ステータス・チケット・チケット履歴もすべて削除される（DB の `ON DELETE CASCADE` による）。
+
+| 項目 | 値 |
+| --- | --- |
+| メソッド | `DELETE` |
+| パス | `/v1/forms/:form_id` |
+| 認証 | 必要（SessionMiddleware） |
+| 権限 | Admin のみ |
+
+### レスポンス
+
+#### 204 No Content
+
+### エラー
+
+| コード | HTTP | 条件 |
+| --- | --- | --- |
+| `RESOURCE_HIDDEN` | 404 | 操作者がメンバーでない |
+| `FORBIDDEN` | 403 | 操作者が Admin でない |
+
+### 補足
+
+- 削除は取り消せない
+- 削除によって操作者自身のメンバーシップも失われるため、同一操作を再実行した場合は `RESOURCE_HIDDEN` となる
+
+---
+
 ## GET /v1/forms/:form_id/questions
 
 フォームの質問一覧を取得する。

@@ -126,6 +126,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	authz.GET("/forms", fh.GetV1Forms)
 	authz.GET("/forms/:form_id", fh.GetV1FormsId)
 	authz.PATCH("/forms/:form_id", fh.PatchV1FormsId)
+	authz.DELETE("/forms/:form_id", fh.DeleteV1FormsId)
 	authz.POST("/forms/:form_id/sync", syh.PostV1FormsFormIdSync)
 	authz.GET("/forms/:form_id/members", mh.GetV1FormsFormIdMembers)
 	authz.POST("/forms/:form_id/members", mh.PostV1FormsFormIdMembers)

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
 	"github.com/stretchr/testify/assert"
@@ -194,5 +195,44 @@ func TestFormScenario(t *testing.T) {
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+	})
+
+	t.Run("フォーム登録解除: editor は削除できず403で失敗する", func(t *testing.T) {
+		editorID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"form-editor@example.com",
+			"password123",
+			"FormEditor",
+		)
+		testutil.AddMember(t, ctx, testPool, editorID, uuid.MustParse(formUUID), "editor")
+		editorClient := loginUserExisting(t, "form-editor@example.com", "password123")
+
+		resp := del(t, editorClient, "/v1/forms/"+formUUID)
+		var body map[string]any
+		readJSON(t, resp, &body)
+
+		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+		assert.Equal(t, "FORBIDDEN", body["code"])
+	})
+
+	t.Run("フォーム登録解除: admin がフォームを削除できる", func(t *testing.T) {
+		resp := del(t, client, "/v1/forms/"+formUUID)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp2 := get(t, client, "/v1/forms/"+formUUID)
+		defer resp2.Body.Close()
+		assert.Equal(t, http.StatusNotFound, resp2.StatusCode)
+
+		resp3 := get(t, client, "/v1/forms")
+		var body struct {
+			Forms []map[string]any `json:"forms"`
+		}
+		readJSON(t, resp3, &body)
+		assert.Equal(t, http.StatusOK, resp3.StatusCode)
+		assert.Empty(t, body.Forms)
 	})
 }

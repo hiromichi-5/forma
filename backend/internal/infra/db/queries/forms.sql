@@ -18,6 +18,10 @@ UPDATE forms
 SET synced_at = $2
 WHERE id = $1;
 
+-- name: DeleteForm :execrows
+DELETE FROM forms
+WHERE id = $1;
+
 -- name: ListForms :many
 SELECT id, form_id, title, description, title_question_id, email_collection_type, synced_at, created_at
 FROM forms

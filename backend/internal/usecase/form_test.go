@@ -166,6 +166,92 @@ func TestFormUseCase_GetForm(t *testing.T) {
 	})
 }
 
+func TestFormUseCase_DeleteForm(t *testing.T) {
+	t.Run("正常系: admin がフォームを削除できること", func(t *testing.T) {
+		truncate(t)
+		ctx := context.Background()
+		adminID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"admin@example.com",
+			"password123",
+			"Admin",
+		)
+		formID, statusID := testutil.CreateForm(t, ctx, testPool, "gform1", "My Form", adminID)
+		testutil.CreateTicket(t, ctx, testPool, formID, statusID, "response1")
+
+		uc := newFormUseCase(&mockFormFetcher{})
+		err := uc.DeleteForm(ctx, formID, adminID)
+		require.NoError(t, err)
+
+		_, err = uc.GetForm(ctx, formID, adminID)
+		require.Error(t, err)
+		var appErr *entity.Error
+		require.True(t, errors.As(err, &appErr))
+		assert.Equal(t, entity.CodeResourceHidden, appErr.Code)
+	})
+
+	t.Run("準正常系: editor は削除できず FORBIDDEN エラーになること", func(t *testing.T) {
+		truncate(t)
+		ctx := context.Background()
+		adminID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"admin@example.com",
+			"password123",
+			"Admin",
+		)
+		editorID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"editor@example.com",
+			"password123",
+			"Editor",
+		)
+		formID, _ := testutil.CreateForm(t, ctx, testPool, "gform1", "My Form", adminID)
+		testutil.AddMember(t, ctx, testPool, editorID, formID, entity.RoleEditor)
+
+		uc := newFormUseCase(&mockFormFetcher{})
+		err := uc.DeleteForm(ctx, formID, editorID)
+		require.Error(t, err)
+		var appErr *entity.Error
+		require.True(t, errors.As(err, &appErr))
+		assert.Equal(t, entity.CodeForbidden, appErr.Code)
+	})
+
+	t.Run("準正常系: 非メンバーは RESOURCE_HIDDEN エラーになること", func(t *testing.T) {
+		truncate(t)
+		ctx := context.Background()
+		adminID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"admin@example.com",
+			"password123",
+			"Admin",
+		)
+		outsiderID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"outsider@example.com",
+			"password123",
+			"Outsider",
+		)
+		formID, _ := testutil.CreateForm(t, ctx, testPool, "gform1", "My Form", adminID)
+
+		uc := newFormUseCase(&mockFormFetcher{})
+		err := uc.DeleteForm(ctx, formID, outsiderID)
+		require.Error(t, err)
+		var appErr *entity.Error
+		require.True(t, errors.As(err, &appErr))
+		assert.Equal(t, entity.CodeResourceHidden, appErr.Code)
+	})
+}
+
 func TestFormUseCase_ListForms(t *testing.T) {
 	t.Run("正常系: ユーザーがアクセス可能なフォーム一覧を取得できること", func(t *testing.T) {
 		truncate(t)

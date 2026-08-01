@@ -76,6 +76,14 @@ func (r *FormRepository) UpdateSyncedAt(
 	return rowsError(n)
 }
 
+func (r *FormRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	n, err := r.q.DeleteForm(ctx, toUUID(id))
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
+}
+
 func (r *FormRepository) ListQuestions(
 	ctx context.Context,
 	formID uuid.UUID,
