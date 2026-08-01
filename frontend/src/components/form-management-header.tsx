@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LayoutList, LayoutGrid, Search, Users, ArrowLeft, Settings } from "lucide-react";
+import { LayoutList, LayoutGrid, Search, Users, ArrowLeft, Settings, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { FormStatus, FormQuestion } from "@/types";
 
@@ -34,6 +34,7 @@ type FormManagementHeaderProps = {
   onTitleQuestionChange: (questionId: string | null) => void;
   onStatusManageClick?: () => void;
   onMembersClick: () => void;
+  onUnregisterClick: () => void;
 };
 
 export function FormManagementHeader({
@@ -50,6 +51,7 @@ export function FormManagementHeader({
   onTitleQuestionChange,
   onStatusManageClick,
   onMembersClick,
+  onUnregisterClick,
 }: FormManagementHeaderProps) {
   const navigate = useNavigate();
   const sortedStatuses = [...statuses].sort(
@@ -87,6 +89,14 @@ export function FormManagementHeader({
         >
           <Users className="h-4 w-4" />
           メンバー管理
+        </Button>
+        <Button
+          onClick={onUnregisterClick}
+          variant="outline"
+          className="gap-2 bg-transparent text-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+          登録解除
         </Button>
       </div>
 

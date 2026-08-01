@@ -219,6 +219,12 @@ class ApiClient {
     });
   }
 
+  async deleteForm(formId: string): Promise<void> {
+    await this.request<void>(`/v1/forms/${formId}`, {
+      method: "DELETE",
+    });
+  }
+
   // Members
 
   async getMembers(formId: string): Promise<ListMembersResponse> {
