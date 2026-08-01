@@ -44,7 +44,7 @@ func requireEditor(ctx, memberRepo, formID, userID) error
 
 ### requireAdmin
 
-Admin ロールのみ許可する。メンバー管理、招待管理で使用。
+Admin ロールのみ許可する。
 
 ```go
 func requireAdmin(ctx, memberRepo, formID, userID) error
