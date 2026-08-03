@@ -68,10 +68,10 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 flex">
+    <div className="h-screen bg-muted/30 flex overflow-hidden">
       <aside
         className={cn(
-          "bg-card border-r transition-all duration-300 flex flex-col",
+          "bg-card border-r transition-all duration-300 flex flex-col shrink-0",
           isCollapsed ? "w-16" : "w-64"
         )}
       >
