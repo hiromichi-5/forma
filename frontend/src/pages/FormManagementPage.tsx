@@ -166,6 +166,7 @@ export default function FormManagementPage() {
     <AppLayout>
       <div className="space-y-6">
         <FormManagementHeader
+          googleFormId={form?.form_id ?? null}
           formTitle={formTitle}
           viewMode={viewMode}
           onViewModeChange={setViewMode}

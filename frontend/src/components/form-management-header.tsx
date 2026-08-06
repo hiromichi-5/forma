@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutList, LayoutGrid, Search, Users, Settings, Trash2, ChevronDown } from "lucide-react";
+import { LayoutList, LayoutGrid, Search, Users, Settings, Trash2, ChevronDown, ExternalLink } from "lucide-react";
 import type { FormStatus, FormQuestion } from "@/types";
 
 const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
@@ -27,6 +27,7 @@ const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
 };
 
 type FormManagementHeaderProps = {
+  googleFormId: string | null;
   formTitle: string;
   viewMode: "list" | "kanban";
   onViewModeChange: (mode: "list" | "kanban") => void;
@@ -44,6 +45,7 @@ type FormManagementHeaderProps = {
 };
 
 export function FormManagementHeader({
+  googleFormId,
   formTitle,
   viewMode,
   onViewModeChange,
@@ -85,6 +87,21 @@ export function FormManagementHeader({
             align="start"
             className="p-1.5 border-gray-300 shadow-sm rounded-xl"
           >
+            {googleFormId && (
+              <>
+                <DropdownMenuItem asChild className="text-base py-2 rounded-lg">
+                  <a
+                    href={`https://docs.google.com/forms/d/${googleFormId}/edit`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Googleフォームを編集
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             {onStatusManageClick && (
               <DropdownMenuItem
                 onClick={onStatusManageClick}
