@@ -149,7 +149,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                       <div
                         key={form.id}
                         className={cn(
-                          "group flex items-center gap-1 rounded-md transition-colors",
+                          "group flex items-center gap-1 rounded-2xl transition-colors",
                           isActive && "bg-blue-100"
                         )}
                       >
