@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutList, LayoutGrid, Search, Users, Settings, Trash2, ChevronDown, ExternalLink } from "lucide-react";
+import { LayoutList, LayoutGrid, Search, Users, Settings, Trash2, ChevronDown, ExternalLink, RefreshCw } from "lucide-react";
 import type { FormStatus, FormQuestion } from "@/types";
 
 const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
@@ -42,6 +42,8 @@ type FormManagementHeaderProps = {
   onStatusManageClick?: () => void;
   onMembersClick: () => void;
   onUnregisterClick: () => void;
+  isSyncing: boolean;
+  onSyncClick: () => void;
 };
 
 export function FormManagementHeader({
@@ -60,6 +62,8 @@ export function FormManagementHeader({
   onStatusManageClick,
   onMembersClick,
   onUnregisterClick,
+  isSyncing,
+  onSyncClick,
 }: FormManagementHeaderProps) {
   const sortedStatuses = [...statuses].sort(
     (a, b) => a.display_order - b.display_order
@@ -125,6 +129,18 @@ export function FormManagementHeader({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          onClick={onSyncClick}
+          disabled={isSyncing}
+          className="gap-1.5"
+        >
+          <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+          {isSyncing ? "同期中..." : "Googleフォームと同期する"}
+        </Button>
       </div>
 
       {/* 行2: 検索・フィルター・表示設定 */}

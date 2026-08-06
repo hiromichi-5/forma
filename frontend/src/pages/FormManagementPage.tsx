@@ -28,7 +28,7 @@ export default function FormManagementPage() {
   const params = useParams()
   const navigate = useNavigate()
   const formId = params.id
-  const { responses, updateResponseStatus, assignResponse, updatePriority } = useFormResponses(formId ?? null)
+  const { responses, updateResponseStatus, assignResponse, updatePriority, refetch } = useFormResponses(formId ?? null)
   const [form, setForm] = useState<Form | null>(null)
   const [questions, setQuestions] = useState<FormQuestion[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -43,6 +43,7 @@ export default function FormManagementPage() {
   const [isUnregisterOpen, setIsUnregisterOpen] = useState(false)
   const [isUnregistering, setIsUnregistering] = useState(false)
   const [unregisterError, setUnregisterError] = useState("")
+  const [isSyncing, setIsSyncing] = useState(false)
 
   const statusMap = useMemo(() => new Map(formStatuses.map((status) => [status.id, status])), [formStatuses])
   const formResponses = useMemo(
@@ -99,6 +100,38 @@ export default function FormManagementPage() {
           "タイトル質問の更新に失敗しました"
         )
       )
+    }
+  }
+
+  const handleSync = async () => {
+    if (!formId || isSyncing) return
+    setIsSyncing(true)
+    try {
+      const result = await apiClient.syncForm(formId)
+      await refetch()
+      toast.success(
+        result.new_tickets > 0
+          ? `${result.new_tickets}件の新しい回答を同期しました`
+          : "新しい回答はありませんでした"
+      )
+    } catch (error) {
+      console.error("Failed to sync form:", error)
+      toast.error(
+        getApiErrorMessage(
+          error,
+          {
+            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+            FORM_NOT_FOUND: "フォームが見つかりません",
+            FORM_NOT_SHARED:
+              "フォームがサービスアカウントに共有されていません。共有設定を確認してください",
+            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
+            NETWORK_ERROR: "ネットワークエラーが発生しました",
+          },
+          "フォームの同期に失敗しました"
+        )
+      )
+    } finally {
+      setIsSyncing(false)
     }
   }
 
@@ -181,6 +214,8 @@ export default function FormManagementPage() {
           onStatusManageClick={() => setIsStatusesOpen(true)}
           onMembersClick={() => setIsMembersOpen(true)}
           onUnregisterClick={() => setIsUnregisterOpen(true)}
+          isSyncing={isSyncing}
+          onSyncClick={handleSync}
         />
 
         {viewMode === "list" ? (

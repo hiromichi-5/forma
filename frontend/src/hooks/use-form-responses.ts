@@ -66,42 +66,30 @@ export function useFormResponses(formId: string | null) {
 
   useTicketStream(formId, handleTicketUpdated)
 
-  useEffect(() => {
+  const refetch = useCallback(async () => {
     if (!formId) return
-    let isActive = true
+    setLoading(true)
+    try {
+      // 外部API(バックエンド)との同期のための処理
+      const ticketList = await apiClient.getTickets(formId)
+      const baseResponses = ticketList.tickets.map(mapSummaryToFormResponse)
+      setResponses(baseResponses)
 
-    const loadResponses = async () => {
-      setLoading(true)
-      try {
-        // 外部API(バックエンド)との同期のための処理
-        const ticketList = await apiClient.getTickets(formId)
-        if (!isActive) return
-        const baseResponses = ticketList.tickets.map(mapSummaryToFormResponse)
-        setResponses(baseResponses)
-
-        const details = await Promise.all(
-          ticketList.tickets.map((ticket) => apiClient.getTicket(ticket.id))
-        )
-        if (!isActive) return
-        setResponses(details.map(mapTicketDetailToFormResponse))
-      } catch (error) {
-        if (!isActive) return
-        console.error("Failed to load responses:", error)
-        setResponses([])
-      } finally {
-        if (isActive) {
-          setLoading(false)
-        }
-      }
-    }
-
-    // 外部API(バックエンド)との同期のための処理
-    loadResponses()
-
-    return () => {
-      isActive = false
+      const details = await Promise.all(
+        ticketList.tickets.map((ticket) => apiClient.getTicket(ticket.id))
+      )
+      setResponses(details.map(mapTicketDetailToFormResponse))
+    } catch (error) {
+      console.error("Failed to load responses:", error)
+      setResponses([])
+    } finally {
+      setLoading(false)
     }
   }, [formId])
+
+  useEffect(() => {
+    refetch()
+  }, [refetch])
 
   const updateResponseStatus = async (id: string, statusId: string) => {
     try {
@@ -136,5 +124,6 @@ export function useFormResponses(formId: string | null) {
     updateResponseStatus,
     assignResponse,
     updatePriority,
+    refetch,
   }
 }
