@@ -106,7 +106,7 @@ function DraggableCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "cursor-grab border p-4 transition-colors hover:bg-muted/30 active:cursor-grabbing",
+        "cursor-grab border p-4 shadow-none transition-colors hover:bg-muted/30 active:cursor-grabbing",
         isDragging && "opacity-50"
       )}
       {...attributes}

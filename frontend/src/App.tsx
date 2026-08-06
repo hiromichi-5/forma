@@ -6,7 +6,6 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { ThemeProvider } from "./components/theme-provider";
 import FormsListPage from "./pages/FormsListPage";
 import FormManagementPage from "./pages/FormManagementPage";
 import LoginPage from "./pages/LoginPage";
@@ -39,50 +38,48 @@ function RequireAuth({ children }: RequireAuthProps) {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="ui-theme">
-      <Router>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/password-reset" element={<PasswordResetPage />} />
-          <Route path="/password-reset/confirm" element={<PasswordResetConfirmPage />} />
-          <Route
-            path="/invites/:inviteId/accept"
-            element={
-              <RequireAuth>
-                <AcceptInvitePage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/"
-            element={
-              <RequireAuth>
-                <FormsListPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/forms/:id"
-            element={
-              <RequireAuth>
-                <FormManagementPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <RequireAuth>
-                <SettingsPage />
-              </RequireAuth>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
-    </ThemeProvider>
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/password-reset" element={<PasswordResetPage />} />
+        <Route path="/password-reset/confirm" element={<PasswordResetConfirmPage />} />
+        <Route
+          path="/invites/:inviteId/accept"
+          element={
+            <RequireAuth>
+              <AcceptInvitePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/"
+          element={
+            <RequireAuth>
+              <FormsListPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/forms/:id"
+          element={
+            <RequireAuth>
+              <FormManagementPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <RequireAuth>
+              <SettingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 

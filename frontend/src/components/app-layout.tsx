@@ -71,7 +71,8 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="h-screen bg-muted/30 flex overflow-hidden">
       <aside
         className={cn(
-          "bg-card border-r transition-all duration-300 flex flex-col shrink-0",
+          "bg-blue-50 border-r transition-all duration-300 flex flex-col shrink-0 z-10",
+          "[&_[data-slot=button]]:hover:bg-blue-100",
           isCollapsed ? "w-16" : "w-64"
         )}
       >
@@ -79,7 +80,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           {!isCollapsed && (
             <Link
               to="/"
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 -mx-2 -my-1 rounded-md px-2 py-1 transition-colors hover:bg-accent"
             >
               <img src="/favicon.svg" alt="forma Logo" className="w-6 h-6" />
               <span className="font-bold text-xl tracking-tight">forma</span>
@@ -101,10 +102,11 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <nav className="flex-1 p-2 overflow-y-auto">
           <Button
-            variant={isFormsListPage ? "secondary" : "ghost"}
+            variant="ghost"
             className={cn(
               "w-full justify-start gap-3 mb-2",
-              isCollapsed && "justify-center"
+              isCollapsed && "justify-center",
+              isFormsListPage && "bg-blue-100"
             )}
             onClick={() => navigate("/")}
           >
@@ -148,7 +150,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                         key={form.id}
                         className={cn(
                           "group flex items-center gap-1 rounded-md transition-colors",
-                          isActive && "bg-secondary"
+                          isActive && "bg-blue-100"
                         )}
                       >
                         <Button
@@ -222,10 +224,11 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <div className="p-2 border-t space-y-1">
           <Button
-            variant={isSettingsPage ? "secondary" : "ghost"}
+            variant="ghost"
             className={cn(
               "w-full justify-start gap-3",
-              isCollapsed && "justify-center"
+              isCollapsed && "justify-center",
+              isSettingsPage && "bg-blue-100"
             )}
             onClick={() => navigate("/settings")}
           >
@@ -246,7 +249,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-white">
         <div className="container mx-auto p-6">{children}</div>
       </main>
 

@@ -117,7 +117,7 @@ export default function FormsListPage() {
               <Card
                 asChild
                 key={form.id}
-                className="border-border/60 bg-card/95 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="border-border/60 bg-card/95 shadow-none transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <Link to={`/forms/${form.id}`}>
                   <CardContent className="p-4">

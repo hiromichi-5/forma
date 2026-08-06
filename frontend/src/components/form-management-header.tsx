@@ -7,8 +7,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LayoutList, LayoutGrid, Search, Users, ArrowLeft, Settings, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LayoutList, LayoutGrid, Search, Users, Settings, Trash2, ChevronDown } from "lucide-react";
 import type { FormStatus, FormQuestion } from "@/types";
 
 const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
@@ -53,7 +59,6 @@ export function FormManagementHeader({
   onMembersClick,
   onUnregisterClick,
 }: FormManagementHeaderProps) {
-  const navigate = useNavigate();
   const sortedStatuses = [...statuses].sort(
     (a, b) => a.display_order - b.display_order
   );
@@ -66,38 +71,43 @@ export function FormManagementHeader({
     <div className="space-y-4">
       {/* 行1: タイトルと管理系ボタン */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">{formTitle}</h1>
-        </div>
-        {onStatusManageClick && (
-          <Button
-            onClick={onStatusManageClick}
-            variant="outline"
-            className="gap-2 bg-transparent"
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 -mx-2 text-left transition-colors hover:bg-accent"
+            >
+              <h1 className="text-2xl font-bold text-foreground">{formTitle}</h1>
+              <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="p-1.5 border-gray-300 shadow-sm rounded-xl"
           >
-            <Settings className="h-4 w-4" />
-            ステータス管理
-          </Button>
-        )}
-        <Button
-          onClick={onMembersClick}
-          variant="outline"
-          className="gap-2 bg-transparent"
-        >
-          <Users className="h-4 w-4" />
-          メンバー管理
-        </Button>
-        <Button
-          onClick={onUnregisterClick}
-          variant="outline"
-          className="gap-2 bg-transparent text-destructive hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-          登録解除
-        </Button>
+            {onStatusManageClick && (
+              <DropdownMenuItem
+                onClick={onStatusManageClick}
+                className="text-base py-2 rounded-lg"
+              >
+                <Settings className="h-4 w-4" />
+                ステータス管理
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={onMembersClick} className="text-base py-2 rounded-lg">
+              <Users className="h-4 w-4" />
+              メンバー管理
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={onUnregisterClick}
+              className="text-base py-2 rounded-lg text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              登録解除
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* 行2: 検索・フィルター・表示設定 */}
@@ -166,7 +176,7 @@ export function FormManagementHeader({
 
         <div className="relative grid grid-cols-2 gap-0.5 bg-muted p-0.5 rounded-md">
           <div
-            className="absolute top-0.5 bottom-0.5 bg-background rounded shadow-sm transition-transform duration-200 ease-in-out"
+            className="absolute top-0.5 bottom-0.5 bg-white rounded shadow-sm transition-transform duration-200 ease-in-out"
             style={{
               width: "calc(50% - 0.125rem)",
               transform:
