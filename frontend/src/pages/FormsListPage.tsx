@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Search } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 import { AppLayout } from "@/components/app-layout"
 import { apiClient } from "@/lib/api"
 import type { FormSummary } from "@/types"
@@ -73,12 +73,9 @@ export default function FormsListPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">フォーム一覧</h1>
-            <p className="text-sm text-muted-foreground mt-1">管理しているGoogleフォームの一覧</p>
-          </div>
-          <RegisterFormDialog onRegistered={loadForms} />
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">フォーム一覧</h1>
+          <p className="text-sm text-muted-foreground mt-1">管理しているGoogleフォームの一覧</p>
         </div>
 
         <div className="relative">
@@ -103,7 +100,7 @@ export default function FormsListPage() {
           </Card>
         )}
 
-        {!isLoading && !errorMessage && filteredForms.length === 0 && (
+        {!isLoading && !errorMessage && filteredForms.length === 0 && forms.length > 0 && (
           <Card>
             <CardContent className="p-6 text-sm text-muted-foreground">
               条件に一致するフォームがありません
@@ -111,7 +108,7 @@ export default function FormsListPage() {
           </Card>
         )}
 
-        {!isLoading && !errorMessage && filteredForms.length > 0 && (
+        {!isLoading && !errorMessage && (filteredForms.length > 0 || forms.length === 0) && (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredForms.map((form) => (
               <Card
@@ -135,6 +132,18 @@ export default function FormsListPage() {
                 </Link>
               </Card>
             ))}
+            <RegisterFormDialog
+              onRegistered={loadForms}
+              trigger={
+                <button
+                  type="button"
+                  className="flex min-h-[84px] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-muted-foreground/40 bg-transparent p-4 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <Plus className="h-5 w-5" />
+                  <span className="text-sm font-medium">フォームを追加する</span>
+                </button>
+              }
+            />
           </div>
         )}
       </div>
