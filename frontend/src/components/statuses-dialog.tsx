@@ -11,6 +11,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
@@ -46,6 +51,25 @@ type ColorInputState = {
 
 const defaultColor = "#3B82F6"
 
+const statusColorPresets = [
+  { name: "レッド", value: "#EF4444" },
+  { name: "オレンジ", value: "#F97316" },
+  { name: "アンバー", value: "#F59E0B" },
+  { name: "イエロー", value: "#EAB308" },
+  { name: "ライム", value: "#84CC16" },
+  { name: "グリーン", value: "#22C55E" },
+  { name: "エメラルド", value: "#10B981" },
+  { name: "ティール", value: "#14B8A6" },
+  { name: "シアン", value: "#06B6D4" },
+  { name: "スカイ", value: "#0EA5E9" },
+  { name: "ブルー", value: "#3B82F6" },
+  { name: "インディゴ", value: "#6366F1" },
+  { name: "バイオレット", value: "#8B5CF6" },
+  { name: "パープル", value: "#A855F7" },
+  { name: "ピンク", value: "#EC4899" },
+  { name: "グレー", value: "#6B7280" },
+]
+
 const createColorState = (color?: string | null): ColorInputState => ({
   enabled: Boolean(color),
   value: color ?? defaultColor,
@@ -53,6 +77,59 @@ const createColorState = (color?: string | null): ColorInputState => ({
 
 const colorValueOrNull = (state: ColorInputState): string | null =>
   state.enabled ? state.value : null
+
+type ColorSwatchPickerProps = {
+  value: string
+  disabled?: boolean
+  onChange: (color: string) => void
+  className?: string
+}
+
+function ColorSwatchPicker({
+  value,
+  disabled,
+  onChange,
+  className,
+}: ColorSwatchPickerProps) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label="色を選択"
+          className={`rounded-md border border-border disabled:opacity-40 disabled:cursor-not-allowed ${className ?? "h-7 w-7"
+            }`}
+          style={{ backgroundColor: value }}
+        />
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-2" align="start">
+        <div className="grid grid-cols-6 gap-1">
+          {statusColorPresets.map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              title={preset.name}
+              aria-label={preset.name}
+              onClick={() => {
+                onChange(preset.value)
+                setOpen(false)
+              }}
+              className="relative h-5 w-5 rounded-full border border-border/50"
+              style={{ backgroundColor: preset.value }}
+            >
+              {value === preset.value && (
+                <Check className="absolute inset-0 m-auto h-3 w-3 text-white drop-shadow" />
+              )}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 const defaultStatusErrorMessages = {
   RESOURCE_HIDDEN: "フォームまたはステータスが見つかりません",
@@ -324,17 +401,13 @@ export function StatusesDialog({
                   </TooltipTrigger>
                   <TooltipContent>{colorSwitchTooltip}</TooltipContent>
                 </Tooltip>
-                <input
-                  type="color"
+                <ColorSwatchPicker
                   value={newColor.value}
                   disabled={!newColor.enabled}
-                  onChange={(e) =>
-                    setNewColor((prev) => ({
-                      ...prev,
-                      value: e.target.value,
-                    }))
+                  onChange={(value) =>
+                    setNewColor((prev) => ({ ...prev, value }))
                   }
-                  className="h-9 w-10 rounded border border-input bg-transparent p-0.5 disabled:opacity-40"
+                  className="h-7 w-7"
                 />
               </div>
               <Button
@@ -477,17 +550,13 @@ export function StatusesDialog({
                                   {colorSwitchTooltip}
                                 </TooltipContent>
                               </Tooltip>
-                              <input
-                                type="color"
+                              <ColorSwatchPicker
                                 value={editColor.value}
                                 disabled={!editColor.enabled}
-                                onChange={(e) =>
-                                  setEditColor((prev) => ({
-                                    ...prev,
-                                    value: e.target.value,
-                                  }))
+                                onChange={(value) =>
+                                  setEditColor((prev) => ({ ...prev, value }))
                                 }
-                                className="h-8 w-10 rounded border border-input bg-transparent p-0.5 disabled:opacity-40"
+                                className="h-6 w-6"
                               />
                             </div>
                           </div>
