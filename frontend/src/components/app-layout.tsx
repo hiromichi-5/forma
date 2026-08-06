@@ -12,6 +12,7 @@ import {
   ChevronUp,
   Home,
   FileText,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/collapsible";
 import { apiClient } from "@/lib/api";
 import type { FormSummary } from "@/types";
+import { RegisterFormDialog } from "@/components/register-form-dialog";
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -40,18 +42,19 @@ export function AppLayout({ children }: AppLayoutProps) {
   const isSettingsPage = location.pathname === "/settings";
 
   // フォーム一覧を取得
+  const loadForms = async () => {
+    try {
+      setLoadingForms(true);
+      const response = await apiClient.getForms();
+      setForms(response.forms);
+    } catch (error) {
+      console.error("Failed to load forms:", error);
+    } finally {
+      setLoadingForms(false);
+    }
+  };
+
   useEffect(() => {
-    const loadForms = async () => {
-      try {
-        setLoadingForms(true);
-        const response = await apiClient.getForms();
-        setForms(response.forms);
-      } catch (error) {
-        console.error("Failed to load forms:", error);
-      } finally {
-        setLoadingForms(false);
-      }
-    };
     loadForms();
   }, []);
 
@@ -155,6 +158,21 @@ export function AppLayout({ children }: AppLayoutProps) {
                     );
                   })
                 )}
+                <div className="pl-6 mt-4">
+                  <RegisterFormDialog
+                    onRegistered={loadForms}
+                    trigger={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-2 text-sm h-8 pr-2 min-w-0 rounded-2xl border border-dashed border-muted-foreground/40 text-muted-foreground"
+                      >
+                        <Plus className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">フォームを追加する</span>
+                      </Button>
+                    }
+                  />
+                </div>
               </CollapsibleContent>
             </Collapsible>
           )}
