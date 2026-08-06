@@ -12,8 +12,6 @@ import {
   ChevronUp,
   Home,
   FileText,
-  Users,
-  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,10 +21,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { apiClient } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/api-error";
 import type { FormSummary } from "@/types";
-import { toast } from "sonner";
-import { MembersDialog } from "./members-dialog";
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -39,8 +34,6 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [isFormsOpen, setIsFormsOpen] = useState(true);
   const [forms, setForms] = useState<FormSummary[]>([]);
   const [loadingForms, setLoadingForms] = useState(false);
-  const [membersDialogOpen, setMembersDialogOpen] = useState(false);
-  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const { logout } = useAuth();
 
   const isFormsListPage = location.pathname === "/";
@@ -146,73 +139,18 @@ export function AppLayout({ children }: AppLayoutProps) {
                     const isActive =
                       location.pathname === `/forms/${form.id}`;
                     return (
-                      <div
-                        key={form.id}
-                        className={cn(
-                          "group flex items-center gap-1 rounded-2xl transition-colors",
-                          isActive && "bg-blue-100"
-                        )}
-                      >
+                      <div key={form.id} className="pl-6">
                         <Button
                           variant="ghost"
                           size="sm"
                           className={cn(
-                            "flex-1 justify-start text-sm h-8 pl-6 pr-2 min-w-0",
-                            isActive && "font-medium"
+                            "w-full justify-start text-sm h-8 pr-2 min-w-0 rounded-2xl",
+                            isActive && "bg-blue-100 font-medium"
                           )}
                           onClick={() => navigate(`/forms/${form.id}`)}
                         >
                           <span className="truncate">{form.title}</span>
                         </Button>
-
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              try {
-                                await apiClient.syncForm(form.id);
-                                toast.success("フォームを同期しました");
-                              } catch (error) {
-                                toast.error(
-                                  getApiErrorMessage(
-                                    error,
-                                    {
-                                      RESOURCE_HIDDEN:
-                                        "フォームが見つからないか、アクセス権がありません",
-                                      FORM_NOT_FOUND: "フォームが見つかりません",
-                                      FORM_NOT_SHARED:
-                                        "フォームがサービスアカウントに共有されていません",
-                                      INVALID_SESSION:
-                                        "セッションの有効期限が切れました。ログインし直してください",
-                                      NETWORK_ERROR: "ネットワークエラーが発生しました",
-                                    },
-                                    "同期に失敗しました"
-                                  )
-                                );
-                                console.error("Failed to sync form:", error);
-                              }
-                            }}
-                            title="同期"
-                          >
-                            <RefreshCw className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedFormId(form.id);
-                              setMembersDialogOpen(true);
-                            }}
-                            title="メンバー管理"
-                          >
-                            <Users className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
                       </div>
                     );
                   })
@@ -252,14 +190,6 @@ export function AppLayout({ children }: AppLayoutProps) {
       <main className="flex-1 overflow-auto bg-white">
         <div className="container mx-auto p-6">{children}</div>
       </main>
-
-      {selectedFormId && (
-        <MembersDialog
-          formId={selectedFormId}
-          open={membersDialogOpen}
-          onOpenChange={setMembersDialogOpen}
-        />
-      )}
     </div>
   );
 }
