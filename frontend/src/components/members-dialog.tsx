@@ -199,8 +199,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{errorMessage}</div>
           )}
 
-          <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-            <h3 className="text-sm font-semibold text-foreground">メンバーを招待</h3>
+          <div className="space-y-3 p-4 bg-muted/60 border border-dashed rounded-lg">
+            <h3 className="text-sm font-semibold text-foreground">メンバーを招待する</h3>
             <div className="flex gap-2">
               <div className="flex-1 space-y-2">
                 <Label htmlFor="email" className="text-xs">
@@ -217,7 +217,7 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
               <div className="w-[140px] space-y-2">
                 <Label className="text-xs">権限</Label>
                 <Select value={inviteRole} onValueChange={(v) => setInviteRole(toRoleValue(v))}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full bg-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

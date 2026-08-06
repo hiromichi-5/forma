@@ -164,7 +164,7 @@ export default function FormManagementPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 pt-4">
         <FormManagementHeader
           googleFormId={form?.form_id ?? null}
           formTitle={formTitle}
