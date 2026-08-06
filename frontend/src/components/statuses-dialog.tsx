@@ -19,10 +19,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { ArrowDown, ArrowUp, Check, Pencil, Plus, Star, Trash2, X } from "lucide-react"
 import type { FormStatus } from "@/types"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
+
+const colorSwitchTooltip = "ONにするとステータスに表示色を設定できます"
 
 type StatusesDialogProps = {
   formId: string
@@ -304,12 +311,19 @@ export function StatusesDialog({
                 className="flex-1"
               />
               <div className="flex items-center gap-1">
-                <Switch
-                  checked={newColor.enabled}
-                  onCheckedChange={(checked) =>
-                    setNewColor((prev) => ({ ...prev, enabled: checked }))
-                  }
-                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Switch
+                        checked={newColor.enabled}
+                        onCheckedChange={(checked) =>
+                          setNewColor((prev) => ({ ...prev, enabled: checked }))
+                        }
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{colorSwitchTooltip}</TooltipContent>
+                </Tooltip>
                 <input
                   type="color"
                   value={newColor.value}
@@ -330,7 +344,7 @@ export function StatusesDialog({
                 disabled={isWorking || !newName.trim()}
               >
                 <Plus className="h-4 w-4" />
-                追加
+                追加する
               </Button>
             </div>
 
@@ -360,14 +374,19 @@ export function StatusesDialog({
                       {!isEditing ? (
                         <div className="flex items-center gap-2 p-2">
                           <div
-                            className="h-3 w-3 rounded-full flex-shrink-0"
-                            style={{
-                              backgroundColor: status.color ?? "#9CA3AF",
-                            }}
-                          />
-                          <span className="text-sm flex-1 min-w-0 truncate">
-                            {status.name}
-                          </span>
+                            className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer select-none"
+                            onClick={() => startEdit(status)}
+                          >
+                            <div
+                              className="h-3 w-3 rounded-full flex-shrink-0"
+                              style={{
+                                backgroundColor: status.color ?? "#9CA3AF",
+                              }}
+                            />
+                            <span className="text-sm flex-1 min-w-0 truncate">
+                              {status.name}
+                            </span>
+                          </div>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -380,11 +399,10 @@ export function StatusesDialog({
                             }
                           >
                             <Star
-                              className={`h-3.5 w-3.5 ${
-                                status.is_default
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : "text-muted-foreground"
-                              }`}
+                              className={`h-3.5 w-3.5 ${status.is_default
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-muted-foreground"
+                                }`}
                             />
                           </Button>
                           <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -441,15 +459,24 @@ export function StatusesDialog({
                               placeholder="ステータス名"
                             />
                             <div className="flex items-center gap-1">
-                              <Switch
-                                checked={editColor.enabled}
-                                onCheckedChange={(checked) =>
-                                  setEditColor((prev) => ({
-                                    ...prev,
-                                    enabled: checked,
-                                  }))
-                                }
-                              />
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex">
+                                    <Switch
+                                      checked={editColor.enabled}
+                                      onCheckedChange={(checked) =>
+                                        setEditColor((prev) => ({
+                                          ...prev,
+                                          enabled: checked,
+                                        }))
+                                      }
+                                    />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {colorSwitchTooltip}
+                                </TooltipContent>
+                              </Tooltip>
                               <input
                                 type="color"
                                 value={editColor.value}

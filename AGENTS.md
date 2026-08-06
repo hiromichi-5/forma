@@ -1,6 +1,6 @@
 # Forma Backend API
 
-Google Forms の回答を管理する Web アプリケーション。**Backend（Go）が主要な開発対象**であり、高い品質を求める。Frontend は品質を重視しない。
+Google Forms の回答を管理する Web アプリケーションです。
 
 ## タスクの実行ガイド
 
