@@ -11,8 +11,10 @@ func TruncateAll(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
 	t.Helper()
 	_, err := pool.Exec(ctx, `
 		TRUNCATE
+			ticket_notifications,
 			ticket_histories,
 			tickets,
+			form_notification_settings,
 			form_statuses,
 			form_questions,
 			form_invites,

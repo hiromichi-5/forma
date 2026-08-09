@@ -53,6 +53,91 @@ func (ns NullFormRole) Value() (driver.Value, error) {
 	return string(ns.FormRole), nil
 }
 
+type NotificationMode string
+
+const (
+	NotificationModeAlways  NotificationMode = "always"
+	NotificationModeConfirm NotificationMode = "confirm"
+	NotificationModeOff     NotificationMode = "off"
+)
+
+func (e *NotificationMode) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = NotificationMode(s)
+	case string:
+		*e = NotificationMode(s)
+	default:
+		return fmt.Errorf("unsupported scan type for NotificationMode: %T", src)
+	}
+	return nil
+}
+
+type NullNotificationMode struct {
+	NotificationMode NotificationMode `json:"notification_mode"`
+	Valid            bool             `json:"valid"` // Valid is true if NotificationMode is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullNotificationMode) Scan(value interface{}) error {
+	if value == nil {
+		ns.NotificationMode, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.NotificationMode.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullNotificationMode) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.NotificationMode), nil
+}
+
+type NotificationType string
+
+const (
+	NotificationTypeStatusChange     NotificationType = "status_change"
+	NotificationTypeAssigneeAssigned NotificationType = "assignee_assigned"
+)
+
+func (e *NotificationType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = NotificationType(s)
+	case string:
+		*e = NotificationType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for NotificationType: %T", src)
+	}
+	return nil
+}
+
+type NullNotificationType struct {
+	NotificationType NotificationType `json:"notification_type"`
+	Valid            bool             `json:"valid"` // Valid is true if NotificationType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullNotificationType) Scan(value interface{}) error {
+	if value == nil {
+		ns.NotificationType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.NotificationType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullNotificationType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.NotificationType), nil
+}
+
 type TicketPriority string
 
 const (
@@ -134,6 +219,14 @@ type FormMember struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type FormNotificationSetting struct {
+	FormID           pgtype.UUID        `json:"form_id"`
+	NotificationType NotificationType   `json:"notification_type"`
+	Mode             NotificationMode   `json:"mode"`
+	IncludeDetail    bool               `json:"include_detail"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
 type FormQuestion struct {
 	FormID       pgtype.UUID        `json:"form_id"`
 	QuestionID   string             `json:"question_id"`
@@ -190,6 +283,14 @@ type TicketHistory struct {
 	OldValue      pgtype.Text        `json:"old_value"`
 	NewValue      pgtype.Text        `json:"new_value"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+type TicketNotification struct {
+	ID               pgtype.UUID        `json:"id"`
+	TicketID         pgtype.UUID        `json:"ticket_id"`
+	NotificationType NotificationType   `json:"notification_type"`
+	SentBy           pgtype.UUID        `json:"sent_by"`
+	SentAt           pgtype.Timestamptz `json:"sent_at"`
 }
 
 type User struct {
