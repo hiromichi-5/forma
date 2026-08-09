@@ -71,6 +71,15 @@ func NewStatusUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.StatusRep
 	}
 }
 
+func NewNotificationUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.NotificationRepos] {
+	return &unitOfWork[repository.NotificationRepos]{
+		pool: pool,
+		factory: func(q *db.Queries) repository.NotificationRepos {
+			return repository.NotificationRepos{Notification: &NotificationRepository{q: q}}
+		},
+	}
+}
+
 func NewTicketUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.TicketRepos] {
 	return &unitOfWork[repository.TicketRepos]{
 		pool: pool,
