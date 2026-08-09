@@ -24,8 +24,13 @@ import type {
   CreateFormStatusRequest,
   UpdateFormStatusRequest,
   TicketDetail,
+  TicketUpdateResponse,
   UpdateTicketRequest,
   ListTicketHistoriesResponse,
+  NotificationSettingsResponse,
+  UpdateNotificationSettingsRequest,
+  SendNotificationRequest,
+  SentNotificationResponse,
   UserProfile,
   UpdateUserProfileRequest,
   ErrorResponse,
@@ -357,8 +362,8 @@ class ApiClient {
   async updateTicket(
     ticketId: string,
     request: UpdateTicketRequest
-  ): Promise<TicketDetail> {
-    return this.request<TicketDetail>(`/v1/tickets/${ticketId}`, {
+  ): Promise<TicketUpdateResponse> {
+    return this.request<TicketUpdateResponse>(`/v1/tickets/${ticketId}`, {
       method: "PATCH",
       body: JSON.stringify(request),
     });
@@ -369,6 +374,42 @@ class ApiClient {
   ): Promise<ListTicketHistoriesResponse> {
     return this.request<ListTicketHistoriesResponse>(
       `/v1/tickets/${ticketId}/histories`
+    );
+  }
+
+  // Notifications
+
+  async getNotificationSettings(
+    formId: string
+  ): Promise<NotificationSettingsResponse> {
+    return this.request<NotificationSettingsResponse>(
+      `/v1/forms/${formId}/notification-settings`
+    );
+  }
+
+  async updateNotificationSettings(
+    formId: string,
+    request: UpdateNotificationSettingsRequest
+  ): Promise<NotificationSettingsResponse> {
+    return this.request<NotificationSettingsResponse>(
+      `/v1/forms/${formId}/notification-settings`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(request),
+      }
+    );
+  }
+
+  async sendTicketNotification(
+    ticketId: string,
+    request: SendNotificationRequest
+  ): Promise<SentNotificationResponse> {
+    return this.request<SentNotificationResponse>(
+      `/v1/tickets/${ticketId}/notifications`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+      }
     );
   }
 

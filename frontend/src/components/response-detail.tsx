@@ -9,13 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Send, User, Bot } from "lucide-react";
+import { X, Send, User, Bot, Mail } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useChatMessages } from "@/hooks/use-chat-messages";
 import { useTicketHistories } from "@/hooks/use-ticket-histories";
 import { cn } from "@/lib/utils";
-import type { TicketHistory } from "@/types";
+import type { NotificationType, TicketHistory } from "@/types";
 
 type TimelineItem =
   | {
@@ -38,6 +38,10 @@ type ResponseDetailProps = {
   onClose: () => void;
   currentUserId: string;
   currentUserName: string;
+  onSendNotification?: (
+    responseId: string,
+    notificationType: NotificationType
+  ) => Promise<boolean>;
 };
 
 export function ResponseDetail({
@@ -45,7 +49,27 @@ export function ResponseDetail({
   onClose,
   currentUserId,
   currentUserName,
+  onSendNotification,
 }: ResponseDetailProps) {
+  const [sendingNotification, setSendingNotification] =
+    useState<NotificationType | null>(null);
+
+  const handleSendNotification = async (notificationType: NotificationType) => {
+    if (!onSendNotification) return;
+    setSendingNotification(notificationType);
+    try {
+      await onSendNotification(response.id, notificationType);
+    } finally {
+      setSendingNotification(null);
+    }
+  };
+
+  const getLastSentAt = (notificationType: NotificationType): Date | null =>
+    response.notifications.find((n) => n.notificationType === notificationType)
+      ?.lastSentAt ?? null;
+
+  const formatLastSentAt = (date: Date | null): string =>
+    date ? `最終送信: ${format(date, "MM/dd HH:mm")}` : "未送信";
   const { messages, sendMessage } = useChatMessages(response.id);
   const { histories } = useTicketHistories(response.id);
   const [inputValue, setInputValue] = useState("");
@@ -165,6 +189,38 @@ export function ResponseDetail({
               {response.respondentEmail}の詳細
             </h3>
           </div>
+          {onSendNotification && response.hasRespondentEmail && (
+            <div className="flex items-center gap-3 mr-2">
+              <div className="flex flex-col items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSendNotification("status_change")}
+                  disabled={sendingNotification !== null}
+                >
+                  <Mail className="h-4 w-4" />
+                  対応状況を通知
+                </Button>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {formatLastSentAt(getLastSentAt("status_change"))}
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSendNotification("assignee_assigned")}
+                  disabled={sendingNotification !== null || response.assignedTo === null}
+                >
+                  <Mail className="h-4 w-4" />
+                  担当者を通知
+                </Button>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {formatLastSentAt(getLastSentAt("assignee_assigned"))}
+                </span>
+              </div>
+            </div>
+          )}
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>

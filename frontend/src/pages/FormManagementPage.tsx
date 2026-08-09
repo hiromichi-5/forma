@@ -6,6 +6,7 @@ import { ResponseTableView } from "@/components/response-table-view"
 import { ResponseKanbanView } from "@/components/response-kanban-view"
 import { ResponseDetail } from "@/components/response-detail"
 import { MembersDialog } from "@/components/members-dialog"
+import { NotificationsDialog } from "@/components/notifications-dialog"
 import { StatusesDialog } from "@/components/statuses-dialog"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,7 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useFormResponses } from "@/hooks/use-form-responses"
+import { notificationLabel, useFormResponses } from "@/hooks/use-form-responses"
+import { useAuth } from "@/hooks/useAuth"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
 import type { FormResponse } from "@/types/form-response"
@@ -28,7 +30,18 @@ export default function FormManagementPage() {
   const params = useParams()
   const navigate = useNavigate()
   const formId = params.id
-  const { responses, updateResponseStatus, assignResponse, updatePriority, refetch } = useFormResponses(formId ?? null)
+  const {
+    responses,
+    updateResponseStatus,
+    assignResponse,
+    updatePriority,
+    refetch,
+    pendingNotification,
+    resolvePendingNotification,
+    cancelPendingNotification,
+    sendNotification,
+  } = useFormResponses(formId ?? null)
+  const { user } = useAuth()
   const [form, setForm] = useState<Form | null>(null)
   const [questions, setQuestions] = useState<FormQuestion[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -39,11 +52,17 @@ export default function FormManagementPage() {
   const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [isStatusesOpen, setIsStatusesOpen] = useState(false)
   const [isUnregisterOpen, setIsUnregisterOpen] = useState(false)
   const [isUnregistering, setIsUnregistering] = useState(false)
   const [unregisterError, setUnregisterError] = useState("")
   const [isSyncing, setIsSyncing] = useState(false)
+
+  const isAdmin = useMemo(
+    () => members.some((member) => member.id === user?.id && member.role === "admin"),
+    [members, user?.id]
+  )
 
   const statusMap = useMemo(() => new Map(formStatuses.map((status) => [status.id, status])), [formStatuses])
   const formResponses = useMemo(
@@ -213,6 +232,7 @@ export default function FormManagementPage() {
           onTitleQuestionChange={handleTitleQuestionChange}
           onStatusManageClick={() => setIsStatusesOpen(true)}
           onMembersClick={() => setIsMembersOpen(true)}
+          onNotificationsClick={() => setIsNotificationsOpen(true)}
           onUnregisterClick={() => setIsUnregisterOpen(true)}
           isSyncing={isSyncing}
           onSyncClick={handleSync}
@@ -257,6 +277,7 @@ export default function FormManagementPage() {
           onClose={() => setIsDetailOpen(false)}
           currentUserId="1"
           currentUserName="田中 太郎"
+          onSendNotification={sendNotification}
         />
       )}
 
@@ -271,6 +292,38 @@ export default function FormManagementPage() {
       )}
 
       <MembersDialog formId={formId} open={isMembersOpen} onOpenChange={setIsMembersOpen} />
+
+      <NotificationsDialog
+        formId={formId}
+        open={isNotificationsOpen}
+        onOpenChange={setIsNotificationsOpen}
+        canEdit={isAdmin}
+      />
+
+      <AlertDialog
+        open={pendingNotification !== null}
+        onOpenChange={(open) => {
+          if (!open) cancelPendingNotification()
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>回答者に通知しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingNotification
+                ? `${notificationLabel(pendingNotification.notificationType)}を回答者にメールで通知します。通知しない場合も変更は保存されます。`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <Button variant="outline" onClick={() => resolvePendingNotification(false)}>
+              通知せず変更
+            </Button>
+            <Button onClick={() => resolvePendingNotification(true)}>通知して変更</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={isUnregisterOpen}

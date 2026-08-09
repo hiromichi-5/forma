@@ -3,6 +3,7 @@ export type FormResponse = {
   formId: string
   formTitle: string
   respondentEmail: string
+  hasRespondentEmail: boolean
   submittedAt: Date
   status: string
   statusName: string
@@ -11,6 +12,12 @@ export type FormResponse = {
   responses: Record<string, string>
   questions: FormResponseQuestion[]
   priority: "high" | "medium" | "low"
+  notifications: NotificationStatus[]
+}
+
+export type NotificationStatus = {
+  notificationType: "status_change" | "assignee_assigned"
+  lastSentAt: Date | null
 }
 
 export type FormResponseQuestion = {

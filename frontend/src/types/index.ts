@@ -19,6 +19,9 @@ export type ErrorCode =
   | "FORM_ALREADY_REGISTERED"
   | "ACTIVE_INVITE_ALREADY_EXISTS"
   | "STATUS_CONFLICT"
+  | "NOTIFICATION_DISABLED"
+  | "RESPONDENT_EMAIL_MISSING"
+  | "NOTIFICATION_RATE_LIMITED"
   | "VALIDATION_ERROR"
   | "NETWORK_ERROR"
   | "INTERNAL";
@@ -216,14 +219,57 @@ export interface TicketAnswer {
   display_value: string;
 }
 
+export type NotificationType = "status_change" | "assignee_assigned";
+
+export type NotificationMode = "always" | "confirm" | "off";
+
+export interface TicketNotification {
+  notification_type: NotificationType;
+  last_sent_at?: string | null;
+}
+
+export interface NotificationResult {
+  notification_type: NotificationType;
+  result: "sent" | "failed";
+}
+
 export interface TicketDetail extends TicketSummary {
   answers: TicketAnswer[];
+  notifications: TicketNotification[];
+}
+
+export interface TicketUpdateResponse extends TicketDetail {
+  notification_results: NotificationResult[];
 }
 
 export interface UpdateTicketRequest {
   status_id?: string;
   assignee_id?: string | null;
   priority?: TicketPriority;
+}
+
+export interface NotificationSetting {
+  notification_type: NotificationType;
+  mode: NotificationMode;
+  include_detail: boolean;
+}
+
+export interface NotificationSettingsResponse {
+  email_collection_type?: string | null;
+  settings: NotificationSetting[];
+}
+
+export interface UpdateNotificationSettingsRequest {
+  settings: NotificationSetting[];
+}
+
+export interface SendNotificationRequest {
+  notification_type: NotificationType;
+}
+
+export interface SentNotificationResponse {
+  notification_type: NotificationType;
+  sent_at: string;
 }
 
 export interface TicketHistory {

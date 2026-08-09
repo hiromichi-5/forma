@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutList, LayoutGrid, Search, Users, Settings, Trash2, ChevronDown, ExternalLink, RefreshCw } from "lucide-react";
+import { LayoutList, LayoutGrid, Search, Users, Settings, Trash2, ChevronDown, ExternalLink, RefreshCw, Bell } from "lucide-react";
 import type { FormStatus, FormQuestion } from "@/types";
 
 const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
@@ -41,6 +41,7 @@ type FormManagementHeaderProps = {
   onTitleQuestionChange: (questionId: string | null) => void;
   onStatusManageClick?: () => void;
   onMembersClick: () => void;
+  onNotificationsClick: () => void;
   onUnregisterClick: () => void;
   isSyncing: boolean;
   onSyncClick: () => void;
@@ -61,6 +62,7 @@ export function FormManagementHeader({
   onTitleQuestionChange,
   onStatusManageClick,
   onMembersClick,
+  onNotificationsClick,
   onUnregisterClick,
   isSyncing,
   onSyncClick,
@@ -118,6 +120,13 @@ export function FormManagementHeader({
             <DropdownMenuItem onClick={onMembersClick} className="text-base py-2 rounded-lg">
               <Users className="h-4 w-4" />
               メンバー管理
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={onNotificationsClick}
+              className="text-base py-2 rounded-lg"
+            >
+              <Bell className="h-4 w-4" />
+              通知設定
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

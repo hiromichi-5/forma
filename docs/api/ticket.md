@@ -188,13 +188,13 @@
 
 ### レスポンス
 
-**200 OK** — 更新後のチケット詳細（GET /v1/tickets/:ticket_id と同じ形式）に `notifications` を加えたもの。
+**200 OK** — 更新後のチケット詳細（GET /v1/tickets/:ticket_id と同じ形式）に `notification_results` を加えたもの。
 
 ```json
 {
   "id": "550e8400-...",
   "...": "（GET /v1/tickets/:ticket_id と同じフィールド）",
-  "notifications": [
+  "notification_results": [
     { "notification_type": "status_change", "result": "sent" }
   ]
 }
@@ -202,9 +202,11 @@
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `notifications` | array | この更新で自動送信を試みた通知の結果。試行がなければ空配列 |
-| `notifications[].notification_type` | string | 通知種別（`status_change`, `assignee_assigned`） |
-| `notifications[].result` | string | `sent`（送信成功）または `failed`（送信失敗） |
+| `notification_results` | array | この更新で自動送信を試みた通知の結果。試行がなければ空配列 |
+| `notification_results[].notification_type` | string | 通知種別（`status_change`, `assignee_assigned`） |
+| `notification_results[].result` | string | `sent`（送信成功）または `failed`（送信失敗） |
+
+詳細取得と同じ `notifications`（種別ごとの最終送信日時）も併せて含まれる。この更新の結果を表す `notification_results` とは別のフィールドである。
 
 自動送信されるのは通知設定が `always` の種別のみ。`confirm` の種別はここでは送信されず、`POST /v1/tickets/:ticket_id/notifications` を別途呼ぶ必要がある。
 
@@ -216,7 +218,7 @@
 | `RESOURCE_HIDDEN` | 404 | チケットが存在しない、メンバーでない、指定ステータスが不正、担当者がメンバーでない |
 | `USER_NOT_FOUND` | 404 | 指定担当者のユーザーが存在しない |
 
-通知メールの送信失敗はエラーにしない。チケットの更新は成功として `200 OK` を返し、`notifications` の `result` で伝える。
+通知メールの送信失敗はエラーにしない。チケットの更新は成功として `200 OK` を返し、`notification_results` の `result` で伝える。
 
 ### 補足
 
