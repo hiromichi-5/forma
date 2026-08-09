@@ -7,6 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Mail, X, Shield, User, Clock } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
@@ -41,6 +50,11 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
   const [inviteRole, setInviteRole] = useState<"admin" | "editor">("editor")
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
+  const [isWorking, setIsWorking] = useState(false)
+  const [revokeTarget, setRevokeTarget] = useState<FormInvite | null>(null)
+  const [revokeError, setRevokeError] = useState("")
+  const [removeTarget, setRemoveTarget] = useState<MemberView | null>(null)
+  const [removeError, setRemoveError] = useState("")
 
   const toRoleValue = (value: string): "admin" | "editor" => (value === "admin" ? "admin" : "editor")
 
@@ -111,14 +125,17 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
     }
   }
 
-  const handleRevokeInvite = async (inviteId: string) => {
-    setErrorMessage("")
+  const handleRevokeInvite = async () => {
+    if (!revokeTarget) return
+    setIsWorking(true)
+    setRevokeError("")
     try {
-      await apiClient.revokeInvite(formId, inviteId)
+      await apiClient.revokeInvite(formId, revokeTarget.id)
       await loadData()
+      setRevokeTarget(null)
     } catch (error) {
       console.error("Failed to revoke invite:", error)
-      setErrorMessage(
+      setRevokeError(
         getApiErrorMessage(
           error,
           {
@@ -131,17 +148,22 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
           "招待の取消に失敗しました"
         )
       )
+    } finally {
+      setIsWorking(false)
     }
   }
 
-  const handleRemoveMember = async (id: string) => {
-    setErrorMessage("")
+  const handleRemoveMember = async () => {
+    if (!removeTarget) return
+    setIsWorking(true)
+    setRemoveError("")
     try {
-      await apiClient.removeMember(formId, id)
+      await apiClient.removeMember(formId, removeTarget.id)
       await loadData()
+      setRemoveTarget(null)
     } catch (error) {
       console.error("Failed to remove member:", error)
-      setErrorMessage(
+      setRemoveError(
         getApiErrorMessage(
           error,
           {
@@ -154,6 +176,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
           "メンバーの削除に失敗しました"
         )
       )
+    } finally {
+      setIsWorking(false)
     }
   }
 
@@ -187,142 +211,204 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>メンバー管理</DialogTitle>
-          <DialogDescription>このフォームにアクセスできるメンバーを管理します</DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>メンバー管理</DialogTitle>
+            <DialogDescription>このフォームにアクセスできるメンバーを管理します</DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-6">
-          {errorMessage && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{errorMessage}</div>
-          )}
+          <div className="space-y-6">
+            {errorMessage && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{errorMessage}</div>
+            )}
 
-          <div className="space-y-3 p-4 bg-muted/60 border border-dashed rounded-lg">
-            <h3 className="text-sm font-semibold text-foreground">メンバーを招待する</h3>
-            <div className="flex gap-2">
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="email" className="text-xs">
-                  メールアドレス
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="example@company.com"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                />
-              </div>
-              <div className="w-[140px] space-y-2">
-                <Label className="text-xs">権限</Label>
-                <Select value={inviteRole} onValueChange={(v) => setInviteRole(toRoleValue(v))}>
-                  <SelectTrigger className="w-full bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">管理者</SelectItem>
-                    <SelectItem value="editor">編集者</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button onClick={handleInvite} className="gap-2">
-                  <Mail className="h-4 w-4" />
-                  招待
-                </Button>
+            <div className="space-y-3 p-4 bg-muted/60 border border-dashed rounded-lg">
+              <h3 className="text-sm font-semibold text-foreground">メンバーを招待する</h3>
+              <div className="flex gap-2">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="email" className="text-xs">
+                    メールアドレス
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="example@company.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                  />
+                </div>
+                <div className="w-[140px] space-y-2">
+                  <Label className="text-xs">権限</Label>
+                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(toRoleValue(v))}>
+                    <SelectTrigger className="w-full bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">管理者</SelectItem>
+                      <SelectItem value="editor">編集者</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={handleInvite} className="gap-2">
+                    <Mail className="h-4 w-4" />
+                    招待
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {invites.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">保留中の招待 ({invites.length})</h3>
+            {invites.length > 0 && (
               <div className="space-y-2">
-                {invites.map((invite) => (
-                  <div key={invite.id} className="flex items-center justify-between p-3 bg-card border border-dashed rounded-lg">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                        <Clock className="h-5 w-5 text-muted-foreground" />
+                <h3 className="text-sm font-semibold text-foreground">保留中の招待 ({invites.length})</h3>
+                <div className="space-y-2">
+                  {invites.map((invite) => (
+                    <div key={invite.id} className="flex items-center justify-between p-3 bg-card border border-dashed rounded-lg">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                          <Clock className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm text-foreground">{invite.email}</p>
+                          <p className="text-xs text-muted-foreground">{formatExpiresAt(invite.expires_at)}</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm text-foreground">{invite.email}</p>
-                        <p className="text-xs text-muted-foreground">{formatExpiresAt(invite.expires_at)}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          {invite.role === "admin" ? "管理者" : "編集者"}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setRevokeTarget(invite)}
+                          className="h-8 w-8"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground">現在のメンバー ({members.length})</h3>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {isLoading && (
+                  <div className="p-3 text-sm text-muted-foreground">読み込み中...</div>
+                )}
+                {members.map((member) => (
+                  <div key={member.id} className="flex items-center justify-between p-3 bg-card border rounded-lg">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        {member.role === "admin" ? (
+                          <Shield className="h-5 w-5 text-primary" />
+                        ) : (
+                          <User className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm text-foreground">{member.name}</p>
+                        <p className="text-xs text-muted-foreground">{member.email}</p>
+                      </div>
+                    </div>
+
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary">
-                        {invite.role === "admin" ? "管理者" : "編集者"}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRevokeInvite(invite.id)}
-                        className="h-8 w-8"
+                      <Select
+                        value={member.role}
+                        onValueChange={(v) => handleRoleChange(member.id, toRoleValue(v))}
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
+                        <SelectTrigger className="w-[110px] h-8">
+                          <Badge variant={member.role === "admin" ? "default" : "secondary"}>
+                            {member.role === "admin" ? "管理者" : "編集者"}
+                          </Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">管理者</SelectItem>
+                          <SelectItem value="editor">編集者</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {member.role !== "admin" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setRemoveTarget(member)}
+                          className="h-8 w-8"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
-
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">現在のメンバー ({members.length})</h3>
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {isLoading && (
-                <div className="p-3 text-sm text-muted-foreground">読み込み中...</div>
-              )}
-              {members.map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-3 bg-card border rounded-lg">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      {member.role === "admin" ? (
-                        <Shield className="h-5 w-5 text-primary" />
-                      ) : (
-                        <User className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm text-foreground">{member.name}</p>
-                      <p className="text-xs text-muted-foreground">{member.email}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={member.role}
-                      onValueChange={(v) => handleRoleChange(member.id, toRoleValue(v))}
-                    >
-                      <SelectTrigger className="w-[110px] h-8">
-                        <Badge variant={member.role === "admin" ? "default" : "secondary"}>
-                          {member.role === "admin" ? "管理者" : "編集者"}
-                        </Badge>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">管理者</SelectItem>
-                        <SelectItem value="editor">編集者</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {member.role !== "admin" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveMember(member.id)}
-                        className="h-8 w-8"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={revokeTarget !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setRevokeTarget(null)
+            setRevokeError("")
+          }
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>招待をキャンセルしますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{revokeTarget?.email}」への招待をキャンセルします。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {revokeError && (
+            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              {revokeError}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isWorking}>キャンセル</AlertDialogCancel>
+            <Button onClick={handleRevokeInvite} disabled={isWorking} variant="destructive">
+              招待をキャンセルする
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={removeTarget !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setRemoveTarget(null)
+            setRemoveError("")
+          }
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>メンバーを削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{removeTarget?.name}」をこのフォームのメンバーから削除します。一度削除したメンバーを追加する場合は、再度招待する必要があります。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {removeError && (
+            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              {removeError}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isWorking}>キャンセル</AlertDialogCancel>
+            <Button onClick={handleRemoveMember} disabled={isWorking} variant="destructive">
+              削除する
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
