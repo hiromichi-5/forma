@@ -30,6 +30,7 @@ docs
 │   ├── form.md
 │   ├── invite.md
 │   ├── member.md
+│   ├── notification.md
 │   ├── profile.md
 │   ├── status.md
 │   ├── TEMPLATE.md
@@ -42,6 +43,7 @@ docs
 │   ├── overview.md
 │   └── transaction.md
 ├── design
+│   ├── respondent-notification.md
 │   └── TEMPLATE.md
 ├── guides
 │   ├── commands.md
