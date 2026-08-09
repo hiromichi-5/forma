@@ -86,7 +86,7 @@
 
 #### 200 OK
 
-一覧のフィールドに加えて `answers` が含まれる。
+一覧のフィールドに加えて `answers` と `notifications` が含まれる。
 
 ```json
 {
@@ -117,15 +117,35 @@
       "values": ["商品Aの在庫について"],
       "display_value": "商品Aの在庫について"
     }
+  ],
+  "notifications": [
+    {
+      "notification_type": "status_change",
+      "last_sent_at": "2026-03-30T15:00:00Z"
+    },
+    {
+      "notification_type": "assignee_assigned",
+      "last_sent_at": null
+    }
   ]
 }
 ```
+
+| フィールド | 型 | 説明 |
+| --- | --- | --- |
+| `notifications` | array | 通知種別ごとの最終送信日時。常にすべての種別が含まれる |
+| `notifications[].notification_type` | string | 通知種別（`status_change`, `assignee_assigned`） |
+| `notifications[].last_sent_at` | string? | 最終送信日時（RFC3339）。未送信なら `null` |
 
 ### エラー
 
 | コード | HTTP | 条件 |
 | --- | --- | --- |
 | `RESOURCE_HIDDEN` | 404 | チケットが存在しない、メンバーでない |
+
+### 補足
+
+- `notifications` は再送ボタンの状態表示（「3分前に通知済み」、レートリミット中の非活性化）のために返す。自動送信・手動送信のいずれも含む
 
 ---
 
@@ -168,7 +188,25 @@
 
 ### レスポンス
 
-**200 OK** — 更新後のチケット詳細（GET /v1/tickets/:ticket_id と同じ形式）
+**200 OK** — 更新後のチケット詳細（GET /v1/tickets/:ticket_id と同じ形式）に `notifications` を加えたもの。
+
+```json
+{
+  "id": "550e8400-...",
+  "...": "（GET /v1/tickets/:ticket_id と同じフィールド）",
+  "notifications": [
+    { "notification_type": "status_change", "result": "sent" }
+  ]
+}
+```
+
+| フィールド | 型 | 説明 |
+| --- | --- | --- |
+| `notifications` | array | この更新で自動送信を試みた通知の結果。試行がなければ空配列 |
+| `notifications[].notification_type` | string | 通知種別（`status_change`, `assignee_assigned`） |
+| `notifications[].result` | string | `sent`（送信成功）または `failed`（送信失敗） |
+
+自動送信されるのは通知設定が `always` の種別のみ。`confirm` の種別はここでは送信されず、`POST /v1/tickets/:ticket_id/notifications` を別途呼ぶ必要がある。
 
 ### エラー
 
@@ -178,11 +216,75 @@
 | `RESOURCE_HIDDEN` | 404 | チケットが存在しない、メンバーでない、指定ステータスが不正、担当者がメンバーでない |
 | `USER_NOT_FOUND` | 404 | 指定担当者のユーザーが存在しない |
 
+通知メールの送信失敗はエラーにしない。チケットの更新は成功として `200 OK` を返し、`notifications` の `result` で伝える。
+
 ### 補足
 
 - `assignee_id` フィールドは JSON の `null`（担当者解除）と未指定（変更なし）を `nullableUUIDPayload` で判別する
 - 変更履歴は `changeRecorder` が各フィールドの変更を蓄積し、トランザクション内で一括保存する
 - 値が変わらない場合（同じステータスへの更新など）は変更履歴を記録しない
+- 通知メールはトランザクションのコミット後、レスポンスを返す前に同期的に送信する。値が変わらず変更履歴が記録されない場合は通知も送信しない
+- `tickets.respondent_email` が `null` のチケットは、設定に関わらず送信しない
+- 担当者の解除（`assignee_id: null`）は通知の対象外
+- 通知設定については `docs/api/notification.md`、設計の背景は `docs/design/respondent-notification.md` を参照
+
+---
+
+## POST /v1/tickets/:ticket_id/notifications
+
+回答者へ通知メールを手動で送信する。`confirm` モードでの送信と、届かなかった場合の再送に使う。
+
+| 項目 | 値 |
+| --- | --- |
+| メソッド | `POST` |
+| パス | `/v1/tickets/:ticket_id/notifications` |
+| 認証 | 必要（SessionMiddleware） |
+| 権限 | Editor 以上 |
+
+### リクエストボディ
+
+| フィールド | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `notification_type` | string | Yes | 通知種別（`status_change`, `assignee_assigned`） |
+
+```json
+{
+  "notification_type": "status_change"
+}
+```
+
+### レスポンス
+
+#### 200 OK
+
+| フィールド | 型 | 説明 |
+| --- | --- | --- |
+| `notification_type` | string | 送信した通知種別 |
+| `sent_at` | string | 送信日時（RFC3339） |
+
+```json
+{
+  "notification_type": "status_change",
+  "sent_at": "2026-03-30T15:00:00Z"
+}
+```
+
+### エラー
+
+| コード | HTTP | 条件 |
+| --- | --- | --- |
+| `VALIDATION_ERROR` | 400 | notification_type が不正な値 |
+| `RESOURCE_HIDDEN` | 404 | チケットが存在しない、メンバーでない |
+| `NOTIFICATION_DISABLED` | 409 | 該当種別の通知設定が `off` |
+| `RESPONDENT_EMAIL_MISSING` | 409 | チケットに回答者のメールアドレスがない |
+| `NOTIFICATION_RATE_LIMITED` | 429 | 同一チケット・同一種別で5分以内に送信済み |
+
+### 補足
+
+- 送信内容は**送信時点のチケットの状態**（現在のステータス名・担当者名）。過去の特定の変更に紐づけては送らない
+- `assignee_assigned` は現在の担当者が `null` の場合 `VALIDATION_ERROR` となる
+- レートリミットの判定には `PATCH` による自動送信の記録も含まれる。直前に `always` の自動通知が送られていれば、手動送信も5分間は制限される
+- 送信に成功した場合のみ `ticket_notifications` に記録する。送信に失敗した場合は記録されないため、すぐに再試行できる
 
 ## GET /v1/tickets/:ticket_id/histories
 
