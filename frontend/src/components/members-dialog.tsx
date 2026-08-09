@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Mail, X, Shield, User, Clock } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
@@ -331,16 +332,26 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
                           <SelectItem value="editor">編集者</SelectItem>
                         </SelectContent>
                       </Select>
-                      {member.role !== "admin" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setRemoveTarget(member)}
-                          className="h-8 w-8"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={member.role === "admin"}
+                              onClick={() => setRemoveTarget(member)}
+                              className="h-8 w-8"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {member.role === "admin"
+                            ? "管理者は削除できません"
+                            : "メンバーを削除"}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </div>
                 ))}
