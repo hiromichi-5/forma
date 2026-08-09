@@ -76,6 +76,21 @@ func (r *FormRepository) UpdateSyncedAt(
 	return rowsError(n)
 }
 
+func (r *FormRepository) UpdateEmailCollectionType(
+	ctx context.Context,
+	id uuid.UUID,
+	emailCollectionType *string,
+) error {
+	n, err := r.q.UpdateFormEmailCollectionType(ctx, db.UpdateFormEmailCollectionTypeParams{
+		ID:                  toUUID(id),
+		EmailCollectionType: toTextPtr(emailCollectionType),
+	})
+	if err != nil {
+		return repoError(err)
+	}
+	return rowsError(n)
+}
+
 func (r *FormRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	n, err := r.q.DeleteForm(ctx, toUUID(id))
 	if err != nil {

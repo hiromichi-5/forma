@@ -67,7 +67,7 @@
 書き込み箇所は2つ。
 
 1. **フォーム登録時** — `usecase/form.go` の `Form.Create` に含める
-2. **同期時** — `usecase/sync.go` の `refreshFormQuestions` が同期のたびに `GetForm` を呼んでいるため、ここで更新する
+2. **同期時** — `usecase/sync.go` が同期のたびに `GetForm` を呼んでいるため、ここで更新する。質問以外も取り込むようになったため、この関数は `refreshFormQuestions` から `refreshFormMetadata` に改名した
 
 2 により、既存の登録済みフォーム（現在すべて `NULL`）は次回の同期で自動的に埋まる。バックフィル用のマイグレーションやバッチは不要。
 
@@ -127,13 +127,13 @@ CREATE INDEX ticket_notifications_ticket_type_sent_at
 
 自動送信（`always`）はこれに加えて、
 
-3. 対象フィールドが**実際に変更された**こと。`usecase.changeRecorder` が変更を記録した場合と同じ条件で判定する（同じステータスへの更新など、値が変わらない場合は送信しない）
-4. `assignee_assigned` は変更後の担当者が `NULL` でないこと（解除は対象外）
+- 対象フィールドが**実際に変更された**こと。`usecase.changeRecorder` が変更を記録した場合と同じ条件で判定する（同じステータスへの更新など、値が変わらない場合は送信しない）
+- `assignee_assigned` は変更後の担当者が `NULL` でないこと（解除は対象外）
 
 手動送信はこれに加えて、
 
-5. レートリミットに抵触しないこと（後述）
-6. `assignee_assigned` は現在の担当者が `NULL` でないこと
+- レートリミットに抵触しないこと（後述）
+- `assignee_assigned` は現在の担当者が `NULL` でないこと
 
 ### 送信内容は常に現在の状態
 
@@ -164,7 +164,7 @@ GET /v1/forms/:form_id/notification-settings
         │
    PATCH /v1/tickets/:id {status_id} ──→ ステータス更新（トランザクション）
         │                                mode = always なら自動送信
-        │←────────────────────────────── 200 OK {..., notifications: []}
+        │←──────────────────── 200 OK {..., notification_results: []}
         │
    mode = confirm かつ
    ticket.respondent_email != null
@@ -184,7 +184,9 @@ GET /v1/forms/:form_id/notification-settings
         └─ 通知しない ──→ （リクエストを送らない）
 ```
 
-`mode = always` の場合は確認ダイアログを挟まず、`PATCH` のレスポンスに含まれる `notifications` の結果だけを見る。
+`mode = always` の場合は確認ダイアログを挟まず、`PATCH` のレスポンスに含まれる `notification_results` の結果だけを見る。
+
+なお `PATCH` のレスポンスには、詳細取得と同じ `notifications`（種別ごとの最終送信日時）と、この更新の送信結果を表す `notification_results` の両方が含まれる。前者は状態、後者は結果であり別物のため、フィールドを分けている。
 
 再送は、チケット詳細画面の「回答者に通知」ボタンから同じ `POST /v1/tickets/:id/notifications` を呼ぶ。
 

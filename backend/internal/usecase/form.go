@@ -88,10 +88,11 @@ func (uc *FormUseCase) RegisterForm(
 	err = uc.uow.Do(ctx, func(repos repository.FormRepos) error {
 		var txErr error
 		form, txErr = repos.Form.Create(ctx, entity.Form{
-			ID:          uuid.New(),
-			FormID:      googleFormID,
-			Title:       title,
-			Description: description,
+			ID:                  uuid.New(),
+			FormID:              googleFormID,
+			Title:               title,
+			Description:         description,
+			EmailCollectionType: emailCollectionType(gf.EmailCollectionType),
 		})
 		if txErr != nil {
 			return txErr
@@ -253,6 +254,13 @@ func extractFormID(u string) (string, error) {
 		return "", entity.NewError(entity.CodeValidation)
 	}
 	return "", entity.NewError(entity.CodeValidation)
+}
+
+func emailCollectionType(v string) *string {
+	if v == "" || v == "EMAIL_COLLECTION_TYPE_UNSPECIFIED" {
+		return nil
+	}
+	return &v
 }
 
 func mapFormFetcherError(err error) error {

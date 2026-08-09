@@ -121,6 +121,25 @@ func (q *Queries) ListForms(ctx context.Context) ([]Form, error) {
 	return items, nil
 }
 
+const updateFormEmailCollectionType = `-- name: UpdateFormEmailCollectionType :execrows
+UPDATE forms
+SET email_collection_type = $2
+WHERE id = $1
+`
+
+type UpdateFormEmailCollectionTypeParams struct {
+	ID                  pgtype.UUID `json:"id"`
+	EmailCollectionType pgtype.Text `json:"email_collection_type"`
+}
+
+func (q *Queries) UpdateFormEmailCollectionType(ctx context.Context, arg UpdateFormEmailCollectionTypeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateFormEmailCollectionType, arg.ID, arg.EmailCollectionType)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateFormSyncedAt = `-- name: UpdateFormSyncedAt :execrows
 UPDATE forms
 SET synced_at = $2

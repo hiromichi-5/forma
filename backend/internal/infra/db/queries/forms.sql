@@ -18,6 +18,11 @@ UPDATE forms
 SET synced_at = $2
 WHERE id = $1;
 
+-- name: UpdateFormEmailCollectionType :execrows
+UPDATE forms
+SET email_collection_type = $2
+WHERE id = $1;
+
 -- name: DeleteForm :execrows
 DELETE FROM forms
 WHERE id = $1;

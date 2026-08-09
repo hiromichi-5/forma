@@ -55,7 +55,7 @@ func (uc *SyncUseCase) SyncFormOnce(
 		return 0, time.Time{}, err
 	}
 
-	if err := uc.refreshFormQuestions(ctx, form); err != nil {
+	if err := uc.refreshFormMetadata(ctx, form); err != nil {
 		return 0, time.Time{}, err
 	}
 
@@ -139,13 +139,21 @@ func (uc *SyncUseCase) SyncFormOnce(
 	return newTickets, maxSubmitted, nil
 }
 
-func (uc *SyncUseCase) refreshFormQuestions(ctx context.Context, form entity.Form) error {
+func (uc *SyncUseCase) refreshFormMetadata(ctx context.Context, form entity.Form) error {
 	gf, err := uc.fetcher.GetForm(ctx, form.FormID)
 	if err != nil {
 		return mapFormFetcherError(err)
 	}
 	if gf == nil {
 		return entity.NewError(entity.CodeFormNotFound)
+	}
+
+	if err := uc.formRepo.UpdateEmailCollectionType(
+		ctx,
+		form.ID,
+		emailCollectionType(gf.EmailCollectionType),
+	); err != nil {
+		return err
 	}
 
 	for _, item := range gf.Items {
