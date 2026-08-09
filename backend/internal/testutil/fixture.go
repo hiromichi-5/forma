@@ -158,13 +158,29 @@ func CreateTicket(
 	responseID string,
 ) uuid.UUID {
 	t.Helper()
+	return CreateTicketWithRespondent(t, ctx, pool, formID, statusID, responseID, "")
+}
+
+func CreateTicketWithRespondent(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	formID, statusID uuid.UUID,
+	responseID, respondentEmail string,
+) uuid.UUID {
+	t.Helper()
+
+	var email *string
+	if respondentEmail != "" {
+		email = &respondentEmail
+	}
 
 	ticketID := uuid.New()
 	now := time.Now()
 	_, err := pool.Exec(ctx, `
-		INSERT INTO tickets (id, form_id, response_id, answers, status_id, priority, submitted_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, 'medium', $6, $7)
-	`, ticketID, formID, responseID, []byte(`{}`), statusID, now, now)
+		INSERT INTO tickets (id, form_id, response_id, respondent_email, answers, status_id, priority, submitted_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, 'medium', $7, $8)
+	`, ticketID, formID, responseID, email, []byte(`{}`), statusID, now, now)
 	if err != nil {
 		t.Fatalf("insert ticket: %v", err)
 	}

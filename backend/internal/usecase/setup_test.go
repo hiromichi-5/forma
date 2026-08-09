@@ -33,6 +33,9 @@ func newMemberRepo() repository.MemberRepository { return postgres.NewMemberRepo
 func newStatusRepo() repository.StatusRepository { return postgres.NewStatusRepository(testPool) }
 func newTicketRepo() repository.TicketRepository { return postgres.NewTicketRepository(testPool) }
 func newInviteRepo() repository.InviteRepository { return postgres.NewInviteRepository(testPool) }
+func newNotificationRepo() repository.NotificationRepository {
+	return postgres.NewNotificationRepository(testPool)
+}
 
 func newAuthUseCase() *usecase.AuthUseCase {
 	return usecase.NewAuthUseCase(
@@ -84,10 +87,27 @@ func newTicketUseCase() *usecase.TicketUseCase {
 }
 
 func newTicketUseCaseWithPublisher(publisher usecase.EventPublisher) *usecase.TicketUseCase {
+	return newTicketUseCaseWith(publisher, newNotificationUseCase(&mockEmailSender{}))
+}
+
+func newTicketUseCaseWith(
+	publisher usecase.EventPublisher,
+	notifier usecase.TicketNotifier,
+) *usecase.TicketUseCase {
 	return usecase.NewTicketUseCase(
 		newTicketRepo(), newFormRepo(), newStatusRepo(), newMemberRepo(), newUserRepo(),
 		postgres.NewTicketUoW(testPool),
 		publisher,
+		notifier,
+	)
+}
+
+func newNotificationUseCase(sender repository.EmailSender) *usecase.NotificationUseCase {
+	return usecase.NewNotificationUseCase(
+		newNotificationRepo(), newTicketRepo(), newFormRepo(), newStatusRepo(),
+		newMemberRepo(), newUserRepo(),
+		postgres.NewNotificationUoW(testPool),
+		sender,
 	)
 }
 
