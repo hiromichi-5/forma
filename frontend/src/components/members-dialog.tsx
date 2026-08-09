@@ -264,12 +264,12 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
             {invites.length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-foreground">保留中の招待 ({invites.length})</h3>
-                <div className="space-y-2">
+                <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
                   {invites.map((invite) => (
-                    <div key={invite.id} className="flex items-center justify-between p-3 bg-card border border-dashed rounded-lg">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                          <Clock className="h-5 w-5 text-muted-foreground" />
+                    <div key={invite.id} className="flex items-center justify-between p-2 bg-card border border-dashed rounded-lg">
+                      <div className="flex items-center gap-2 flex-1">
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-sm text-foreground">{invite.email}</p>
@@ -297,18 +297,18 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
 
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">現在のメンバー ({members.length})</h3>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
                 {isLoading && (
-                  <div className="p-3 text-sm text-muted-foreground">読み込み中...</div>
+                  <div className="p-2 text-sm text-muted-foreground">読み込み中...</div>
                 )}
                 {members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-3 bg-card border rounded-lg">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div key={member.id} className="flex items-center justify-between p-2 bg-card border rounded-lg">
+                    <div className="flex items-center gap-2 flex-1">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                         {member.role === "admin" ? (
-                          <Shield className="h-5 w-5 text-primary" />
+                          <Shield className="h-4 w-4 text-primary" />
                         ) : (
-                          <User className="h-5 w-5 text-muted-foreground" />
+                          <User className="h-4 w-4 text-muted-foreground" />
                         )}
                       </div>
                       <div className="flex-1">
