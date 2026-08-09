@@ -106,27 +106,27 @@ function DraggableCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "cursor-grab border p-4 shadow-none transition-colors hover:bg-muted/30 active:cursor-grabbing",
+        "cursor-grab border p-3 shadow-none transition-colors hover:bg-muted/30 active:cursor-grabbing",
         isDragging && "opacity-50"
       )}
       {...attributes}
       {...listeners}
     >
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex items-start justify-between gap-2">
           <Button
             variant="ghost"
             type="button"
-            className="h-auto flex-1 justify-start p-0 text-left hover:bg-transparent"
+            className="h-auto min-w-0 flex-1 justify-start p-0 text-left hover:bg-transparent"
             onClick={() => onOpenDetail(response)}
             aria-label={`回答詳細を開く: ${titleAnswer || response.respondentEmail}`}
           >
             <div className="min-w-0">
-              <h4 className="mb-1 text-sm font-semibold text-foreground">
+              <h4 className="mb-0.5 truncate text-sm font-semibold text-foreground">
                 {titleAnswer || response.respondentEmail}
               </h4>
               {titleAnswer && (
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate text-xs text-muted-foreground">
                   {response.respondentEmail}
                 </p>
               )}
@@ -176,7 +176,7 @@ function DraggableCard({
           }
         >
           <SelectTrigger
-            className="w-full h-8 text-xs"
+            className="w-full h-7 text-xs"
             onClick={(e) => e.stopPropagation()}
           >
             <SelectValue />
@@ -191,7 +191,7 @@ function DraggableCard({
           </SelectContent>
         </Select>
 
-        <div className="flex items-center justify-between pt-2 border-t">
+        <div className="flex items-center justify-between pt-1.5 border-t">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
             <span>
@@ -236,9 +236,9 @@ function DroppableColumn({
   });
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex w-60 shrink-0 flex-col gap-2">
       <div
-        className="flex items-center justify-between p-3 rounded-lg"
+        className="flex items-center justify-between p-2 rounded-lg"
         style={{
           backgroundColor: hexToRgba(statusColor, 0.1),
         }}
@@ -262,7 +262,7 @@ function DroppableColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          "space-y-3 min-h-[500px] p-2 rounded-lg transition-colors",
+          "space-y-2 min-h-[160px] p-2 rounded-lg transition-colors",
           isOver && "bg-muted/50"
         )}
       >
@@ -338,7 +338,7 @@ export function ResponseKanbanView({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl mx-auto">
+      <div className="flex gap-3 overflow-x-auto pb-2">
         {sortedStatuses.map((status) => (
           <DroppableColumn
             key={status.id}
