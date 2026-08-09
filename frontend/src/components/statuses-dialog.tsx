@@ -29,12 +29,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ArrowDown, ArrowUp, Check, Pencil, Plus, Star, Trash2, X } from "lucide-react"
+import { ArrowDown, ArrowUp, Check, Flag, Pencil, Plus, Trash2, X } from "lucide-react"
 import type { FormStatus } from "@/types"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
 
-const colorSwitchTooltip = "ONにするとステータスに表示色を設定できます"
+const colorSwitchTooltip = "ONにするとステータスに色を設定できます"
+const defaultStatusDescription =
+  "新しい回答はこのステータスになります"
+const setAsDefaultStatusTooltip = `クリックすると${defaultStatusDescription}`
 
 type StatusesDialogProps = {
   formId: string
@@ -460,24 +463,35 @@ export function StatusesDialog({
                               {status.name}
                             </span>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 flex-shrink-0"
-                            disabled={isWorking}
-                            onClick={() =>
-                              status.is_default
-                                ? undefined
-                                : handleSetDefault(status.id)
-                            }
-                          >
-                            <Star
-                              className={`h-3.5 w-3.5 ${status.is_default
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-muted-foreground"
-                                }`}
-                            />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 flex-shrink-0"
+                                  disabled={isWorking}
+                                  onClick={() =>
+                                    status.is_default
+                                      ? undefined
+                                      : handleSetDefault(status.id)
+                                  }
+                                >
+                                  <Flag
+                                    className={`h-3.5 w-3.5 ${status.is_default
+                                      ? "fill-primary text-primary"
+                                      : "text-muted-foreground"
+                                      }`}
+                                  />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {status.is_default
+                                ? defaultStatusDescription
+                                : setAsDefaultStatusTooltip}
+                            </TooltipContent>
+                          </Tooltip>
                           <div className="flex items-center gap-0.5 flex-shrink-0">
                             <Button
                               variant="ghost"
