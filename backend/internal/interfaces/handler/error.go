@@ -33,7 +33,16 @@ var errorDefs = map[entity.Code]errorDef{
 	entity.CodeFormAlreadyRegistered:     {http.StatusConflict, "このフォームは既に登録されています"},
 	entity.CodeActiveInviteAlreadyExists: {http.StatusConflict, "このメールアドレスへの有効な招待が既に存在します"},
 	entity.CodeStatusConflict:            {http.StatusConflict, "ステータス名または表示順が競合しています"},
-	entity.CodeValidation:                {http.StatusBadRequest, "入力内容に誤りがあります"},
+	entity.CodeNotificationDisabled:      {http.StatusConflict, "管理者によってこの通知は無効化されています"},
+	entity.CodeRespondentEmailMissing: {
+		http.StatusConflict,
+		"回答者のメールアドレスが登録されていません",
+	},
+	entity.CodeNotificationRateLimited: {
+		http.StatusTooManyRequests,
+		"メールの送信間隔には制限があります。しばらく時間を置いてから再度実行してください",
+	},
+	entity.CodeValidation: {http.StatusBadRequest, "入力内容に誤りがあります"},
 }
 
 type errorResponse struct {

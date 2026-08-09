@@ -50,6 +50,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	statusRepo := postgres.NewStatusRepository(deps.Pool)
 	ticketRepo := postgres.NewTicketRepository(deps.Pool)
 	inviteRepo := postgres.NewInviteRepository(deps.Pool)
+	notificationRepo := postgres.NewNotificationRepository(deps.Pool)
 
 	authUC := usecase.NewAuthUseCase(
 		userRepo,
@@ -74,11 +75,17 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 		statusRepo, memberRepo, ticketRepo,
 		postgres.NewStatusUoW(deps.Pool),
 	)
+	notificationUC := usecase.NewNotificationUseCase(
+		notificationRepo, ticketRepo, formRepo, statusRepo, memberRepo, userRepo,
+		postgres.NewNotificationUoW(deps.Pool),
+		deps.EmailSender,
+	)
 	hub := pubsub.NewMemoryHub()
 	ticketUC := usecase.NewTicketUseCase(
 		ticketRepo, formRepo, statusRepo, memberRepo, userRepo,
 		postgres.NewTicketUoW(deps.Pool),
 		hub,
+		notificationUC,
 	)
 
 	cookieCfg := handler.CookieConfig{
@@ -98,6 +105,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	thh := handler.NewTicketHistoryHandler(ticketUC)
 	sseh := handler.NewStreamHandler(ticketUC, hub)
 	syh := handler.NewSyncHandler(syncUC)
+	nh := handler.NewNotificationHandler(notificationUC)
 
 	r.POST("/v1/auth/login", ah.PostV1AuthLogin)
 	r.POST("/v1/auth/signup", ah.PostV1AuthSignup)
@@ -141,6 +149,14 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	authz.PATCH("/forms/:form_id/statuses/:status_id", sh.PatchV1FormsIdStatusesStatusId)
 	authz.DELETE("/forms/:form_id/statuses/:status_id", sh.DeleteV1FormsIdStatusesStatusId)
 	authz.GET("/forms/:form_id/questions", fh.GetV1FormsFormIdQuestions)
+	authz.GET(
+		"/forms/:form_id/notification-settings",
+		nh.GetV1FormsFormIdNotificationSettings,
+	)
+	authz.PATCH(
+		"/forms/:form_id/notification-settings",
+		nh.PatchV1FormsFormIdNotificationSettings,
+	)
 	authz.GET("/forms/:form_id/stream", sseh.GetV1FormsFormIdStream)
 	authz.POST("/invites/:invite_id/accept", ih.PostV1InvitesInviteIdAccept)
 
@@ -148,6 +164,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	authz.GET("/tickets/:ticket_id", tkh.GetV1TicketsTicketId)
 	authz.PATCH("/tickets/:ticket_id", tkh.PatchV1TicketsTicketId)
 	authz.GET("/tickets/:ticket_id/histories", thh.GetV1TicketsTicketIdHistories)
+	authz.POST("/tickets/:ticket_id/notifications", nh.PostV1TicketsTicketIdNotifications)
 
 	return r
 }
