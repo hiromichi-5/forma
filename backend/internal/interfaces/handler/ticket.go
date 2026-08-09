@@ -27,7 +27,7 @@ type TicketUseCase interface {
 		assigneeID *uuid.UUID,
 		clearAssignee bool,
 		priority *string,
-	) (usecase.TicketDetail, error)
+	) (usecase.TicketDetail, []usecase.NotificationResult, error)
 }
 
 type TicketHandler struct {
@@ -162,7 +162,7 @@ func (h *TicketHandler) PatchV1TicketsTicketId(c *gin.Context) {
 		}
 	}
 
-	detail, err := h.uc.UpdateTicket(
+	detail, results, err := h.uc.UpdateTicket(
 		c,
 		ticketID,
 		userID,
@@ -175,5 +175,5 @@ func (h *TicketHandler) PatchV1TicketsTicketId(c *gin.Context) {
 		handleError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toTicketDetailResp(detail))
+	c.JSON(http.StatusOK, toTicketUpdateResp(detail, results))
 }
