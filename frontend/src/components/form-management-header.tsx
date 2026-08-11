@@ -9,22 +9,19 @@ import {
 } from "@/components/ui/select";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LayoutList, LayoutGrid, Search, Users, Settings, Trash2, ChevronDown, ExternalLink, RefreshCw, Bell } from "lucide-react";
+import {
+  fallbackStatusColor,
+  hexToRgba,
+  sortStatuses,
+} from "@/lib/ticket-display";
 import type { FormStatus, FormQuestion } from "@/types";
-
-const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
-  if (!hex) return "transparent";
-  const sanitized = hex.replace("#", "");
-  const red = Number.parseInt(sanitized.slice(0, 2), 16);
-  const green = Number.parseInt(sanitized.slice(2, 4), 16);
-  const blue = Number.parseInt(sanitized.slice(4, 6), 16);
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
-};
 
 type FormManagementHeaderProps = {
   googleFormId: string | null;
@@ -33,8 +30,8 @@ type FormManagementHeaderProps = {
   onViewModeChange: (mode: "list" | "kanban") => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  statusFilter: "all" | string;
-  onStatusFilterChange: (status: "all" | string) => void;
+  statusFilters: string[];
+  onStatusFiltersChange: (statusIds: string[]) => void;
   statuses: FormStatus[];
   questions: FormQuestion[];
   titleQuestionId: string | null;
@@ -54,8 +51,8 @@ export function FormManagementHeader({
   onViewModeChange,
   searchQuery,
   onSearchChange,
-  statusFilter,
-  onStatusFilterChange,
+  statusFilters,
+  onStatusFiltersChange,
   statuses,
   questions,
   titleQuestionId,
@@ -67,13 +64,27 @@ export function FormManagementHeader({
   isSyncing,
   onSyncClick,
 }: FormManagementHeaderProps) {
-  const sortedStatuses = [...statuses].sort(
-    (a, b) => a.display_order - b.display_order
+  const sortedStatuses = sortStatuses(statuses);
+  const selectedStatuses = sortedStatuses.filter((status) =>
+    statusFilters.includes(status.id)
   );
-  const selectedStatus =
-    statusFilter === "all"
-      ? null
-      : sortedStatuses.find((status) => status.id === statusFilter);
+  // 1件だけ選んでいる場合は、そのステータスの色と名前をそのまま見せる。
+  const singleSelectedStatus =
+    selectedStatuses.length === 1 ? selectedStatuses[0] : null;
+  const statusFilterLabel =
+    selectedStatuses.length === 0
+      ? "全てのステータス"
+      : singleSelectedStatus
+        ? singleSelectedStatus.name
+        : `${selectedStatuses.length}件のステータス`;
+
+  const toggleStatusFilter = (statusId: string, checked: boolean) => {
+    onStatusFiltersChange(
+      checked
+        ? [...statusFilters, statusId]
+        : statusFilters.filter((id) => id !== statusId)
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -164,38 +175,67 @@ export function FormManagementHeader({
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-          <SelectTrigger className="w-full sm:w-[180px] border-0 shadow-none">
-            <div
-              className="flex items-center gap-2 px-2 py-1 rounded"
-              style={{
-                backgroundColor: hexToRgba(selectedStatus?.color ?? null, 0.1),
-              }}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex h-9 w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm whitespace-nowrap transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:w-[180px]"
             >
-              {selectedStatus ? (
-                <div
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{
-                    backgroundColor: selectedStatus.color ?? "#9CA3AF",
-                  }}
-                />
-              ) : (
-                <div className="w-2 h-2 rounded-full shrink-0 bg-muted-foreground/60" />
-              )}
-              <span className="text-sm">
-                {selectedStatus?.name ?? "全てのステータス"}
-              </span>
-            </div>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全てのステータス</SelectItem>
+              <div
+                className="flex min-w-0 items-center gap-2 px-2 py-1 rounded"
+                style={{
+                  backgroundColor: singleSelectedStatus
+                    ? hexToRgba(singleSelectedStatus.color, 0.1)
+                    : undefined,
+                }}
+              >
+                {singleSelectedStatus ? (
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{
+                      backgroundColor:
+                        singleSelectedStatus.color ?? fallbackStatusColor,
+                    }}
+                  />
+                ) : (
+                  <div className="w-2 h-2 rounded-full shrink-0 bg-muted-foreground/60" />
+                )}
+                <span className="truncate text-sm">{statusFilterLabel}</span>
+              </div>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[220px]">
+            <DropdownMenuCheckboxItem
+              checked={statusFilters.length === 0}
+              onCheckedChange={() => onStatusFiltersChange([])}
+            >
+              全てのステータス
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
             {sortedStatuses.map((status) => (
-              <SelectItem key={status.id} value={status.id}>
-                {status.name}
-              </SelectItem>
+              <DropdownMenuCheckboxItem
+                key={status.id}
+                checked={statusFilters.includes(status.id)}
+                onCheckedChange={(checked) =>
+                  toggleStatusFilter(status.id, checked)
+                }
+                // 続けて複数選べるよう、選択してもメニューを閉じない。
+                onSelect={(event) => event.preventDefault()}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{
+                      backgroundColor: status.color ?? fallbackStatusColor,
+                    }}
+                  />
+                  <span className="truncate">{status.name}</span>
+                </div>
+              </DropdownMenuCheckboxItem>
             ))}
-          </SelectContent>
-        </Select>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Select
           value={titleQuestionId ?? "none"}

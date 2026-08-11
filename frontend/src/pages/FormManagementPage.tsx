@@ -52,7 +52,8 @@ export default function FormManagementPage() {
   const [formStatuses, setFormStatuses] = useState<FormStatus[]>([])
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"all" | string>("all")
+  // 空配列は絞り込みなし（全てのステータス）を表す。
+  const [statusFilters, setStatusFilters] = useState<string[]>([])
   const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
@@ -100,10 +101,10 @@ export default function FormManagementPage() {
     () =>
       formResponses.filter((response) => {
         const matchesSearch = response.respondentEmail.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesStatus = statusFilter === "all" || response.status === statusFilter
+        const matchesStatus = statusFilters.length === 0 || statusFilters.includes(response.status)
         return matchesSearch && matchesStatus
       }),
-    [formResponses, searchQuery, statusFilter]
+    [formResponses, searchQuery, statusFilters]
   )
 
   // 更新後の値をダイアログに反映するため、開いた時点のスナップショットではなく最新の一覧から引く。
@@ -256,8 +257,8 @@ export default function FormManagementPage() {
           onViewModeChange={setViewMode}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
+          statusFilters={statusFilters}
+          onStatusFiltersChange={setStatusFilters}
           statuses={formStatuses}
           questions={questions}
           titleQuestionId={form?.title_question_id ?? null}
