@@ -68,6 +68,16 @@ export default function FormManagementPage() {
     [members, user?.id]
   )
 
+  const memberUsers = useMemo(
+    () =>
+      members.map((member) => ({
+        id: member.id,
+        name: member.display_name,
+        email: member.email,
+      })),
+    [members]
+  )
+
   const statusMap = useMemo(() => new Map(formStatuses.map((status) => [status.id, status])), [formStatuses])
   const formResponses = useMemo(
     () =>
@@ -263,11 +273,7 @@ export default function FormManagementPage() {
         {viewMode === "list" ? (
           <ResponseTableView
             responses={filteredResponses}
-            users={members.map((member) => ({
-              id: member.id,
-              name: member.display_name,
-              email: member.email,
-            }))}
+            users={memberUsers}
             statuses={formStatuses}
             titleQuestionId={form?.title_question_id ?? null}
             onStatusChange={updateResponseStatus}
@@ -278,11 +284,7 @@ export default function FormManagementPage() {
         ) : (
           <ResponseKanbanView
             responses={filteredResponses}
-            users={members.map((member) => ({
-              id: member.id,
-              name: member.display_name,
-              email: member.email,
-            }))}
+            users={memberUsers}
             statuses={formStatuses}
             titleQuestionId={form?.title_question_id ?? null}
             onStatusChange={updateResponseStatus}
@@ -300,6 +302,11 @@ export default function FormManagementPage() {
           onOpenChange={setIsDetailOpen}
           currentUserId="1"
           currentUserName="田中 太郎"
+          users={memberUsers}
+          statuses={formStatuses}
+          onStatusChange={updateResponseStatus}
+          onAssignChange={assignResponse}
+          onPriorityChange={updatePriority}
           onSendNotification={sendNotification}
         />
       )}
