@@ -16,11 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LayoutList, LayoutGrid, Search, Users, Settings, Trash2, ChevronDown, ExternalLink, RefreshCw, Bell } from "lucide-react";
-import {
-  fallbackStatusColor,
-  hexToRgba,
-  sortStatuses,
-} from "@/lib/ticket-display";
+import { fallbackStatusColor, sortStatuses } from "@/lib/ticket-display";
 import type { FormStatus, FormQuestion } from "@/types";
 
 type FormManagementHeaderProps = {
@@ -179,17 +175,10 @@ export function FormManagementHeader({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex h-9 w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm whitespace-nowrap transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:w-[180px]"
+              className="border-input hover:bg-accent/50 focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full items-center justify-between gap-2 rounded-xl border bg-transparent px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] sm:w-[200px]"
             >
-              <div
-                className="flex min-w-0 items-center gap-2 px-2 py-1 rounded"
-                style={{
-                  backgroundColor: singleSelectedStatus
-                    ? hexToRgba(singleSelectedStatus.color, 0.1)
-                    : undefined,
-                }}
-              >
-                {singleSelectedStatus ? (
+              <div className="flex min-w-0 items-center gap-2">
+                {singleSelectedStatus && (
                   <div
                     className="w-2 h-2 rounded-full shrink-0"
                     style={{
@@ -197,12 +186,10 @@ export function FormManagementHeader({
                         singleSelectedStatus.color ?? fallbackStatusColor,
                     }}
                   />
-                ) : (
-                  <div className="w-2 h-2 rounded-full shrink-0 bg-muted-foreground/60" />
                 )}
-                <span className="truncate text-sm">{statusFilterLabel}</span>
+                <span className="truncate">{statusFilterLabel}</span>
               </div>
-              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <ChevronDown className="size-4 shrink-0 opacity-50" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-[220px]">
