@@ -70,9 +70,7 @@ export function FormManagementHeader({
   const statusFilterLabel =
     selectedStatuses.length === 0
       ? "全てのステータス"
-      : singleSelectedStatus
-        ? singleSelectedStatus.name
-        : `${selectedStatuses.length}件のステータス`;
+      : selectedStatuses.map((status) => status.name).join(", ");
 
   const toggleStatusFilter = (statusId: string, checked: boolean) => {
     onStatusFiltersChange(
@@ -187,15 +185,21 @@ export function FormManagementHeader({
                     }}
                   />
                 )}
-                <span className="truncate">{statusFilterLabel}</span>
+                <span className="truncate" title={statusFilterLabel}>
+                  {statusFilterLabel}
+                </span>
               </div>
               <ChevronDown className="size-4 shrink-0 opacity-50" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[220px]">
+          <DropdownMenuContent
+            align="start"
+            className="w-[220px] p-1.5 border-gray-300 shadow-sm rounded-xl"
+          >
             <DropdownMenuCheckboxItem
               checked={statusFilters.length === 0}
               onCheckedChange={() => onStatusFiltersChange([])}
+              className="py-2 rounded-lg"
             >
               全てのステータス
             </DropdownMenuCheckboxItem>
@@ -209,6 +213,7 @@ export function FormManagementHeader({
                 }
                 // 続けて複数選べるよう、選択してもメニューを閉じない。
                 onSelect={(event) => event.preventDefault()}
+                className="py-2 rounded-lg"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <div
