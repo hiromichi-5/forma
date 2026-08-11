@@ -20,36 +20,19 @@ docs/* に詳細なドキュメントがある。タスクを実行する際は�
 docs
 ├── adr
 │   ├── 001-clean-architecture.md
-│   ├── 002-transaction-management.md
-│   ├── 003-error-code-design.md
-│   ├── 004-invite-email-failure-handling.md
-│   └── TEMPLATE.md
+│   ├── ...
 ├── api 
 │   ├── auth.md
-│   ├── design.md
-│   ├── form.md
-│   ├── invite.md
-│   ├── member.md
-│   ├── notification.md
-│   ├── profile.md
-│   ├── status.md
-│   ├── TEMPLATE.md
-│   └── ticket.md
+│   ├── ...
 ├── architecture
-│   ├── authorization.md
-│   ├── backend-logging.md
-│   ├── backend-testing.md
-│   ├── error-handling.md
-│   ├── overview.md
-│   └── transaction.md
+│   ├── ...
 ├── design
-│   ├── respondent-notification.md
-│   └── TEMPLATE.md
+│   ├── multi-question-list-view.md
+│   ├── ...
 ├── guides
 │   ├── commands.md
-│   ├── deploy.md
-│   ├── getting-started.md
-│   └── TEMPLATE.md
+│   ├── ...
 └── rules 
-    └── TEMPLATE.md
+│   ├── TEMPLATE.md
+│   ├── ...
 ```
