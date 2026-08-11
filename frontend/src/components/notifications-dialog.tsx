@@ -10,6 +10,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { AlertTriangle } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { renderNotificationEmailPreview } from "@/lib/notification-email-preview"
+import type { NotificationEmailSample } from "@/lib/notification-email-preview"
 import { isEmailCollectionDisabled } from "@/hooks/use-notification-settings"
 import type { NotificationMode, NotificationSetting, NotificationType } from "@/types"
 
@@ -18,6 +20,7 @@ type NotificationsDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   canEdit: boolean
+  emailSample: NotificationEmailSample
   onSettingsChange?: (settings: NotificationSetting[]) => void
 }
 
@@ -61,6 +64,7 @@ export function NotificationsDialog({
   open,
   onOpenChange,
   canEdit,
+  emailSample,
   onSettingsChange,
 }: NotificationsDialogProps) {
   const [settings, setSettings] = useState<NotificationSetting[]>([])
@@ -118,7 +122,7 @@ export function NotificationsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>通知設定</DialogTitle>
           <DialogDescription>
@@ -190,6 +194,13 @@ export function NotificationsDialog({
                     disabled={!canEdit || isWorking || setting.mode === "off"}
                   />
                 </div>
+
+                <EmailPreview
+                  notificationType={setting.notification_type}
+                  includeDetail={setting.include_detail}
+                  sample={emailSample}
+                  disabled={setting.mode === "off"}
+                />
               </div>
             ))}
 
@@ -215,5 +226,41 @@ export function NotificationsDialog({
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+type EmailPreviewProps = {
+  notificationType: NotificationType
+  includeDetail: boolean
+  sample: NotificationEmailSample
+  disabled: boolean
+}
+
+function EmailPreview({ notificationType, includeDetail, sample, disabled }: EmailPreviewProps) {
+  const preview = renderNotificationEmailPreview(notificationType, includeDetail, sample)
+
+  return (
+    <div className="space-y-2 rounded-md border border-dashed bg-muted/30 p-3">
+      <p className="text-xs font-medium">
+        {disabled ? "通知を有効にすると送信されるメール" : "送信されるメール"}
+      </p>
+      <p className="text-xs break-all">
+        <span className="text-muted-foreground">件名: </span>
+        {preview.subject}
+      </p>
+
+      <div className="h-48 overflow-hidden rounded-sm bg-white">
+        <iframe
+          title="メール本文のプレビュー"
+          srcDoc={preview.html}
+          sandbox=""
+          className="h-[133.33%] w-[133.33%] origin-top-left scale-75"
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        実際のメールは回答者のメールアドレスに送信されます。
+      </p>
+    </div>
   )
 }

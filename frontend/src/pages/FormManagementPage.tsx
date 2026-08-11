@@ -22,6 +22,10 @@ import { notificationLabel, useFormResponses } from "@/hooks/use-form-responses"
 import { useAuth } from "@/hooks/useAuth"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
+import {
+  FALLBACK_ASSIGNEE_NAME,
+  FALLBACK_STATUS_NAME,
+} from "@/lib/notification-email-preview"
 import type { FormResponse } from "@/types/form-response"
 import type { Member, FormStatus, Form, FormQuestion } from "@/types"
 import { toast } from "sonner"
@@ -93,6 +97,18 @@ export default function FormManagementPage() {
   )
 
   const formTitle = formResponses[0]?.formTitle || "フォーム管理"
+
+  const notificationEmailSample = useMemo(
+    () => ({
+      formTitle: form?.title ?? formTitle,
+      // 先頭のステータスは新規チケットの初期値であり変更後の値になりにくいため、末尾のものを使う。
+      statusName: formStatuses[formStatuses.length - 1]?.name ?? FALLBACK_STATUS_NAME,
+      // 閲覧者はフォームのメンバーであり実際に割り当てられうる人物のため、サンプルとして実態に近い。
+      assigneeName:
+        members.find((member) => member.id === user?.id)?.display_name ?? FALLBACK_ASSIGNEE_NAME,
+    }),
+    [form?.title, formTitle, formStatuses, members, user?.id]
+  )
 
   const handleOpenDetail = (response: FormResponse) => {
     setSelectedResponse(response)
@@ -298,6 +314,7 @@ export default function FormManagementPage() {
         open={isNotificationsOpen}
         onOpenChange={setIsNotificationsOpen}
         canEdit={isAdmin}
+        emailSample={notificationEmailSample}
       />
 
       <AlertDialog
