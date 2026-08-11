@@ -53,7 +53,7 @@ export default function FormManagementPage() {
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | string>("all")
-  const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null)
+  const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
@@ -96,6 +96,12 @@ export default function FormManagementPage() {
     [formResponses, searchQuery, statusFilter]
   )
 
+  // 更新後の値をダイアログに反映するため、開いた時点のスナップショットではなく最新の一覧から引く。
+  const selectedResponse = useMemo(
+    () => formResponses.find((response) => response.id === selectedResponseId) ?? null,
+    [formResponses, selectedResponseId]
+  )
+
   const formTitle = formResponses[0]?.formTitle || "フォーム管理"
 
   const notificationEmailSample = useMemo(
@@ -111,7 +117,7 @@ export default function FormManagementPage() {
   )
 
   const handleOpenDetail = (response: FormResponse) => {
-    setSelectedResponse(response)
+    setSelectedResponseId(response.id)
     setIsDetailOpen(true)
   }
 
@@ -287,10 +293,11 @@ export default function FormManagementPage() {
         )}
       </div>
 
-      {isDetailOpen && selectedResponse && (
+      {selectedResponse && (
         <ResponseDetail
           response={selectedResponse}
-          onClose={() => setIsDetailOpen(false)}
+          open={isDetailOpen}
+          onOpenChange={setIsDetailOpen}
           currentUserId="1"
           currentUserName="田中 太郎"
           onSendNotification={sendNotification}

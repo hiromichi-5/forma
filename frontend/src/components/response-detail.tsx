@@ -7,9 +7,14 @@ import type { FormResponse } from "@/types/form-response";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { X, Send, User, Bot, Mail } from "lucide-react";
+import { Send, User, Bot, Mail } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useChatMessages } from "@/hooks/use-chat-messages";
@@ -35,7 +40,8 @@ type TimelineItem =
 
 type ResponseDetailProps = {
   response: FormResponse;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   currentUserId: string;
   currentUserName: string;
   onSendNotification?: (
@@ -46,7 +52,8 @@ type ResponseDetailProps = {
 
 export function ResponseDetail({
   response,
-  onClose,
+  open,
+  onOpenChange,
   currentUserId,
   currentUserName,
   onSendNotification,
@@ -181,16 +188,12 @@ export function ResponseDetail({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-7xl h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold">
-              {response.respondentEmail}の詳細
-            </h3>
-          </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex h-[90vh] max-w-7xl flex-col gap-0 overflow-hidden p-0 sm:max-w-7xl">
+        <DialogHeader className="flex-row items-center justify-between gap-3 border-b p-4 pr-12 text-left">
+          <DialogTitle>{response.respondentEmail}の詳細</DialogTitle>
           {onSendNotification && response.hasRespondentEmail && (
-            <div className="flex items-center gap-3 mr-2">
+            <div className="flex items-center gap-3">
               <div className="flex flex-col items-center gap-1">
                 <Button
                   variant="outline"
@@ -221,10 +224,7 @@ export function ResponseDetail({
               </div>
             </div>
           )}
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
+        </DialogHeader>
 
         <div className="flex-1 flex overflow-hidden">
           <div className="w-1/2 border-r flex flex-col">
@@ -416,7 +416,7 @@ export function ResponseDetail({
             </div>
           </div>
         </div>
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
