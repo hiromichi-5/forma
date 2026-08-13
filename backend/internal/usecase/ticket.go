@@ -45,9 +45,24 @@ type TicketAnswer struct {
 	DisplayValue  string
 }
 
+type TicketNotificationInfo struct {
+	NotificationType entity.NotificationType
+	LastSentAt       *time.Time
+}
+
 type TicketDetail struct {
 	TicketSummary
-	Answers []TicketAnswer
+	Answers       []TicketAnswer
+	Notifications []TicketNotificationInfo
+}
+
+type TicketNotifier interface {
+	NotifyTicketUpdated(
+		ctx context.Context,
+		ticketID, userID uuid.UUID,
+		notificationTypes []entity.NotificationType,
+	) []NotificationResult
+	ListLatestSent(ctx context.Context, ticketID uuid.UUID) ([]entity.TicketNotification, error)
 }
 
 type TicketUseCase struct {
@@ -58,6 +73,7 @@ type TicketUseCase struct {
 	userRepo   repository.UserRepository
 	uow        repository.UnitOfWork[repository.TicketRepos]
 	publisher  EventPublisher
+	notifier   TicketNotifier
 }
 
 func NewTicketUseCase(
@@ -68,6 +84,7 @@ func NewTicketUseCase(
 	userRepo repository.UserRepository,
 	uow repository.UnitOfWork[repository.TicketRepos],
 	publisher EventPublisher,
+	notifier TicketNotifier,
 ) *TicketUseCase {
 	return &TicketUseCase{
 		ticketRepo: ticketRepo,
@@ -77,6 +94,7 @@ func NewTicketUseCase(
 		userRepo:   userRepo,
 		uow:        uow,
 		publisher:  publisher,
+		notifier:   notifier,
 	}
 }
 
@@ -199,7 +217,34 @@ func (uc *TicketUseCase) GetTicket(
 		return TicketDetail{}, err
 	}
 
-	return buildDetail(ticket, fctx, answers), nil
+	detail := buildDetail(ticket, fctx, answers)
+
+	sent, err := uc.notifier.ListLatestSent(ctx, ticketID)
+	if err != nil {
+		return TicketDetail{}, err
+	}
+	detail.Notifications = buildNotificationInfo(sent)
+
+	return detail, nil
+}
+
+func buildNotificationInfo(sent []entity.TicketNotification) []TicketNotificationInfo {
+	lastSentAt := make(map[entity.NotificationType]time.Time, len(sent))
+	for _, s := range sent {
+		lastSentAt[s.NotificationType] = s.SentAt
+	}
+
+	types := entity.NotificationTypes()
+	infos := make([]TicketNotificationInfo, 0, len(types))
+	for _, t := range types {
+		info := TicketNotificationInfo{NotificationType: t}
+		if at, ok := lastSentAt[t]; ok {
+			v := at
+			info.LastSentAt = &v
+		}
+		infos = append(infos, info)
+	}
+	return infos
 }
 
 func (uc *TicketUseCase) UpdateTicket(
@@ -209,50 +254,54 @@ func (uc *TicketUseCase) UpdateTicket(
 	assigneeID *uuid.UUID,
 	clearAssignee bool,
 	priority *string,
-) (TicketDetail, error) {
+) (TicketDetail, []NotificationResult, error) {
 	ticket, err := uc.ticketRepo.GetByID(ctx, ticketID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return TicketDetail{}, entity.NewError(entity.CodeResourceHidden)
+			return TicketDetail{}, nil, entity.NewError(entity.CodeResourceHidden)
 		}
-		return TicketDetail{}, err
+		return TicketDetail{}, nil, err
 	}
 
 	if err := requireEditor(ctx, uc.memberRepo, ticket.FormID, userID); err != nil {
-		return TicketDetail{}, err
+		return TicketDetail{}, nil, err
 	}
 
 	if clearAssignee && assigneeID != nil {
-		return TicketDetail{}, entity.NewError(entity.CodeValidation)
+		return TicketDetail{}, nil, entity.NewError(entity.CodeValidation)
 	}
 
 	changedByName, err := getUserDisplayName(ctx, uc.userRepo, userID)
 	if err != nil {
-		return TicketDetail{}, err
+		return TicketDetail{}, nil, err
 	}
 
 	var newStatus *entity.FormStatus
 	if statusID != nil {
 		s, err := uc.getVisibleStatus(ctx, ticket.FormID, *statusID)
 		if err != nil {
-			return TicketDetail{}, err
+			return TicketDetail{}, nil, err
 		}
 		newStatus = &s
 	}
 
 	if assigneeID != nil {
 		if err := uc.validateAssignee(ctx, ticket.FormID, *assigneeID); err != nil {
-			return TicketDetail{}, err
+			return TicketDetail{}, nil, err
 		}
 	}
 
 	if priority != nil {
 		if !isValidTicketPriority(*priority) {
-			return TicketDetail{}, entity.NewError(entity.CodeValidation)
+			return TicketDetail{}, nil, entity.NewError(entity.CodeValidation)
 		}
 	}
 
+	var notifyTypes []entity.NotificationType
+
 	if err := uc.uow.Do(ctx, func(repos repository.TicketRepos) error {
+		notifyTypes = nil
+
 		current, err := repos.Ticket.GetByID(ctx, ticketID)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
@@ -276,6 +325,7 @@ func (uc *TicketUseCase) UpdateTicket(
 				return err
 			}
 			rec.record("status", strPtr(oldStatus.Name), strPtr(newStatus.Name))
+			notifyTypes = append(notifyTypes, entity.NotificationTypeStatusChange)
 		}
 
 		if clearAssignee || assigneeID != nil {
@@ -293,6 +343,10 @@ func (uc *TicketUseCase) UpdateTicket(
 					return err
 				}
 				rec.record("assignee", oldName, newName)
+				// 担当者の解除は通知の対象外
+				if newAssignee != nil {
+					notifyTypes = append(notifyTypes, entity.NotificationTypeAssigneeAssigned)
+				}
 			}
 		}
 
@@ -305,13 +359,19 @@ func (uc *TicketUseCase) UpdateTicket(
 
 		return rec.save(ctx, repos.Ticket)
 	}); err != nil {
-		return TicketDetail{}, err
+		return TicketDetail{}, nil, err
 	}
 
 	//nolint:errcheck,gosec
 	uc.publisher.PublishTicketUpdated(ctx, TicketEvent{FormID: ticket.FormID, TicketID: ticketID})
 
-	return uc.GetTicket(ctx, ticketID, userID)
+	results := uc.notifier.NotifyTicketUpdated(ctx, ticketID, userID, notifyTypes)
+
+	detail, err := uc.GetTicket(ctx, ticketID, userID)
+	if err != nil {
+		return TicketDetail{}, nil, err
+	}
+	return detail, results, nil
 }
 
 func (uc *TicketUseCase) ListTicketHistories(

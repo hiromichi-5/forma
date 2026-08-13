@@ -13,7 +13,7 @@ backend/internal/
 └── infra/
     ├── postgres/    repository 実装・型変換
     ├── google/      Google Forms API クライアント
-    ├── ses/         Amazon SES メール送信
+    ├── resend/      Resend メール送信
     └── db/          sqlc 生成コード
 ```
 
@@ -24,7 +24,7 @@ handler → usecase → repository → entity
 middleware → repository
 infra/postgres → repository
 infra/google → repository 
-infra/ses → repository 
+infra/resend → repository 
 ```
 
 すべての依存は内側（entity）に向かう。外側の層（handler, infra）が内側の層（usecase, repository, entity）に依存し、逆方向の依存は存在しない。`infra/postgres` と `infra/google` は repository interface を実装することで依存性逆転を実現している。
@@ -40,7 +40,7 @@ infra/ses → repository
 | **middleware** | セッション検証、認証済みユーザー ID の注入 | 業務エラー変換 |
 | **infra/postgres** | repository 実装、pgtype ↔ Go 型変換、トランザクション管理 | ビジネスロジック |
 | **infra/google** | Google Forms API 呼び出し | ビジネスロジック |
-| **infra/ses** | Amazon SES メール送信 | ビジネスロジック |
+| **infra/resend** | Resend メール送信 | ビジネスロジック |
 | **infra/db** | sqlc 生成コード（自動生成、手動変更なし） | — |
 
 ## DI（依存性注入）

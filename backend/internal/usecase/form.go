@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
@@ -15,12 +16,20 @@ import (
 
 var reFormID = regexp.MustCompile(`/forms/d/([a-zA-Z0-9_-]+)/`)
 
+type FormSyncer interface {
+	SyncFormOnce(
+		ctx context.Context,
+		formID, userID uuid.UUID,
+	) (newTickets int, lastSync time.Time, err error)
+}
+
 type FormUseCase struct {
 	formRepo   repository.FormRepository
 	memberRepo repository.MemberRepository
 	statusRepo repository.StatusRepository
 	fetcher    repository.FormFetcher
 	uow        repository.UnitOfWork[repository.FormRepos]
+	syncer     FormSyncer
 }
 
 func NewFormUseCase(
@@ -29,6 +38,7 @@ func NewFormUseCase(
 	statusRepo repository.StatusRepository,
 	fetcher repository.FormFetcher,
 	uow repository.UnitOfWork[repository.FormRepos],
+	syncer FormSyncer,
 ) *FormUseCase {
 	return &FormUseCase{
 		formRepo:   formRepo,
@@ -36,6 +46,7 @@ func NewFormUseCase(
 		statusRepo: statusRepo,
 		fetcher:    fetcher,
 		uow:        uow,
+		syncer:     syncer,
 	}
 }
 
@@ -77,10 +88,11 @@ func (uc *FormUseCase) RegisterForm(
 	err = uc.uow.Do(ctx, func(repos repository.FormRepos) error {
 		var txErr error
 		form, txErr = repos.Form.Create(ctx, entity.Form{
-			ID:          uuid.New(),
-			FormID:      googleFormID,
-			Title:       title,
-			Description: description,
+			ID:                  uuid.New(),
+			FormID:              googleFormID,
+			Title:               title,
+			Description:         description,
+			EmailCollectionType: emailCollectionType(gf.EmailCollectionType),
 		})
 		if txErr != nil {
 			return txErr
@@ -103,6 +115,13 @@ func (uc *FormUseCase) RegisterForm(
 		"form_id", form.ID.String(),
 		"google_form_id", form.FormID,
 	)
+
+	if _, _, syncErr := uc.syncer.SyncFormOnce(ctx, form.ID, userID); syncErr != nil {
+		logger.From(ctx).Error("initial form sync failed",
+			"form_id", form.ID.String(),
+			"error", syncErr,
+		)
+	}
 
 	return form, nil
 }
@@ -192,6 +211,28 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 	return nil
 }
 
+func (uc *FormUseCase) DeleteForm(
+	ctx context.Context,
+	formID, userID uuid.UUID,
+) error {
+	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+		return err
+	}
+
+	if err := uc.formRepo.Delete(ctx, formID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.NewError(entity.CodeFormNotFound)
+		}
+		return err
+	}
+
+	logger.From(ctx).Info("form deleted",
+		"form_id", formID.String(),
+	)
+
+	return nil
+}
+
 func (uc *FormUseCase) ListQuestions(
 	ctx context.Context,
 	formID, userID uuid.UUID,
@@ -213,6 +254,13 @@ func extractFormID(u string) (string, error) {
 		return "", entity.NewError(entity.CodeValidation)
 	}
 	return "", entity.NewError(entity.CodeValidation)
+}
+
+func emailCollectionType(v string) *string {
+	if v == "" || v == "EMAIL_COLLECTION_TYPE_UNSPECIFIED" {
+		return nil
+	}
+	return &v
 }
 
 func mapFormFetcherError(err error) error {

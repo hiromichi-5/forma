@@ -10,12 +10,11 @@ import (
 	"os"
 	"strings"
 
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/gin-gonic/gin"
 	openapispec "github.com/hiromichi-5/forma/backend/internal/api"
 	"github.com/hiromichi-5/forma/backend/internal/app"
 	"github.com/hiromichi-5/forma/backend/internal/infra/google"
-	"github.com/hiromichi-5/forma/backend/internal/infra/ses"
+	"github.com/hiromichi-5/forma/backend/internal/infra/resend"
 	"github.com/hiromichi-5/forma/backend/internal/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -80,27 +79,17 @@ func run() error {
 		frontendBaseURL = "http://localhost:5173"
 	}
 
-	sesFrom := viper.GetString("SES_FROM_ADDRESS")
-	if sesFrom == "" {
-		return fmt.Errorf("SES_FROM_ADDRESS required")
+	resendAPIKey := viper.GetString("RESEND_API_KEY")
+	if resendAPIKey == "" {
+		return fmt.Errorf("RESEND_API_KEY required")
 	}
-	sesReplyTo := viper.GetString("SES_REPLY_TO_ADDRESS")
+	resendFrom := viper.GetString("RESEND_FROM_ADDRESS")
+	if resendFrom == "" {
+		return fmt.Errorf("RESEND_FROM_ADDRESS required")
+	}
+	resendReplyTo := viper.GetString("RESEND_REPLY_TO_ADDRESS")
 
-	awsRegion := viper.GetString("AWS_REGION")
-	var awsOpts []func(*awsconfig.LoadOptions) error
-	if awsRegion != "" {
-		awsOpts = append(awsOpts, awsconfig.WithRegion(awsRegion))
-	}
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsOpts...)
-	if err != nil {
-		return fmt.Errorf("aws config: %w", err)
-	}
-
-	var replyTo []string
-	if sesReplyTo != "" {
-		replyTo = []string{sesReplyTo}
-	}
-	emailSender := ses.NewEmailSender(awsCfg, sesFrom, replyTo)
+	emailSender := resend.NewEmailSender(resendAPIKey, resendFrom, resendReplyTo)
 
 	allowedOrigins := viper.GetString("ALLOWED_ORIGINS")
 	if allowedOrigins == "" {

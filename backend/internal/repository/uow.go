@@ -31,3 +31,7 @@ type TicketRepos struct {
 	Status StatusRepository
 	User   UserRepository
 }
+
+type NotificationRepos struct {
+	Notification NotificationRepository
+}

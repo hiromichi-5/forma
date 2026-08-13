@@ -17,6 +17,7 @@ type FormUseCase interface {
 	ListForms(ctx context.Context, userID uuid.UUID) ([]entity.Form, error)
 	GetForm(ctx context.Context, formID, userID uuid.UUID) (entity.Form, error)
 	UpdateTitleQuestion(ctx context.Context, formID, userID uuid.UUID, questionID *string) error
+	DeleteForm(ctx context.Context, formID, userID uuid.UUID) error
 	ListQuestions(ctx context.Context, formID, userID uuid.UUID) ([]entity.FormQuestion, error)
 }
 
@@ -142,6 +143,25 @@ func (h *FormHandler) PatchV1FormsId(c *gin.Context) {
 	}
 
 	if err := h.uc.UpdateTitleQuestion(c, formID, userID, questionID); err != nil {
+		handleError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *FormHandler) DeleteV1FormsId(c *gin.Context) {
+	userID, ok := middleware.UserID(c)
+	if !ok {
+		handleError(c, entity.NewError(entity.CodeInvalidSession))
+		return
+	}
+	formID, err := uuid.Parse(c.Param("form_id"))
+	if err != nil {
+		handleError(c, entity.NewError(entity.CodeValidation))
+		return
+	}
+
+	if err := h.uc.DeleteForm(c, formID, userID); err != nil {
 		handleError(c, err)
 		return
 	}

@@ -11,6 +11,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
@@ -19,10 +24,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowDown, ArrowUp, Check, Pencil, Plus, Star, Trash2, X } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { ArrowDown, ArrowUp, Check, Flag, Pencil, Plus, Trash2, X } from "lucide-react"
 import type { FormStatus } from "@/types"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
+
+const colorSwitchTooltip = "ONにするとステータスに色を設定できます"
+const defaultStatusDescription =
+  "新しい回答はこのステータスになります"
+const setAsDefaultStatusTooltip = `クリックすると${defaultStatusDescription}`
 
 type StatusesDialogProps = {
   formId: string
@@ -39,6 +54,25 @@ type ColorInputState = {
 
 const defaultColor = "#3B82F6"
 
+const statusColorPresets = [
+  { name: "レッド", value: "#EF4444" },
+  { name: "オレンジ", value: "#F97316" },
+  { name: "アンバー", value: "#F59E0B" },
+  { name: "イエロー", value: "#EAB308" },
+  { name: "ライム", value: "#84CC16" },
+  { name: "グリーン", value: "#22C55E" },
+  { name: "エメラルド", value: "#10B981" },
+  { name: "ティール", value: "#14B8A6" },
+  { name: "シアン", value: "#06B6D4" },
+  { name: "スカイ", value: "#0EA5E9" },
+  { name: "ブルー", value: "#3B82F6" },
+  { name: "インディゴ", value: "#6366F1" },
+  { name: "バイオレット", value: "#8B5CF6" },
+  { name: "パープル", value: "#A855F7" },
+  { name: "ピンク", value: "#EC4899" },
+  { name: "グレー", value: "#6B7280" },
+]
+
 const createColorState = (color?: string | null): ColorInputState => ({
   enabled: Boolean(color),
   value: color ?? defaultColor,
@@ -46,6 +80,59 @@ const createColorState = (color?: string | null): ColorInputState => ({
 
 const colorValueOrNull = (state: ColorInputState): string | null =>
   state.enabled ? state.value : null
+
+type ColorSwatchPickerProps = {
+  value: string
+  disabled?: boolean
+  onChange: (color: string) => void
+  className?: string
+}
+
+function ColorSwatchPicker({
+  value,
+  disabled,
+  onChange,
+  className,
+}: ColorSwatchPickerProps) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label="色を選択"
+          className={`rounded-md border border-border disabled:opacity-40 disabled:cursor-not-allowed ${className ?? "h-7 w-7"
+            }`}
+          style={{ backgroundColor: value }}
+        />
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-2" align="start">
+        <div className="grid grid-cols-6 gap-1">
+          {statusColorPresets.map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              title={preset.name}
+              aria-label={preset.name}
+              onClick={() => {
+                onChange(preset.value)
+                setOpen(false)
+              }}
+              className="relative h-5 w-5 rounded-full border border-border/50"
+              style={{ backgroundColor: preset.value }}
+            >
+              {value === preset.value && (
+                <Check className="absolute inset-0 m-auto h-3 w-3 text-white drop-shadow" />
+              )}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 const defaultStatusErrorMessages = {
   RESOURCE_HIDDEN: "フォームまたはステータスが見つかりません",
@@ -304,23 +391,26 @@ export function StatusesDialog({
                 className="flex-1"
               />
               <div className="flex items-center gap-1">
-                <Switch
-                  checked={newColor.enabled}
-                  onCheckedChange={(checked) =>
-                    setNewColor((prev) => ({ ...prev, enabled: checked }))
-                  }
-                />
-                <input
-                  type="color"
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Switch
+                        checked={newColor.enabled}
+                        onCheckedChange={(checked) =>
+                          setNewColor((prev) => ({ ...prev, enabled: checked }))
+                        }
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{colorSwitchTooltip}</TooltipContent>
+                </Tooltip>
+                <ColorSwatchPicker
                   value={newColor.value}
                   disabled={!newColor.enabled}
-                  onChange={(e) =>
-                    setNewColor((prev) => ({
-                      ...prev,
-                      value: e.target.value,
-                    }))
+                  onChange={(value) =>
+                    setNewColor((prev) => ({ ...prev, value }))
                   }
-                  className="h-9 w-10 rounded border border-input bg-transparent p-0.5 disabled:opacity-40"
+                  className="h-7 w-7"
                 />
               </div>
               <Button
@@ -330,7 +420,7 @@ export function StatusesDialog({
                 disabled={isWorking || !newName.trim()}
               >
                 <Plus className="h-4 w-4" />
-                追加
+                追加する
               </Button>
             </div>
 
@@ -360,33 +450,48 @@ export function StatusesDialog({
                       {!isEditing ? (
                         <div className="flex items-center gap-2 p-2">
                           <div
-                            className="h-3 w-3 rounded-full flex-shrink-0"
-                            style={{
-                              backgroundColor: status.color ?? "#9CA3AF",
-                            }}
-                          />
-                          <span className="text-sm flex-1 min-w-0 truncate">
-                            {status.name}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 flex-shrink-0"
-                            disabled={isWorking}
-                            onClick={() =>
-                              status.is_default
-                                ? undefined
-                                : handleSetDefault(status.id)
-                            }
+                            className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer select-none"
+                            onClick={() => startEdit(status)}
                           >
-                            <Star
-                              className={`h-3.5 w-3.5 ${
-                                status.is_default
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : "text-muted-foreground"
-                              }`}
+                            <div
+                              className="h-3 w-3 rounded-full flex-shrink-0"
+                              style={{
+                                backgroundColor: status.color ?? "#9CA3AF",
+                              }}
                             />
-                          </Button>
+                            <span className="text-sm flex-1 min-w-0 truncate">
+                              {status.name}
+                            </span>
+                          </div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 flex-shrink-0"
+                                  disabled={isWorking}
+                                  onClick={() =>
+                                    status.is_default
+                                      ? undefined
+                                      : handleSetDefault(status.id)
+                                  }
+                                >
+                                  <Flag
+                                    className={`h-3.5 w-3.5 ${status.is_default
+                                      ? "fill-primary text-primary"
+                                      : "text-muted-foreground"
+                                      }`}
+                                  />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {status.is_default
+                                ? defaultStatusDescription
+                                : setAsDefaultStatusTooltip}
+                            </TooltipContent>
+                          </Tooltip>
                           <div className="flex items-center gap-0.5 flex-shrink-0">
                             <Button
                               variant="ghost"
@@ -441,26 +546,31 @@ export function StatusesDialog({
                               placeholder="ステータス名"
                             />
                             <div className="flex items-center gap-1">
-                              <Switch
-                                checked={editColor.enabled}
-                                onCheckedChange={(checked) =>
-                                  setEditColor((prev) => ({
-                                    ...prev,
-                                    enabled: checked,
-                                  }))
-                                }
-                              />
-                              <input
-                                type="color"
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex">
+                                    <Switch
+                                      checked={editColor.enabled}
+                                      onCheckedChange={(checked) =>
+                                        setEditColor((prev) => ({
+                                          ...prev,
+                                          enabled: checked,
+                                        }))
+                                      }
+                                    />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {colorSwitchTooltip}
+                                </TooltipContent>
+                              </Tooltip>
+                              <ColorSwatchPicker
                                 value={editColor.value}
                                 disabled={!editColor.enabled}
-                                onChange={(e) =>
-                                  setEditColor((prev) => ({
-                                    ...prev,
-                                    value: e.target.value,
-                                  }))
+                                onChange={(value) =>
+                                  setEditColor((prev) => ({ ...prev, value }))
                                 }
-                                className="h-8 w-10 rounded border border-input bg-transparent p-0.5 disabled:opacity-40"
+                                className="h-6 w-6"
                               />
                             </div>
                           </div>

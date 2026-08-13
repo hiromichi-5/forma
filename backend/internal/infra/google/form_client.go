@@ -44,6 +44,9 @@ func (c *FormClient) GetForm(ctx context.Context, formID string) (*repository.Go
 		gf.Title = form.Info.Title
 		gf.Description = form.Info.Description
 	}
+	if form.Settings != nil {
+		gf.EmailCollectionType = form.Settings.EmailCollectionType
+	}
 
 	for _, item := range form.Items {
 		if item == nil {

@@ -12,8 +12,7 @@ import {
   ChevronUp,
   Home,
   FileText,
-  Users,
-  RefreshCw,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,10 +22,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { apiClient } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/api-error";
 import type { FormSummary } from "@/types";
-import { toast } from "sonner";
-import { MembersDialog } from "./members-dialog";
+import { RegisterFormDialog } from "@/components/register-form-dialog";
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -39,26 +36,25 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [isFormsOpen, setIsFormsOpen] = useState(true);
   const [forms, setForms] = useState<FormSummary[]>([]);
   const [loadingForms, setLoadingForms] = useState(false);
-  const [membersDialogOpen, setMembersDialogOpen] = useState(false);
-  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const { logout } = useAuth();
 
   const isFormsListPage = location.pathname === "/";
   const isSettingsPage = location.pathname === "/settings";
 
   // フォーム一覧を取得
+  const loadForms = async () => {
+    try {
+      setLoadingForms(true);
+      const response = await apiClient.getForms();
+      setForms(response.forms);
+    } catch (error) {
+      console.error("Failed to load forms:", error);
+    } finally {
+      setLoadingForms(false);
+    }
+  };
+
   useEffect(() => {
-    const loadForms = async () => {
-      try {
-        setLoadingForms(true);
-        const response = await apiClient.getForms();
-        setForms(response.forms);
-      } catch (error) {
-        console.error("Failed to load forms:", error);
-      } finally {
-        setLoadingForms(false);
-      }
-    };
     loadForms();
   }, []);
 
@@ -68,10 +64,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 flex">
+    <div className="h-screen bg-muted/30 flex overflow-hidden">
       <aside
         className={cn(
-          "bg-card border-r transition-all duration-300 flex flex-col",
+          "bg-blue-50 border-r transition-all duration-300 flex flex-col shrink-0 z-10",
+          "[&_[data-slot=button]]:hover:bg-blue-100",
           isCollapsed ? "w-16" : "w-64"
         )}
       >
@@ -79,7 +76,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           {!isCollapsed && (
             <Link
               to="/"
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 -mx-2 -my-1 rounded-md px-2 py-1 transition-colors hover:bg-accent"
             >
               <img src="/favicon.svg" alt="forma Logo" className="w-6 h-6" />
               <span className="font-bold text-xl tracking-tight">forma</span>
@@ -101,10 +98,11 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <nav className="flex-1 p-2 overflow-y-auto">
           <Button
-            variant={isFormsListPage ? "secondary" : "ghost"}
+            variant="ghost"
             className={cn(
               "w-full justify-start gap-3 mb-2",
-              isCollapsed && "justify-center"
+              isCollapsed && "justify-center",
+              isFormsListPage && "bg-blue-100"
             )}
             onClick={() => navigate("/")}
           >
@@ -144,77 +142,37 @@ export function AppLayout({ children }: AppLayoutProps) {
                     const isActive =
                       location.pathname === `/forms/${form.id}`;
                     return (
-                      <div
-                        key={form.id}
-                        className={cn(
-                          "group flex items-center gap-1 rounded-md transition-colors",
-                          isActive && "bg-secondary"
-                        )}
-                      >
+                      <div key={form.id} className="pl-6">
                         <Button
                           variant="ghost"
                           size="sm"
                           className={cn(
-                            "flex-1 justify-start text-sm h-8 pl-6 pr-2 min-w-0",
-                            isActive && "font-medium"
+                            "w-full justify-start text-sm h-8 pr-2 min-w-0 rounded-2xl",
+                            isActive && "bg-blue-100 font-medium"
                           )}
                           onClick={() => navigate(`/forms/${form.id}`)}
                         >
                           <span className="truncate">{form.title}</span>
                         </Button>
-
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              try {
-                                await apiClient.syncForm(form.id);
-                                toast.success("フォームを同期しました");
-                              } catch (error) {
-                                toast.error(
-                                  getApiErrorMessage(
-                                    error,
-                                    {
-                                      RESOURCE_HIDDEN:
-                                        "フォームが見つからないか、アクセス権がありません",
-                                      FORM_NOT_FOUND: "フォームが見つかりません",
-                                      FORM_NOT_SHARED:
-                                        "フォームがサービスアカウントに共有されていません",
-                                      INVALID_SESSION:
-                                        "セッションの有効期限が切れました。ログインし直してください",
-                                      NETWORK_ERROR: "ネットワークエラーが発生しました",
-                                    },
-                                    "同期に失敗しました"
-                                  )
-                                );
-                                console.error("Failed to sync form:", error);
-                              }
-                            }}
-                            title="同期"
-                          >
-                            <RefreshCw className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedFormId(form.id);
-                              setMembersDialogOpen(true);
-                            }}
-                            title="メンバー管理"
-                          >
-                            <Users className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
                       </div>
                     );
                   })
                 )}
+                <div className="pl-6 mt-4">
+                  <RegisterFormDialog
+                    onRegistered={loadForms}
+                    trigger={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-2 text-sm h-8 pr-2 min-w-0 rounded-2xl border border-dashed border-muted-foreground/40 text-muted-foreground"
+                      >
+                        <Plus className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">フォームを追加する</span>
+                      </Button>
+                    }
+                  />
+                </div>
               </CollapsibleContent>
             </Collapsible>
           )}
@@ -222,10 +180,11 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         <div className="p-2 border-t space-y-1">
           <Button
-            variant={isSettingsPage ? "secondary" : "ghost"}
+            variant="ghost"
             className={cn(
               "w-full justify-start gap-3",
-              isCollapsed && "justify-center"
+              isCollapsed && "justify-center",
+              isSettingsPage && "bg-blue-100"
             )}
             onClick={() => navigate("/settings")}
           >
@@ -246,17 +205,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-white">
         <div className="container mx-auto p-6">{children}</div>
       </main>
-
-      {selectedFormId && (
-        <MembersDialog
-          formId={selectedFormId}
-          open={membersDialogOpen}
-          onOpenChange={setMembersDialogOpen}
-        />
-      )}
     </div>
   );
 }

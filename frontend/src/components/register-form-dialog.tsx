@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,9 +18,13 @@ import { getApiErrorMessage } from "@/lib/api-error";
 
 type RegisterFormDialogProps = {
   onRegistered: () => Promise<void>;
+  trigger?: React.ReactNode;
 };
 
-export function RegisterFormDialog({ onRegistered }: RegisterFormDialogProps) {
+export function RegisterFormDialog({
+  onRegistered,
+  trigger,
+}: RegisterFormDialogProps) {
   const [formUrl, setFormUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -46,7 +51,7 @@ export function RegisterFormDialog({ onRegistered }: RegisterFormDialogProps) {
         getApiErrorMessage(
           error,
           {
-            VALIDATION_ERROR: "Googleフォームの編集画面 URL またはフォーム ID を入力してください",
+            VALIDATION_ERROR: "Googleフォームの編集画面のURLを入力してください",
             FORM_NOT_FOUND: "指定されたフォームが見つかりません",
             FORM_NOT_SHARED:
               "フォームがサービスアカウントに共有されていません。共有設定を確認してください",
@@ -68,10 +73,12 @@ export function RegisterFormDialog({ onRegistered }: RegisterFormDialogProps) {
       onOpenChange={(open) => (open ? setIsOpen(true) : handleClose())}
     >
       <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          フォーム連携
-        </Button>
+        {trigger ?? (
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            フォーム連携
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

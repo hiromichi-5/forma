@@ -3,19 +3,38 @@
 import type React from "react";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import type { FormResponse } from "@/types/form-response";
+import type { FormResponse, User as MemberUser } from "@/types/form-response";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { X, Send, User, Bot } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Send, User, Bot, Mail } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useChatMessages } from "@/hooks/use-chat-messages";
 import { useTicketHistories } from "@/hooks/use-ticket-histories";
 import { cn } from "@/lib/utils";
-import type { TicketHistory } from "@/types";
+import {
+  fallbackStatusColor,
+  hexToRgba,
+  priorityConfig,
+  sortStatuses,
+  toPriorityValue,
+} from "@/lib/ticket-display";
+import type { FormStatus, NotificationType, TicketHistory } from "@/types";
 
 type TimelineItem =
   | {
@@ -35,17 +54,54 @@ type TimelineItem =
 
 type ResponseDetailProps = {
   response: FormResponse;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   currentUserId: string;
   currentUserName: string;
+  users: MemberUser[];
+  statuses: FormStatus[];
+  onStatusChange: (id: string, statusId: string) => void;
+  onAssignChange: (id: string, userId: string | null) => void;
+  onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
+  onSendNotification?: (
+    responseId: string,
+    notificationType: NotificationType
+  ) => Promise<boolean>;
 };
 
 export function ResponseDetail({
   response,
-  onClose,
+  open,
+  onOpenChange,
   currentUserId,
   currentUserName,
+  users,
+  statuses,
+  onStatusChange,
+  onAssignChange,
+  onPriorityChange,
+  onSendNotification,
 }: ResponseDetailProps) {
+  const sortedStatuses = sortStatuses(statuses);
+  const [sendingNotification, setSendingNotification] =
+    useState<NotificationType | null>(null);
+
+  const handleSendNotification = async (notificationType: NotificationType) => {
+    if (!onSendNotification) return;
+    setSendingNotification(notificationType);
+    try {
+      await onSendNotification(response.id, notificationType);
+    } finally {
+      setSendingNotification(null);
+    }
+  };
+
+  const getLastSentAt = (notificationType: NotificationType): Date | null =>
+    response.notifications.find((n) => n.notificationType === notificationType)
+      ?.lastSentAt ?? null;
+
+  const formatLastSentAt = (date: Date | null): string =>
+    date ? `最終送信: ${format(date, "MM/dd HH:mm")}` : "未送信";
   const { messages, sendMessage } = useChatMessages(response.id);
   const { histories } = useTicketHistories(response.id);
   const [inputValue, setInputValue] = useState("");
@@ -157,17 +213,149 @@ export function ResponseDetail({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-7xl h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold">
-              {response.respondentEmail}の詳細
-            </h3>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex h-[90vh] max-w-7xl flex-col gap-0 overflow-hidden p-0 sm:max-w-7xl">
+        <div className="border-b p-4 pr-12">
+          <DialogHeader className="flex-row items-center justify-between gap-3 text-left">
+            <DialogTitle>{response.respondentEmail}の詳細</DialogTitle>
+            {onSendNotification && response.hasRespondentEmail && (
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSendNotification("status_change")}
+                    disabled={sendingNotification !== null}
+                  >
+                    <Mail className="h-4 w-4" />
+                    対応状況を通知
+                  </Button>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatLastSentAt(getLastSentAt("status_change"))}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSendNotification("assignee_assigned")}
+                    disabled={
+                      sendingNotification !== null || response.assignedTo === null
+                    }
+                  >
+                    <Mail className="h-4 w-4" />
+                    担当者を通知
+                  </Button>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatLastSentAt(getLastSentAt("assignee_assigned"))}
+                  </span>
+                </div>
+              </div>
+            )}
+          </DialogHeader>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">ステータス</span>
+              <Select
+                value={response.status}
+                onValueChange={(value) => onStatusChange(response.id, value)}
+              >
+                <SelectTrigger
+                  className="w-[150px] h-8 border-0 shadow-none"
+                  aria-label="ステータス"
+                >
+                  <div
+                    className="flex items-center gap-2 px-2 py-1 rounded"
+                    style={{
+                      backgroundColor: hexToRgba(response.statusColor, 0.1),
+                    }}
+                  >
+                    <div
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{
+                        backgroundColor:
+                          response.statusColor || fallbackStatusColor,
+                      }}
+                    />
+                    <span className="text-sm">{response.statusName}</span>
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {sortedStatuses.map((status) => (
+                    <SelectItem key={status.id} value={status.id}>
+                      {status.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">担当者</span>
+              <Select
+                value={response.assignedTo || "unassigned"}
+                onValueChange={(value) =>
+                  onAssignChange(
+                    response.id,
+                    value === "unassigned" ? null : value
+                  )
+                }
+              >
+                <SelectTrigger
+                  className="w-[150px] h-8 border-0 shadow-none"
+                  aria-label="担当者"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">未割当</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">優先度</span>
+              <Select
+                value={response.priority}
+                onValueChange={(value) =>
+                  onPriorityChange(response.id, toPriorityValue(value))
+                }
+              >
+                <SelectTrigger
+                  className="w-[90px] h-8 border-0 shadow-none"
+                  aria-label="優先度"
+                >
+                  <div
+                    className="flex items-center gap-2 px-2 py-1 rounded"
+                    style={{
+                      backgroundColor: hexToRgba(
+                        priorityConfig[response.priority].hex,
+                        0.1
+                      ),
+                    }}
+                  >
+                    <span
+                      className="text-sm font-medium"
+                      style={{ color: priorityConfig[response.priority].hex }}
+                    >
+                      {priorityConfig[response.priority].label}
+                    </span>
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">低</SelectItem>
+                  <SelectItem value="medium">中</SelectItem>
+                  <SelectItem value="high">高</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
@@ -360,7 +548,7 @@ export function ResponseDetail({
             </div>
           </div>
         </div>
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -22,6 +22,13 @@ import {
 import { ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
+import {
+  fallbackStatusColor,
+  hexToRgba,
+  priorityConfig,
+  sortStatuses,
+  toPriorityValue,
+} from "@/lib/ticket-display";
 
 type ResponseTableViewProps = {
   responses: FormResponse[];
@@ -32,27 +39,6 @@ type ResponseTableViewProps = {
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
   onOpenDetail: (response: FormResponse) => void;
-};
-
-const priorityConfig = {
-  low: { label: "低", color: "text-gray-600", hex: "#6B7280" },
-  medium: { label: "中", color: "text-blue-600", hex: "#2563EB" },
-  high: { label: "高", color: "text-red-600", hex: "#DC2626" },
-};
-
-const isPriorityValue = (value: string): value is FormResponse["priority"] =>
-  value === "low" || value === "medium" || value === "high";
-
-const toPriorityValue = (value: string): FormResponse["priority"] =>
-  isPriorityValue(value) ? value : "medium";
-
-const hexToRgba = (hex: string | null | undefined, alpha: number): string => {
-  if (!hex) return `rgba(156, 163, 175, ${alpha})`;
-  const cleanHex = hex.replace("#", "");
-  const r = parseInt(cleanHex.slice(0, 2), 16);
-  const g = parseInt(cleanHex.slice(2, 4), 16);
-  const b = parseInt(cleanHex.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
 export function ResponseTableView({
@@ -67,9 +53,7 @@ export function ResponseTableView({
 }: ResponseTableViewProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
-  const sortedStatuses = [...statuses].sort(
-    (a, b) => a.display_order - b.display_order
-  );
+  const sortedStatuses = sortStatuses(statuses);
 
   const getTitleAnswer = (response: FormResponse): string | null => {
     if (!titleQuestionId) return null;
@@ -151,7 +135,8 @@ export function ResponseTableView({
                           <div
                             className="w-2 h-2 rounded-full shrink-0"
                             style={{
-                              backgroundColor: response.statusColor || "#9CA3AF",
+                              backgroundColor:
+                                response.statusColor || fallbackStatusColor,
                             }}
                           />
                           <span className="text-sm">{response.statusName}</span>

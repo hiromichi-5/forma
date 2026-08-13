@@ -51,6 +51,19 @@ func (q *Queries) CreateForm(ctx context.Context, arg CreateFormParams) (Form, e
 	return i, err
 }
 
+const deleteForm = `-- name: DeleteForm :execrows
+DELETE FROM forms
+WHERE id = $1
+`
+
+func (q *Queries) DeleteForm(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteForm, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getFormByID = `-- name: GetFormByID :one
 SELECT id, form_id, title, description, title_question_id, email_collection_type, synced_at, created_at
 FROM forms
@@ -106,6 +119,25 @@ func (q *Queries) ListForms(ctx context.Context) ([]Form, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateFormEmailCollectionType = `-- name: UpdateFormEmailCollectionType :execrows
+UPDATE forms
+SET email_collection_type = $2
+WHERE id = $1
+`
+
+type UpdateFormEmailCollectionTypeParams struct {
+	ID                  pgtype.UUID `json:"id"`
+	EmailCollectionType pgtype.Text `json:"email_collection_type"`
+}
+
+func (q *Queries) UpdateFormEmailCollectionType(ctx context.Context, arg UpdateFormEmailCollectionTypeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateFormEmailCollectionType, arg.ID, arg.EmailCollectionType)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateFormSyncedAt = `-- name: UpdateFormSyncedAt :execrows

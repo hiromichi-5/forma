@@ -6,6 +6,11 @@ const (
 	TemplateEmailVerification = "email-verification"
 	TemplatePasswordReset     = "password-reset"
 	TemplateInvite            = "invite"
+
+	TemplateTicketStatusChanged         = "ticket-status-changed"
+	TemplateTicketStatusChangedDetailed = "ticket-status-changed-detailed"
+	TemplateTicketAssigned              = "ticket-assigned"
+	TemplateTicketAssignedDetailed      = "ticket-assigned-detailed"
 )
 
 type SendEmailInput struct {

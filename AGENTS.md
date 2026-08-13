@@ -1,6 +1,6 @@
 # Forma Backend API
 
-Google Forms の回答を管理する Web アプリケーション。**Backend（Go）が主要な開発対象**であり、高い品質を求める。Frontend は品質を重視しない。
+Google Forms の回答を管理する Web アプリケーションです。
 
 ## タスクの実行ガイド
 
@@ -20,34 +20,19 @@ docs/* に詳細なドキュメントがある。タスクを実行する際は�
 docs
 ├── adr
 │   ├── 001-clean-architecture.md
-│   ├── 002-transaction-management.md
-│   ├── 003-error-code-design.md
-│   ├── 004-invite-email-failure-handling.md
-│   └── TEMPLATE.md
+│   ├── ...
 ├── api 
 │   ├── auth.md
-│   ├── design.md
-│   ├── form.md
-│   ├── invite.md
-│   ├── member.md
-│   ├── profile.md
-│   ├── status.md
-│   ├── TEMPLATE.md
-│   └── ticket.md
+│   ├── ...
 ├── architecture
-│   ├── authorization.md
-│   ├── backend-logging.md
-│   ├── backend-testing.md
-│   ├── error-handling.md
-│   ├── overview.md
-│   └── transaction.md
+│   ├── ...
 ├── design
-│   └── TEMPLATE.md
+│   ├── multi-question-list-view.md
+│   ├── ...
 ├── guides
 │   ├── commands.md
-│   ├── deploy.md
-│   ├── getting-started.md
-│   └── TEMPLATE.md
+│   ├── ...
 └── rules 
-    └── TEMPLATE.md
+│   ├── TEMPLATE.md
+│   ├── ...
 ```

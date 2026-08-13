@@ -4,7 +4,9 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/infra/postgres"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
@@ -31,6 +33,9 @@ func newMemberRepo() repository.MemberRepository { return postgres.NewMemberRepo
 func newStatusRepo() repository.StatusRepository { return postgres.NewStatusRepository(testPool) }
 func newTicketRepo() repository.TicketRepository { return postgres.NewTicketRepository(testPool) }
 func newInviteRepo() repository.InviteRepository { return postgres.NewInviteRepository(testPool) }
+func newNotificationRepo() repository.NotificationRepository {
+	return postgres.NewNotificationRepository(testPool)
+}
 
 func newAuthUseCase() *usecase.AuthUseCase {
 	return usecase.NewAuthUseCase(
@@ -44,9 +49,17 @@ func newProfileUseCase() *usecase.ProfileUseCase {
 }
 
 func newFormUseCase(fetcher repository.FormFetcher) *usecase.FormUseCase {
+	return newFormUseCaseWithSyncer(fetcher, newSyncUseCase(fetcher))
+}
+
+func newFormUseCaseWithSyncer(
+	fetcher repository.FormFetcher,
+	syncer usecase.FormSyncer,
+) *usecase.FormUseCase {
 	return usecase.NewFormUseCase(
 		newFormRepo(), newMemberRepo(), newStatusRepo(), fetcher,
 		postgres.NewFormUoW(testPool),
+		syncer,
 	)
 }
 
@@ -74,10 +87,27 @@ func newTicketUseCase() *usecase.TicketUseCase {
 }
 
 func newTicketUseCaseWithPublisher(publisher usecase.EventPublisher) *usecase.TicketUseCase {
+	return newTicketUseCaseWith(publisher, newNotificationUseCase(&mockEmailSender{}))
+}
+
+func newTicketUseCaseWith(
+	publisher usecase.EventPublisher,
+	notifier usecase.TicketNotifier,
+) *usecase.TicketUseCase {
 	return usecase.NewTicketUseCase(
 		newTicketRepo(), newFormRepo(), newStatusRepo(), newMemberRepo(), newUserRepo(),
 		postgres.NewTicketUoW(testPool),
 		publisher,
+		notifier,
+	)
+}
+
+func newNotificationUseCase(sender repository.EmailSender) *usecase.NotificationUseCase {
+	return usecase.NewNotificationUseCase(
+		newNotificationRepo(), newTicketRepo(), newFormRepo(), newStatusRepo(),
+		newMemberRepo(), newUserRepo(),
+		postgres.NewNotificationUoW(testPool),
+		sender,
 	)
 }
 
@@ -121,6 +151,20 @@ func (m *mockFormFetcher) ListResponses(
 		return m.listResponsesFunc(ctx, formID, filter, pageToken)
 	}
 	return &repository.GoogleFormResponsePage{}, nil
+}
+
+type mockFormSyncer struct {
+	syncFormOnceFunc func(ctx context.Context, formID, userID uuid.UUID) (int, time.Time, error)
+}
+
+func (m *mockFormSyncer) SyncFormOnce(
+	ctx context.Context,
+	formID, userID uuid.UUID,
+) (int, time.Time, error) {
+	if m.syncFormOnceFunc != nil {
+		return m.syncFormOnceFunc(ctx, formID, userID)
+	}
+	return 0, time.Time{}, nil
 }
 
 func truncate(t *testing.T) {

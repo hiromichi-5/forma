@@ -205,9 +205,25 @@ type ticketAnswerResp struct {
 	DisplayValue  string   `json:"display_value"`
 }
 
+type ticketNotificationResp struct {
+	NotificationType string  `json:"notification_type"`
+	LastSentAt       *string `json:"last_sent_at"`
+}
+
 type ticketDetailResp struct {
 	ticketSummaryResp
-	Answers []ticketAnswerResp `json:"answers"`
+	Answers       []ticketAnswerResp       `json:"answers"`
+	Notifications []ticketNotificationResp `json:"notifications"`
+}
+
+type ticketUpdateResp struct {
+	ticketDetailResp
+	NotificationResults []notificationResultResp `json:"notification_results"`
+}
+
+type notificationResultResp struct {
+	NotificationType string `json:"notification_type"`
+	Result           string `json:"result"`
 }
 
 func toTicketSummaryResp(t usecase.TicketSummary) ticketSummaryResp {
@@ -257,9 +273,82 @@ func toTicketDetailResp(d usecase.TicketDetail) ticketDetailResp {
 			DisplayValue:  a.DisplayValue,
 		}
 	}
+	notifications := make([]ticketNotificationResp, len(d.Notifications))
+	for i, n := range d.Notifications {
+		var lastSentAt *string
+		if n.LastSentAt != nil {
+			formatted := n.LastSentAt.UTC().Format(time.RFC3339)
+			lastSentAt = &formatted
+		}
+		notifications[i] = ticketNotificationResp{
+			NotificationType: string(n.NotificationType),
+			LastSentAt:       lastSentAt,
+		}
+	}
+
 	return ticketDetailResp{
 		ticketSummaryResp: toTicketSummaryResp(d.TicketSummary),
 		Answers:           answers,
+		Notifications:     notifications,
+	}
+}
+
+func toTicketUpdateResp(
+	d usecase.TicketDetail,
+	results []usecase.NotificationResult,
+) ticketUpdateResp {
+	out := make([]notificationResultResp, len(results))
+	for i, r := range results {
+		result := "failed"
+		if r.Sent {
+			result = "sent"
+		}
+		out[i] = notificationResultResp{
+			NotificationType: string(r.NotificationType),
+			Result:           result,
+		}
+	}
+	return ticketUpdateResp{
+		ticketDetailResp:    toTicketDetailResp(d),
+		NotificationResults: out,
+	}
+}
+
+func toNotificationSettingsResp(s usecase.NotificationSettings) notificationSettingsResp {
+	settings := make([]notificationSettingResp, len(s.Settings))
+	for i, v := range s.Settings {
+		settings[i] = notificationSettingResp{
+			NotificationType: string(v.NotificationType),
+			Mode:             string(v.Mode),
+			IncludeDetail:    v.IncludeDetail,
+		}
+	}
+	return notificationSettingsResp{
+		EmailCollectionType: s.EmailCollectionType,
+		Settings:            settings,
+	}
+}
+
+type notificationSettingResp struct {
+	NotificationType string `json:"notification_type"`
+	Mode             string `json:"mode"`
+	IncludeDetail    bool   `json:"include_detail"`
+}
+
+type notificationSettingsResp struct {
+	EmailCollectionType *string                   `json:"email_collection_type"`
+	Settings            []notificationSettingResp `json:"settings"`
+}
+
+type sentNotificationResp struct {
+	NotificationType string `json:"notification_type"`
+	SentAt           string `json:"sent_at"`
+}
+
+func toSentNotificationResp(n entity.TicketNotification) sentNotificationResp {
+	return sentNotificationResp{
+		NotificationType: string(n.NotificationType),
+		SentAt:           n.SentAt.UTC().Format(time.RFC3339),
 	}
 }
 

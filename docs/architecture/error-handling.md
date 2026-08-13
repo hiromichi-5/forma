@@ -141,6 +141,9 @@ HTTP レスポンス {code, message, fields?}
 | `FORM_ALREADY_REGISTERED` | 409 | 同一 Google フォームの重複登録 |
 | `ACTIVE_INVITE_ALREADY_EXISTS` | 409 | 同一メールへの有効な招待が既に存在 |
 | `STATUS_CONFLICT` | 409 | ステータス名または表示順の重複 |
+| `NOTIFICATION_DISABLED` | 409 | 該当種別の通知設定が `off` である |
+| `RESPONDENT_EMAIL_MISSING` | 409 | チケットに回答者のメールアドレスがない |
+| `NOTIFICATION_RATE_LIMITED` | 429 | 通知の手動送信が短時間に繰り返された |
 
 ### バリデーション
 

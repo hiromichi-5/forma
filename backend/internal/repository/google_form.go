@@ -6,10 +6,11 @@ import (
 )
 
 type GoogleForm struct {
-	FormID      string
-	Title       string
-	Description string
-	Items       []GoogleFormItem
+	FormID              string
+	Title               string
+	Description         string
+	EmailCollectionType string
+	Items               []GoogleFormItem
 }
 
 type GoogleFormItem struct {
