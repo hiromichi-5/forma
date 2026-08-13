@@ -381,7 +381,10 @@ func mergeSettings(
 	return settings
 }
 
-func defaultSetting(formID uuid.UUID, notificationType entity.NotificationType) entity.NotificationSetting {
+func defaultSetting(
+	formID uuid.UUID,
+	notificationType entity.NotificationType,
+) entity.NotificationSetting {
 	return entity.NotificationSetting{
 		FormID:           formID,
 		NotificationType: notificationType,

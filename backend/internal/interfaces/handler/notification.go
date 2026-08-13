@@ -120,7 +120,12 @@ func (h *NotificationHandler) PostV1TicketsTicketIdNotifications(c *gin.Context)
 		return
 	}
 
-	sent, err := h.uc.SendNotification(c, ticketID, userID, entity.NotificationType(req.NotificationType))
+	sent, err := h.uc.SendNotification(
+		c,
+		ticketID,
+		userID,
+		entity.NotificationType(req.NotificationType),
+	)
 	if err != nil {
 		handleError(c, err)
 		return

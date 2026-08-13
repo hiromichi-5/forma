@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,7 +45,10 @@ type TicketNotification struct {
 	SentAt           time.Time
 }
 
-var notificationTypes = []NotificationType{NotificationTypeStatusChange, NotificationTypeAssigneeAssigned}
+var notificationTypes = []NotificationType{
+	NotificationTypeStatusChange,
+	NotificationTypeAssigneeAssigned,
+}
 
 func NotificationTypes() []NotificationType {
 	return notificationTypes
@@ -52,12 +56,7 @@ func NotificationTypes() []NotificationType {
 
 // Valid は t が既知の通知種別かどうかを返す。
 func (t NotificationType) Valid() bool {
-	for _, v := range notificationTypes {
-		if v == t {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(notificationTypes, t)
 }
 
 func (m NotificationMode) Valid() bool {
