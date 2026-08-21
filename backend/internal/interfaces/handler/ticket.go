@@ -120,14 +120,14 @@ func (n *nullableUUIDPayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (n nullableUUIDPayload) assigneeChange() usecase.AssigneeChange {
+func (n nullableUUIDPayload) assigneeChange() entity.AssigneeChange {
 	switch {
 	case !n.set:
-		return usecase.KeepAssignee()
+		return entity.KeepAssignee()
 	case n.null:
-		return usecase.ClearAssignee()
+		return entity.ClearAssignee()
 	default:
-		return usecase.SetAssignee(n.value)
+		return entity.SetAssignee(n.value)
 	}
 }
 

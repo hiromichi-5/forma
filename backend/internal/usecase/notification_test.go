@@ -465,7 +465,7 @@ func TestTicketUseCase_UpdateTicket_Notification(t *testing.T) {
 			ctx,
 			ticketID,
 			adminID,
-			usecase.UpdateTicketInput{Assignee: usecase.SetAssignee(adminID)},
+			usecase.UpdateTicketInput{Assignee: entity.SetAssignee(adminID)},
 		)
 		require.NoError(t, err)
 		require.Len(t, results, 1)
@@ -475,7 +475,7 @@ func TestTicketUseCase_UpdateTicket_Notification(t *testing.T) {
 			ctx,
 			ticketID,
 			adminID,
-			usecase.UpdateTicketInput{Assignee: usecase.ClearAssignee()},
+			usecase.UpdateTicketInput{Assignee: entity.ClearAssignee()},
 		)
 		require.NoError(t, err)
 		assert.Empty(t, results)

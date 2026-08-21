@@ -46,29 +46,8 @@ type TicketDetail struct {
 
 type UpdateTicketInput struct {
 	StatusID *uuid.UUID
-	Assignee AssigneeChange
+	Assignee entity.AssigneeChange
 	Priority *entity.Priority
-}
-
-type AssigneeChange struct {
-	specified bool
-	userID    *uuid.UUID
-}
-
-func KeepAssignee() AssigneeChange {
-	return AssigneeChange{}
-}
-
-func ClearAssignee() AssigneeChange {
-	return AssigneeChange{specified: true}
-}
-
-func SetAssignee(userID uuid.UUID) AssigneeChange {
-	return AssigneeChange{specified: true, userID: &userID}
-}
-
-func (c AssigneeChange) Resolve() (userID *uuid.UUID, specified bool) {
-	return c.userID, c.specified
 }
 
 type TicketNotifier interface {
@@ -293,7 +272,7 @@ func (uc *TicketUseCase) UpdateTicket(
 		newStatus = &s
 	}
 
-	newAssignee, assigneeSpecified := in.Assignee.Resolve()
+	newAssignee := in.Assignee.UserID()
 	if newAssignee != nil {
 		if err := uc.validateAssignee(ctx, ticket.FormID, *newAssignee); err != nil {
 			return TicketDetail{}, nil, err
@@ -323,20 +302,17 @@ func (uc *TicketUseCase) UpdateTicket(
 			name:      changedByName,
 		}
 
-		if newStatus != nil && newStatus.ID != current.StatusID {
-			oldStatus, err := repos.Status.GetByID(ctx, current.StatusID)
+		if oldStatusID, changed := current.ChangeStatus(newStatus); changed {
+			oldStatus, err := repos.Status.GetByID(ctx, oldStatusID)
 			if err != nil {
 				return err
 			}
-			if err := repos.Ticket.UpdateStatus(ctx, ticketID, newStatus.ID); err != nil {
-				return err
-			}
-			rec.record("status", strPtr(oldStatus.Name), strPtr(newStatus.Name))
+			rec.record(entity.FieldStatus, strPtr(oldStatus.Name), strPtr(newStatus.Name))
 			notifyTypes = append(notifyTypes, entity.NotificationTypeStatusChange)
 		}
 
-		if assigneeSpecified && !uuidPtrEqual(current.AssigneeID, newAssignee) {
-			oldName, err := resolveUserName(ctx, repos.User, current.AssigneeID)
+		if oldAssigneeID, changed := current.ChangeAssignee(in.Assignee); changed {
+			oldName, err := resolveUserName(ctx, repos.User, oldAssigneeID)
 			if err != nil {
 				return err
 			}
@@ -344,23 +320,28 @@ func (uc *TicketUseCase) UpdateTicket(
 			if err != nil {
 				return err
 			}
-			if err := repos.Ticket.UpdateAssignee(ctx, ticketID, newAssignee); err != nil {
-				return err
-			}
-			rec.record("assignee", oldName, newName)
+			rec.record(entity.FieldAssignee, oldName, newName)
 			// 担当者の解除は通知の対象外
 			if newAssignee != nil {
 				notifyTypes = append(notifyTypes, entity.NotificationTypeAssigneeAssigned)
 			}
 		}
 
-		if in.Priority != nil && *in.Priority != current.Priority {
-			if err := repos.Ticket.UpdatePriority(ctx, ticketID, *in.Priority); err != nil {
-				return err
-			}
-			rec.record("priority", strPtr(string(current.Priority)), strPtr(string(*in.Priority)))
+		if oldPriority, changed := current.ChangePriority(in.Priority); changed {
+			rec.record(
+				entity.FieldPriority,
+				strPtr(string(oldPriority)),
+				strPtr(string(current.Priority)),
+			)
 		}
 
+		if len(rec.entries) == 0 {
+			return nil
+		}
+
+		if err := repos.Ticket.Save(ctx, current); err != nil {
+			return err
+		}
 		return rec.save(ctx, repos.Ticket)
 	}); err != nil {
 		return TicketDetail{}, nil, err
@@ -408,7 +389,7 @@ type changeRecorder struct {
 	entries   []entity.TicketHistory
 }
 
-func (r *changeRecorder) record(field string, oldValue, newValue *string) {
+func (r *changeRecorder) record(field entity.TicketField, oldValue, newValue *string) {
 	r.entries = append(r.entries, entity.TicketHistory{
 		ID:            uuid.New(),
 		TicketID:      r.ticketID,
@@ -495,16 +476,6 @@ func (uc *TicketUseCase) getVisibleStatus(
 		return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
 	}
 	return status, nil
-}
-
-func uuidPtrEqual(a, b *uuid.UUID) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
 }
 
 func strPtr(s string) *string {

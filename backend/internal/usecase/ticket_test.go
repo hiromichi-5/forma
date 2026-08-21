@@ -224,7 +224,7 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 		histories, err := uc.ListTicketHistories(ctx, ticketID, adminID)
 		require.NoError(t, err)
 		assert.Len(t, histories, 1)
-		assert.Equal(t, "status", histories[0].FieldName)
+		assert.Equal(t, entity.FieldStatus, histories[0].FieldName)
 	})
 
 	t.Run("正常系: 担当者を変更できること", func(t *testing.T) {
@@ -246,7 +246,7 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 			ctx,
 			ticketID,
 			adminID,
-			usecase.UpdateTicketInput{Assignee: usecase.SetAssignee(adminID)},
+			usecase.UpdateTicketInput{Assignee: entity.SetAssignee(adminID)},
 		)
 		require.NoError(t, err)
 		require.NotNil(t, detail.Assignee)

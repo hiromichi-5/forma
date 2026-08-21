@@ -376,7 +376,7 @@ func toTicketHistoryListResp(histories []entity.TicketHistory) []ticketHistoryRe
 			TicketID:      h.TicketID.String(),
 			ChangedBy:     changedBy,
 			ChangedByName: h.ChangedByName,
-			FieldName:     h.FieldName,
+			FieldName:     string(h.FieldName),
 			OldValue:      h.OldValue,
 			NewValue:      h.NewValue,
 			CreatedAt:     h.CreatedAt.UTC().Format(time.RFC3339),
