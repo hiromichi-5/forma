@@ -47,7 +47,6 @@ func NotificationTypes() []NotificationType {
 	return notificationTypes
 }
 
-// Valid は t が既知の通知種別かどうかを返す。
 func (t NotificationType) Valid() bool {
 	return slices.Contains(notificationTypes, t)
 }

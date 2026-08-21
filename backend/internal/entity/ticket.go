@@ -36,8 +36,6 @@ type Ticket struct {
 	CreatedAt       time.Time
 }
 
-// AssigneeChange は担当者の「変更しない・解除する・指定する」の3状態を表す。
-// ゼロ値は「変更しない」。
 type AssigneeChange struct {
 	specified bool
 	userID    *uuid.UUID
