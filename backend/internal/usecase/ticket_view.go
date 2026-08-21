@@ -127,7 +127,6 @@ func buildAnswerList(answers map[string][]string, questions formQuestionSet) []T
 			QuestionTitle: q.Title,
 			QuestionType:  q.QuestionType,
 			Values:        vals,
-			DisplayValue:  joinValues(vals),
 		})
 		used[q.QuestionID] = struct{}{}
 	}
@@ -149,7 +148,6 @@ func buildAnswerList(answers map[string][]string, questions formQuestionSet) []T
 			QuestionTitle: id,
 			QuestionType:  "unknown",
 			Values:        vals,
-			DisplayValue:  joinValues(vals),
 		})
 	}
 

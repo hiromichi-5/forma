@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"strings"
 	"time"
 
 	"github.com/hiromichi-5/forma/backend/internal/entity"
@@ -270,7 +271,7 @@ func toTicketDetailResp(d usecase.TicketDetail) ticketDetailResp {
 			QuestionTitle: a.QuestionTitle,
 			QuestionType:  a.QuestionType,
 			Values:        a.Values,
-			DisplayValue:  a.DisplayValue,
+			DisplayValue:  strings.Join(a.Values, ", "),
 		}
 	}
 	notifications := make([]ticketNotificationResp, len(d.Notifications))

@@ -62,13 +62,7 @@ func (uc *FormUseCase) RegisterForm(
 
 	gf, err := uc.fetcher.GetForm(ctx, googleFormID)
 	if err != nil {
-		if errors.Is(err, repository.ErrForbidden) {
-			return entity.Form{}, entity.NewError(entity.CodeFormNotShared)
-		}
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.Form{}, entity.NewError(entity.CodeFormNotFound)
-		}
-		return entity.Form{}, err
+		return entity.Form{}, mapFormFetcherError(err)
 	}
 	if gf == nil {
 		return entity.Form{}, entity.NewError(entity.CodeFormNotFound)
@@ -98,7 +92,7 @@ func (uc *FormUseCase) RegisterForm(
 			return txErr
 		}
 
-		if txErr = repos.Member.Upsert(ctx, userID, form.ID, entity.RoleAdmin); txErr != nil {
+		if txErr = repos.Member.Upsert(ctx, form.ID, userID, entity.RoleAdmin); txErr != nil {
 			return txErr
 		}
 

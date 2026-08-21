@@ -30,7 +30,6 @@ type TicketAnswer struct {
 	QuestionTitle string
 	QuestionType  string
 	Values        []string
-	DisplayValue  string
 }
 
 type TicketNotificationInfo struct {
@@ -451,7 +450,7 @@ func (uc *TicketUseCase) validateAssignee(
 		return err
 	}
 
-	_, err := uc.memberRepo.GetRole(ctx, assigneeID, formID)
+	_, err := uc.memberRepo.GetRole(ctx, formID, assigneeID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeResourceHidden)

@@ -246,7 +246,7 @@ func TestBuildAnswerList(t *testing.T) {
 		require.Len(t, got, 2)
 		assert.Equal(t, "q1", got[0].QuestionID)
 		assert.Equal(t, "名前", got[0].QuestionTitle)
-		assert.Equal(t, "田中", got[0].DisplayValue)
+		assert.Equal(t, []string{"田中"}, got[0].Values)
 		assert.Equal(t, "q2", got[1].QuestionID)
 	})
 
@@ -280,6 +280,5 @@ func TestBuildAnswerList(t *testing.T) {
 		got := buildAnswerList(map[string][]string{}, questions)
 		require.Len(t, got, 1)
 		assert.Equal(t, []string{}, got[0].Values)
-		assert.Equal(t, "", got[0].DisplayValue)
 	})
 }

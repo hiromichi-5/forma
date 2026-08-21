@@ -46,13 +46,13 @@ func (uc *MemberUseCase) AddMember(
 		return err
 	}
 
-	if _, err := uc.memberRepo.GetRole(ctx, target.ID, formID); err == nil {
+	if _, err := uc.memberRepo.GetRole(ctx, formID, target.ID); err == nil {
 		return entity.NewError(entity.CodeAlreadyMember)
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return err
 	}
 
-	return uc.memberRepo.Upsert(ctx, target.ID, formID, role)
+	return uc.memberRepo.Upsert(ctx, formID, target.ID, role)
 }
 
 func (uc *MemberUseCase) ChangeRole(
@@ -68,7 +68,7 @@ func (uc *MemberUseCase) ChangeRole(
 		return err
 	}
 
-	currentRole, err := uc.memberRepo.GetRole(ctx, targetUserID, formID)
+	currentRole, err := uc.memberRepo.GetRole(ctx, formID, targetUserID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeResourceHidden)
@@ -86,7 +86,7 @@ func (uc *MemberUseCase) ChangeRole(
 		}
 	}
 
-	return uc.memberRepo.Upsert(ctx, targetUserID, formID, role)
+	return uc.memberRepo.Upsert(ctx, formID, targetUserID, role)
 }
 
 func (uc *MemberUseCase) RemoveMember(
@@ -101,7 +101,7 @@ func (uc *MemberUseCase) RemoveMember(
 		return err
 	}
 
-	if err := uc.memberRepo.Delete(ctx, targetUserID, formID); err != nil {
+	if err := uc.memberRepo.Delete(ctx, formID, targetUserID); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil
 		}
@@ -124,7 +124,7 @@ func (uc *MemberUseCase) ensureFormKeepsAdmin(
 	ctx context.Context,
 	formID, targetUserID uuid.UUID,
 ) error {
-	role, err := uc.memberRepo.GetRole(ctx, targetUserID, formID)
+	role, err := uc.memberRepo.GetRole(ctx, formID, targetUserID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil

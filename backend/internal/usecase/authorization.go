@@ -44,7 +44,7 @@ func resolveRole(
 	memberRepo repository.MemberRepository,
 	formID, userID uuid.UUID,
 ) (entity.Role, error) {
-	role, err := memberRepo.GetRole(ctx, userID, formID)
+	role, err := memberRepo.GetRole(ctx, formID, userID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return "", entity.NewError(entity.CodeResourceHidden)

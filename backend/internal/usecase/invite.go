@@ -177,7 +177,7 @@ func (uc *InviteUseCase) AcceptInvite(ctx context.Context, inviteID, userID uuid
 			return err
 		}
 
-		if err := repos.Member.Upsert(ctx, userID, invite.FormID, invite.Role); err != nil {
+		if err := repos.Member.Upsert(ctx, invite.FormID, userID, invite.Role); err != nil {
 			return err
 		}
 
@@ -211,7 +211,7 @@ func ensureUserNotMember(
 	memberRepo repository.MemberRepository,
 	formID, userID uuid.UUID,
 ) error {
-	_, err := memberRepo.GetRole(ctx, userID, formID)
+	_, err := memberRepo.GetRole(ctx, formID, userID)
 	if err == nil {
 		return entity.NewError(entity.CodeAlreadyMember)
 	}
