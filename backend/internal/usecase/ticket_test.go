@@ -175,7 +175,7 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 
 		publisher := &recordingEventPublisher{}
 		uc := newTicketUseCaseWithPublisher(publisher)
-		invalid := "invalid"
+		invalid := entity.Priority("invalid")
 		_, _, err := uc.UpdateTicket(ctx, ticketID, adminID, nil, nil, false, &invalid)
 		require.Error(t, err)
 		assert.Empty(t, publisher.events())
@@ -300,7 +300,7 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 		ticketID := testutil.CreateTicket(t, ctx, testPool, formID, defaultStatusID, "resp-1")
 
 		uc := newTicketUseCase()
-		invalid := "invalid"
+		invalid := entity.Priority("invalid")
 		_, _, err := uc.UpdateTicket(ctx, ticketID, adminID, nil, nil, false, &invalid)
 		require.Error(t, err)
 		var appErr *entity.Error

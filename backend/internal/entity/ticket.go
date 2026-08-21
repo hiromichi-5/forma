@@ -6,11 +6,22 @@ import (
 	"github.com/google/uuid"
 )
 
+type Priority string
+
 const (
-	PriorityHigh   = "high"
-	PriorityMedium = "medium"
-	PriorityLow    = "low"
+	PriorityHigh   Priority = "high"
+	PriorityMedium Priority = "medium"
+	PriorityLow    Priority = "low"
 )
+
+func (p Priority) Valid() bool {
+	switch p {
+	case PriorityHigh, PriorityMedium, PriorityLow:
+		return true
+	default:
+		return false
+	}
+}
 
 type Ticket struct {
 	ID              uuid.UUID
@@ -20,7 +31,7 @@ type Ticket struct {
 	Answers         []byte
 	StatusID        uuid.UUID
 	AssigneeID      *uuid.UUID
-	Priority        string
+	Priority        Priority
 	SubmittedAt     time.Time
 	CreatedAt       time.Time
 }

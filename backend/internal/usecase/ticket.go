@@ -29,7 +29,7 @@ type TicketSummary struct {
 	ResponseID      string
 	RespondentEmail *string
 	Status          TicketStatus
-	Priority        string
+	Priority        entity.Priority
 	TitleQuestionID *string
 	Title           string
 	Assignee        *TicketAssignee
@@ -253,7 +253,7 @@ func (uc *TicketUseCase) UpdateTicket(
 	statusID *uuid.UUID,
 	assigneeID *uuid.UUID,
 	clearAssignee bool,
-	priority *string,
+	priority *entity.Priority,
 ) (TicketDetail, []NotificationResult, error) {
 	ticket, err := uc.ticketRepo.GetByID(ctx, ticketID)
 	if err != nil {
@@ -291,10 +291,8 @@ func (uc *TicketUseCase) UpdateTicket(
 		}
 	}
 
-	if priority != nil {
-		if !isValidTicketPriority(*priority) {
-			return TicketDetail{}, nil, entity.NewError(entity.CodeValidation)
-		}
+	if priority != nil && !priority.Valid() {
+		return TicketDetail{}, nil, entity.NewError(entity.CodeValidation)
 	}
 
 	var notifyTypes []entity.NotificationType
@@ -354,7 +352,7 @@ func (uc *TicketUseCase) UpdateTicket(
 			if err := repos.Ticket.UpdatePriority(ctx, ticketID, *priority); err != nil {
 				return err
 			}
-			rec.record("priority", strPtr(current.Priority), strPtr(*priority))
+			rec.record("priority", strPtr(string(current.Priority)), strPtr(string(*priority)))
 		}
 
 		return rec.save(ctx, repos.Ticket)
@@ -491,15 +489,6 @@ func (uc *TicketUseCase) getVisibleStatus(
 		return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
 	}
 	return status, nil
-}
-
-func isValidTicketPriority(p string) bool {
-	switch p {
-	case entity.PriorityHigh, entity.PriorityMedium, entity.PriorityLow:
-		return true
-	default:
-		return false
-	}
 }
 
 func uuidPtrEqual(a, b *uuid.UUID) bool {

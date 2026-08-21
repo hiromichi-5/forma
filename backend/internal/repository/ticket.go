@@ -16,7 +16,7 @@ type TicketRepository interface {
 
 	UpdateStatus(ctx context.Context, id uuid.UUID, statusID uuid.UUID) error
 	UpdateAssignee(ctx context.Context, id uuid.UUID, assigneeID *uuid.UUID) error
-	UpdatePriority(ctx context.Context, id uuid.UUID, priority string) error
+	UpdatePriority(ctx context.Context, id uuid.UUID, priority entity.Priority) error
 
 	CreateHistory(ctx context.Context, history entity.TicketHistory) (entity.TicketHistory, error)
 	ListHistories(ctx context.Context, ticketID uuid.UUID) ([]entity.TicketHistory, error)

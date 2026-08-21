@@ -26,7 +26,7 @@ type TicketUseCase interface {
 		statusID *uuid.UUID,
 		assigneeID *uuid.UUID,
 		clearAssignee bool,
-		priority *string,
+		priority *entity.Priority,
 	) (usecase.TicketDetail, []usecase.NotificationResult, error)
 }
 
@@ -169,7 +169,7 @@ func (h *TicketHandler) PatchV1TicketsTicketId(c *gin.Context) {
 		statusID,
 		assigneeID,
 		clearAssignee,
-		req.Priority,
+		(*entity.Priority)(req.Priority),
 	)
 	if err != nil {
 		handleError(c, err)

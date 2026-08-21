@@ -238,7 +238,7 @@ func toTicketSummaryResp(t usecase.TicketSummary) ticketSummaryResp {
 			Name:  t.Status.Name,
 			Color: t.Status.Color,
 		},
-		Priority:        t.Priority,
+		Priority:        string(t.Priority),
 		TitleQuestionID: t.TitleQuestionID,
 		Title:           t.Title,
 		SubmittedAt:     t.SubmittedAt.UTC().Format(time.RFC3339),

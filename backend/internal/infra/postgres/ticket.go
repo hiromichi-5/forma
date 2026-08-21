@@ -29,7 +29,7 @@ func (r *TicketRepository) Create(ctx context.Context, ticket entity.Ticket) (bo
 		Answers:         ticket.Answers,
 		StatusID:        toUUID(ticket.StatusID),
 		AssigneeID:      toNullUUID(ticket.AssigneeID),
-		Priority:        ticket.Priority,
+		Priority:        string(ticket.Priority),
 		SubmittedAt:     toTimestamptz(ticket.SubmittedAt),
 	})
 	if err != nil {
@@ -98,11 +98,11 @@ func (r *TicketRepository) UpdateAssignee(
 func (r *TicketRepository) UpdatePriority(
 	ctx context.Context,
 	id uuid.UUID,
-	priority string,
+	priority entity.Priority,
 ) error {
 	n, err := r.q.UpdateTicketPriority(ctx, db.UpdateTicketPriorityParams{
 		ID:       toUUID(id),
-		Priority: priority,
+		Priority: string(priority),
 	})
 	if err != nil {
 		return repoError(err)
@@ -157,7 +157,7 @@ func toTicket(row db.Ticket) entity.Ticket {
 		Answers:         row.Answers,
 		StatusID:        fromUUID(row.StatusID),
 		AssigneeID:      fromNullUUID(row.AssigneeID),
-		Priority:        row.Priority,
+		Priority:        entity.Priority(row.Priority),
 		SubmittedAt:     fromTimestamptz(row.SubmittedAt),
 		CreatedAt:       fromTimestamptz(row.CreatedAt),
 	}
