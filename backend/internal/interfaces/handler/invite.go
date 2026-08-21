@@ -15,7 +15,8 @@ type InviteUseCase interface {
 	CreateInvite(
 		ctx context.Context,
 		formID, userID uuid.UUID,
-		email, role string,
+		email string,
+		role entity.Role,
 	) (entity.Invite, error)
 	ListInvites(ctx context.Context, formID, userID uuid.UUID) ([]entity.Invite, error)
 	DeleteInvite(ctx context.Context, formID, userID, inviteID uuid.UUID) error
@@ -53,7 +54,7 @@ func (h *InviteHandler) PostV1FormsFormIdInvites(c *gin.Context) {
 		return
 	}
 
-	invite, err := h.uc.CreateInvite(c, formID, userID, req.Email, req.Role)
+	invite, err := h.uc.CreateInvite(c, formID, userID, req.Email, entity.Role(req.Role))
 	if err != nil {
 		handleError(c, err)
 		return

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hiromichi-5/forma/backend/internal/entity"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -138,7 +139,7 @@ func AddMember(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	userID, formID uuid.UUID,
-	role string,
+	role entity.Role,
 ) {
 	t.Helper()
 	_, err := pool.Exec(ctx, `

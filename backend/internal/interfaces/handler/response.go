@@ -107,7 +107,7 @@ func toMemberListResp(members []entity.Member) []memberResp {
 			ID:          m.ID.String(),
 			Email:       m.Email,
 			DisplayName: m.DisplayName,
-			Role:        m.Role,
+			Role:        string(m.Role),
 		}
 	}
 	return out
@@ -133,7 +133,7 @@ func toInviteListResp(invites []entity.Invite) []inviteResp {
 		out[i] = inviteResp{
 			ID:        inv.ID.String(),
 			Email:     inv.Email,
-			Role:      inv.Role,
+			Role:      string(inv.Role),
 			InvitedBy: inv.InvitedBy.String(),
 			ExpiresAt: inv.ExpiresAt.UTC().Format(time.RFC3339),
 			CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339),

@@ -24,7 +24,7 @@ func (r *MemberRepository) Upsert(
 	ctx context.Context,
 	userID uuid.UUID,
 	formID uuid.UUID,
-	role string,
+	role entity.Role,
 ) error {
 	return r.q.UpsertFormMember(ctx, db.UpsertFormMemberParams{
 		UserID: toUUID(userID),
@@ -48,7 +48,7 @@ func (r *MemberRepository) GetRole(
 	ctx context.Context,
 	userID uuid.UUID,
 	formID uuid.UUID,
-) (string, error) {
+) (entity.Role, error) {
 	role, err := r.q.GetFormMemberRole(ctx, db.GetFormMemberRoleParams{
 		UserID: toUUID(userID),
 		FormID: toUUID(formID),
@@ -56,7 +56,7 @@ func (r *MemberRepository) GetRole(
 	if err != nil {
 		return "", repoError(err)
 	}
-	return string(role), nil
+	return entity.Role(role), nil
 }
 
 func (r *MemberRepository) List(ctx context.Context, formID uuid.UUID) ([]entity.Member, error) {
@@ -70,7 +70,7 @@ func (r *MemberRepository) List(ctx context.Context, formID uuid.UUID) ([]entity
 			ID:          fromUUID(row.ID),
 			Email:       row.Email,
 			DisplayName: row.DisplayName,
-			Role:        string(row.Role),
+			Role:        entity.Role(row.Role),
 		}
 	}
 	return result, nil

@@ -27,9 +27,10 @@ func NewMemberUseCase(
 func (uc *MemberUseCase) AddMember(
 	ctx context.Context,
 	formID, userID uuid.UUID,
-	email, role string,
+	email string,
+	role entity.Role,
 ) error {
-	if role != entity.RoleAdmin && role != entity.RoleEditor {
+	if !role.Valid() {
 		return entity.NewError(entity.CodeValidation)
 	}
 
@@ -57,9 +58,9 @@ func (uc *MemberUseCase) AddMember(
 func (uc *MemberUseCase) ChangeRole(
 	ctx context.Context,
 	formID, userID, targetUserID uuid.UUID,
-	role string,
+	role entity.Role,
 ) error {
-	if role != entity.RoleAdmin && role != entity.RoleEditor {
+	if !role.Valid() {
 		return entity.NewError(entity.CodeValidation)
 	}
 
@@ -79,7 +80,7 @@ func (uc *MemberUseCase) ChangeRole(
 		return nil
 	}
 
-	if role != entity.RoleAdmin {
+	if !role.CanAdmin() {
 		if err := uc.ensureFormKeepsAdmin(ctx, formID, targetUserID); err != nil {
 			return err
 		}
@@ -130,7 +131,7 @@ func (uc *MemberUseCase) ensureFormKeepsAdmin(
 		}
 		return err
 	}
-	if role != entity.RoleAdmin {
+	if !role.CanAdmin() {
 		return nil
 	}
 	count, err := uc.memberRepo.CountAdmins(ctx, formID)

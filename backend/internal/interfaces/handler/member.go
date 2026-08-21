@@ -12,8 +12,12 @@ import (
 
 type MemberUseCase interface {
 	ListMembers(ctx context.Context, formID, userID uuid.UUID) ([]entity.Member, error)
-	AddMember(ctx context.Context, formID, userID uuid.UUID, email, role string) error
-	ChangeRole(ctx context.Context, formID, userID, targetUserID uuid.UUID, role string) error
+	AddMember(ctx context.Context, formID, userID uuid.UUID, email string, role entity.Role) error
+	ChangeRole(
+		ctx context.Context,
+		formID, userID, targetUserID uuid.UUID,
+		role entity.Role,
+	) error
 	RemoveMember(ctx context.Context, formID, userID, targetUserID uuid.UUID) error
 }
 
@@ -72,7 +76,7 @@ func (h *MemberHandler) PostV1FormsFormIdMembers(c *gin.Context) {
 		return
 	}
 
-	if err := h.uc.AddMember(c, formID, userID, req.Email, req.Role); err != nil {
+	if err := h.uc.AddMember(c, formID, userID, req.Email, entity.Role(req.Role)); err != nil {
 		handleError(c, err)
 		return
 	}
@@ -102,7 +106,7 @@ func (h *MemberHandler) PutV1FormsFormIdMembersUserId(c *gin.Context) {
 		return
 	}
 
-	if err := h.uc.ChangeRole(c, formID, userID, targetUserID, req.Role); err != nil {
+	if err := h.uc.ChangeRole(c, formID, userID, targetUserID, entity.Role(req.Role)); err != nil {
 		handleError(c, err)
 		return
 	}

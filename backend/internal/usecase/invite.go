@@ -45,9 +45,10 @@ func NewInviteUseCase(
 func (uc *InviteUseCase) CreateInvite(
 	ctx context.Context,
 	formID, userID uuid.UUID,
-	email, role string,
+	email string,
+	role entity.Role,
 ) (entity.Invite, error) {
-	if role != entity.RoleAdmin && role != entity.RoleEditor {
+	if !role.Valid() {
 		return entity.Invite{}, entity.NewError(entity.CodeValidation)
 	}
 
@@ -80,7 +81,7 @@ func (uc *InviteUseCase) CreateInvite(
 		TemplateName: repository.TemplateInvite,
 		TemplateData: map[string]string{
 			"accept_url": acceptURL,
-			"role":       invite.Role,
+			"role":       string(invite.Role),
 		},
 	}); err != nil {
 		_ = uc.inviteRepo.Delete(ctx, invite.ID)
