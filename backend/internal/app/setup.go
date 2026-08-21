@@ -123,14 +123,6 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	authz.DELETE("/me", ph.DeleteV1Me)
 	authz.PATCH("/me/password", ph.PatchV1MePassword)
 
-	authz.GET("/whoami", func(c *gin.Context) {
-		if uid, ok := middleware.UserID(c); ok {
-			c.JSON(http.StatusOK, gin.H{"user_id": uid})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL"})
-	})
-
 	authz.POST("/forms", fh.PostV1Forms)
 	authz.GET("/forms", fh.GetV1Forms)
 	authz.GET("/forms/:form_id", fh.GetV1FormsId)

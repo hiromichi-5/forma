@@ -37,16 +37,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hydrateUser = useCallback(async () => {
     try {
-      const response = await apiClient.whoami();
-      const baseUser: User = { id: response.user_id };
-      setUser(baseUser);
-      try {
-        const profileData = await apiClient.getProfile();
-        setProfile(profileData);
-        setUser({ ...baseUser, email: profileData.email });
-      } catch (profileError) {
-        console.error("Failed to fetch profile:", profileError);
-      }
+      const profileData = await apiClient.getProfile();
+      const currentUser: User = {
+        id: profileData.id,
+        email: profileData.email,
+      };
+      setProfile(profileData);
+      setUser(currentUser);
       return true;
     } catch (error) {
       console.warn("Failed to hydrate user:", error);
