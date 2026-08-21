@@ -195,10 +195,12 @@ func TestBuildAssignee(t *testing.T) {
 	memberID := uuid.New()
 	members := map[uuid.UUID]entity.Member{
 		memberID: {
-			ID:          memberID,
-			Email:       "user@example.com",
-			DisplayName: "テストユーザー",
-			Role:        entity.RoleEditor,
+			UserRef: entity.UserRef{
+				ID:          memberID,
+				Email:       "user@example.com",
+				DisplayName: "テストユーザー",
+			},
+			Role: entity.RoleEditor,
 		},
 	}
 
@@ -222,22 +224,6 @@ func TestBuildAssignee(t *testing.T) {
 		assert.Equal(t, memberID, got.ID)
 		assert.Equal(t, "テストユーザー", got.DisplayName)
 		assert.Equal(t, "user@example.com", got.Email)
-	})
-
-	t.Run("DisplayNameが空ならEmailをDisplayNameにすること", func(t *testing.T) {
-		t.Parallel()
-		noNameID := uuid.New()
-		noNameMembers := map[uuid.UUID]entity.Member{
-			noNameID: {
-				ID:          noNameID,
-				Email:       "noname@example.com",
-				DisplayName: "",
-				Role:        entity.RoleAdmin,
-			},
-		}
-		got := buildAssignee(&noNameID, noNameMembers)
-		require.NotNil(t, got)
-		assert.Equal(t, "noname@example.com", got.DisplayName)
 	})
 }
 

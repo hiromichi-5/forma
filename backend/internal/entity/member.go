@@ -1,7 +1,5 @@
 package entity
 
-import "github.com/google/uuid"
-
 type Role string
 
 const (
@@ -10,10 +8,8 @@ const (
 )
 
 type Member struct {
-	ID          uuid.UUID
-	Email       string
-	DisplayName string
-	Role        Role
+	UserRef
+	Role Role
 }
 
 func (r Role) Valid() bool {

@@ -10,29 +10,17 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
-type TicketStatus struct {
-	ID    uuid.UUID
-	Name  string
-	Color *string
-}
-
-type TicketAssignee struct {
-	ID          uuid.UUID
-	Email       string
-	DisplayName string
-}
-
 type TicketSummary struct {
 	ID              uuid.UUID
 	FormID          uuid.UUID
 	FormTitle       string
 	ResponseID      string
 	RespondentEmail *string
-	Status          TicketStatus
+	Status          entity.FormStatus
 	Priority        entity.Priority
 	TitleQuestionID *string
 	Title           string
-	Assignee        *TicketAssignee
+	Assignee        *entity.UserRef
 	SubmittedAt     time.Time
 	CreatedAt       time.Time
 }

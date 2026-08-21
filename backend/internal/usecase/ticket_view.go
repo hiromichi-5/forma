@@ -81,11 +81,6 @@ func buildSummary(
 		ticket.ResponseID,
 	)
 
-	status := TicketStatus{}
-	if s, ok := fctx.statuses[ticket.StatusID]; ok {
-		status = TicketStatus{ID: s.ID, Name: s.Name, Color: s.Color}
-	}
-
 	var titleQIDPtr *string
 	if titleQID != "" {
 		titleQIDPtr = &titleQID
@@ -97,7 +92,7 @@ func buildSummary(
 		FormTitle:       fctx.form.Title,
 		ResponseID:      ticket.ResponseID,
 		RespondentEmail: ticket.RespondentEmail,
-		Status:          status,
+		Status:          fctx.statuses[ticket.StatusID],
 		Priority:        ticket.Priority,
 		TitleQuestionID: titleQIDPtr,
 		Title:           title,
@@ -203,7 +198,7 @@ func deriveTitle(
 func buildAssignee(
 	assigneeID *uuid.UUID,
 	members map[uuid.UUID]entity.Member,
-) *TicketAssignee {
+) *entity.UserRef {
 	if assigneeID == nil {
 		return nil
 	}
@@ -211,15 +206,8 @@ func buildAssignee(
 	if !ok {
 		return nil
 	}
-	name := m.DisplayName
-	if name == "" {
-		name = m.Email
-	}
-	return &TicketAssignee{
-		ID:          m.ID,
-		DisplayName: name,
-		Email:       m.Email,
-	}
+	ref := m.UserRef
+	return &ref
 }
 
 func joinValues(values []string) string {

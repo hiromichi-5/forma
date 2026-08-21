@@ -67,10 +67,12 @@ func (r *MemberRepository) List(ctx context.Context, formID uuid.UUID) ([]entity
 	result := make([]entity.Member, len(rows))
 	for i, row := range rows {
 		result[i] = entity.Member{
-			ID:          fromUUID(row.ID),
-			Email:       row.Email,
-			DisplayName: row.DisplayName,
-			Role:        entity.Role(row.Role),
+			UserRef: entity.UserRef{
+				ID:          fromUUID(row.ID),
+				Email:       row.Email,
+				DisplayName: row.DisplayName,
+			},
+			Role: entity.Role(row.Role),
 		}
 	}
 	return result, nil

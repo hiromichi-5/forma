@@ -6,6 +6,12 @@ import (
 	"github.com/google/uuid"
 )
 
+type UserRef struct {
+	ID          uuid.UUID
+	Email       string
+	DisplayName string
+}
+
 type User struct {
 	ID           uuid.UUID
 	Email        string
