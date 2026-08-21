@@ -68,7 +68,7 @@ func (uc *SyncUseCase) SyncFormOnce(
 	var all []repository.GoogleFormResponse
 	token := ""
 	for {
-		page, e := uc.fetcher.ListResponses(ctx, form.FormID, filter, token)
+		page, e := uc.fetcher.ListResponses(ctx, form.GoogleFormID, filter, token)
 		if e != nil {
 			return 0, time.Time{}, mapFormFetcherError(e)
 		}
@@ -140,7 +140,7 @@ func (uc *SyncUseCase) SyncFormOnce(
 }
 
 func (uc *SyncUseCase) refreshFormMetadata(ctx context.Context, form entity.Form) error {
-	gf, err := uc.fetcher.GetForm(ctx, form.FormID)
+	gf, err := uc.fetcher.GetForm(ctx, form.GoogleFormID)
 	if err != nil {
 		return mapFormFetcherError(err)
 	}

@@ -49,7 +49,7 @@ type formSummaryResp struct {
 func toFormResp(f entity.Form) formResp {
 	return formResp{
 		ID:              f.ID.String(),
-		FormID:          f.FormID,
+		FormID:          f.GoogleFormID,
 		Title:           f.Title,
 		Description:     f.Description,
 		TitleQuestionID: f.TitleQuestionID,
@@ -62,7 +62,7 @@ func toFormSummaryListResp(forms []entity.Form) []formSummaryResp {
 	for i, f := range forms {
 		out[i] = formSummaryResp{
 			ID:     f.ID.String(),
-			FormID: f.FormID,
+			FormID: f.GoogleFormID,
 			Title:  f.Title,
 		}
 	}
@@ -324,7 +324,7 @@ func toNotificationSettingsResp(s usecase.NotificationSettings) notificationSett
 		}
 	}
 	return notificationSettingsResp{
-		EmailCollectionType: s.EmailCollectionType,
+		EmailCollectionType: (*string)(s.EmailCollectionType),
 		Settings:            settings,
 	}
 }

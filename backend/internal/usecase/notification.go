@@ -14,7 +14,7 @@ import (
 const notificationRateLimitWindow = 5 * time.Minute
 
 type NotificationSettings struct {
-	EmailCollectionType *string
+	EmailCollectionType *entity.EmailCollectionType
 	Settings            []entity.NotificationSetting
 }
 

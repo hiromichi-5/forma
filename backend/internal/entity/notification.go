@@ -22,13 +22,6 @@ const (
 	NotificationModeOff     NotificationMode = "off"
 )
 
-// Google Forms のメールアドレス収集設定
-const (
-	EmailCollectionDoNotCollect  = "DO_NOT_COLLECT"
-	EmailCollectionVerified      = "VERIFIED"
-	EmailCollectionResponderInpt = "RESPONDER_INPUT"
-)
-
 type NotificationSetting struct {
 	FormID           uuid.UUID
 	NotificationType NotificationType

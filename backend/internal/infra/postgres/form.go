@@ -25,11 +25,11 @@ func NewFormRepository(pool *pgxpool.Pool) *FormRepository {
 func (r *FormRepository) Create(ctx context.Context, form entity.Form) (entity.Form, error) {
 	row, err := r.q.CreateForm(ctx, db.CreateFormParams{
 		ID:                  toUUID(form.ID),
-		FormID:              form.FormID,
+		FormID:              form.GoogleFormID,
 		Title:               form.Title,
 		Description:         toTextPtr(form.Description),
 		TitleQuestionID:     toTextPtr(form.TitleQuestionID),
-		EmailCollectionType: toTextPtr(form.EmailCollectionType),
+		EmailCollectionType: toTextPtr((*string)(form.EmailCollectionType)),
 		SyncedAt:            toTimestamptzPtr(form.SyncedAt),
 	})
 	if err != nil {
@@ -79,11 +79,11 @@ func (r *FormRepository) UpdateSyncedAt(
 func (r *FormRepository) UpdateEmailCollectionType(
 	ctx context.Context,
 	id uuid.UUID,
-	emailCollectionType *string,
+	emailCollectionType *entity.EmailCollectionType,
 ) error {
 	n, err := r.q.UpdateFormEmailCollectionType(ctx, db.UpdateFormEmailCollectionTypeParams{
 		ID:                  toUUID(id),
-		EmailCollectionType: toTextPtr(emailCollectionType),
+		EmailCollectionType: toTextPtr((*string)(emailCollectionType)),
 	})
 	if err != nil {
 		return repoError(err)
@@ -136,11 +136,11 @@ func (r *FormRepository) UpsertQuestion(
 func toForm(row db.Form) entity.Form {
 	return entity.Form{
 		ID:                  fromUUID(row.ID),
-		FormID:              row.FormID,
+		GoogleFormID:        row.FormID,
 		Title:               row.Title,
 		Description:         fromTextPtr(row.Description),
 		TitleQuestionID:     fromTextPtr(row.TitleQuestionID),
-		EmailCollectionType: fromTextPtr(row.EmailCollectionType),
+		EmailCollectionType: (*entity.EmailCollectionType)(fromTextPtr(row.EmailCollectionType)),
 		SyncedAt:            fromTimestamptzPtr(row.SyncedAt),
 		CreatedAt:           fromTimestamptz(row.CreatedAt),
 	}

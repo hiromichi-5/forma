@@ -89,7 +89,7 @@ func (uc *FormUseCase) RegisterForm(
 		var txErr error
 		form, txErr = repos.Form.Create(ctx, entity.Form{
 			ID:                  uuid.New(),
-			FormID:              googleFormID,
+			GoogleFormID:        googleFormID,
 			Title:               title,
 			Description:         description,
 			EmailCollectionType: emailCollectionType(gf.EmailCollectionType),
@@ -113,7 +113,7 @@ func (uc *FormUseCase) RegisterForm(
 
 	logger.From(ctx).Info("form registered",
 		"form_id", form.ID.String(),
-		"google_form_id", form.FormID,
+		"google_form_id", form.GoogleFormID,
 	)
 
 	if _, _, syncErr := uc.syncer.SyncFormOnce(ctx, form.ID, userID); syncErr != nil {
@@ -256,11 +256,12 @@ func extractFormID(u string) (string, error) {
 	return "", entity.NewError(entity.CodeValidation)
 }
 
-func emailCollectionType(v string) *string {
-	if v == "" || v == "EMAIL_COLLECTION_TYPE_UNSPECIFIED" {
+func emailCollectionType(v string) *entity.EmailCollectionType {
+	t := entity.EmailCollectionType(v)
+	if t == "" || t == entity.EmailCollectionUnspecified {
 		return nil
 	}
-	return &v
+	return &t
 }
 
 func mapFormFetcherError(err error) error {

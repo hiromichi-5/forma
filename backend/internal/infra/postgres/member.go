@@ -93,10 +93,10 @@ func (r *MemberRepository) ListAccessibleForms(
 	result := make([]entity.Form, len(rows))
 	for i, row := range rows {
 		result[i] = entity.Form{
-			ID:       fromUUID(row.ID),
-			FormID:   row.FormID,
-			Title:    row.Title,
-			SyncedAt: fromTimestamptzPtr(row.SyncedAt),
+			ID:           fromUUID(row.ID),
+			GoogleFormID: row.FormID,
+			Title:        row.Title,
+			SyncedAt:     fromTimestamptzPtr(row.SyncedAt),
 		}
 	}
 	return result, nil
