@@ -396,7 +396,7 @@ func TestTicketUseCase_UpdateTicket_Notification(t *testing.T) {
 		sender := &recordingEmailSender{}
 		uc := newTicketUseCaseWith(&noopEventPublisher{}, newNotificationUseCase(sender))
 		detail, results, err := uc.UpdateTicket(
-			ctx, ticketID, adminID, &newStatusID, nil, false, nil,
+			ctx, ticketID, adminID, usecase.UpdateTicketInput{StatusID: &newStatusID},
 		)
 		require.NoError(t, err)
 
@@ -433,7 +433,12 @@ func TestTicketUseCase_UpdateTicket_Notification(t *testing.T) {
 
 		sender := &recordingEmailSender{}
 		uc := newTicketUseCaseWith(&noopEventPublisher{}, newNotificationUseCase(sender))
-		_, results, err := uc.UpdateTicket(ctx, ticketID, adminID, &newStatusID, nil, false, nil)
+		_, results, err := uc.UpdateTicket(
+			ctx,
+			ticketID,
+			adminID,
+			usecase.UpdateTicketInput{StatusID: &newStatusID},
+		)
 		require.NoError(t, err)
 
 		assert.Empty(t, results)
@@ -456,12 +461,22 @@ func TestTicketUseCase_UpdateTicket_Notification(t *testing.T) {
 		sender := &recordingEmailSender{}
 		uc := newTicketUseCaseWith(&noopEventPublisher{}, newNotificationUseCase(sender))
 
-		_, results, err := uc.UpdateTicket(ctx, ticketID, adminID, nil, &adminID, false, nil)
+		_, results, err := uc.UpdateTicket(
+			ctx,
+			ticketID,
+			adminID,
+			usecase.UpdateTicketInput{Assignee: usecase.SetAssignee(adminID)},
+		)
 		require.NoError(t, err)
 		require.Len(t, results, 1)
 		assert.True(t, results[0].Sent)
 
-		_, results, err = uc.UpdateTicket(ctx, ticketID, adminID, nil, nil, true, nil)
+		_, results, err = uc.UpdateTicket(
+			ctx,
+			ticketID,
+			adminID,
+			usecase.UpdateTicketInput{Assignee: usecase.ClearAssignee()},
+		)
 		require.NoError(t, err)
 		assert.Empty(t, results)
 		assert.Len(t, sender.sent, 1)
@@ -482,7 +497,12 @@ func TestTicketUseCase_UpdateTicket_Notification(t *testing.T) {
 
 		sender := &recordingEmailSender{}
 		uc := newTicketUseCaseWith(&noopEventPublisher{}, newNotificationUseCase(sender))
-		_, results, err := uc.UpdateTicket(ctx, ticketID, adminID, &newStatusID, nil, false, nil)
+		_, results, err := uc.UpdateTicket(
+			ctx,
+			ticketID,
+			adminID,
+			usecase.UpdateTicketInput{StatusID: &newStatusID},
+		)
 		require.NoError(t, err)
 
 		assert.Empty(t, results)
@@ -507,7 +527,7 @@ func TestTicketUseCase_UpdateTicket_Notification(t *testing.T) {
 		sender := &recordingEmailSender{err: errors.New("smtp down")}
 		uc := newTicketUseCaseWith(&noopEventPublisher{}, newNotificationUseCase(sender))
 		detail, results, err := uc.UpdateTicket(
-			ctx, ticketID, adminID, &newStatusID, nil, false, nil,
+			ctx, ticketID, adminID, usecase.UpdateTicketInput{StatusID: &newStatusID},
 		)
 		require.NoError(t, err)
 

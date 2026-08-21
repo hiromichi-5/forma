@@ -44,6 +44,33 @@ type TicketDetail struct {
 	Notifications []TicketNotificationInfo
 }
 
+type UpdateTicketInput struct {
+	StatusID *uuid.UUID
+	Assignee AssigneeChange
+	Priority *entity.Priority
+}
+
+type AssigneeChange struct {
+	specified bool
+	userID    *uuid.UUID
+}
+
+func KeepAssignee() AssigneeChange {
+	return AssigneeChange{}
+}
+
+func ClearAssignee() AssigneeChange {
+	return AssigneeChange{specified: true}
+}
+
+func SetAssignee(userID uuid.UUID) AssigneeChange {
+	return AssigneeChange{specified: true, userID: &userID}
+}
+
+func (c AssigneeChange) Resolve() (userID *uuid.UUID, specified bool) {
+	return c.userID, c.specified
+}
+
 type TicketNotifier interface {
 	NotifyTicketUpdated(
 		ctx context.Context,
@@ -238,10 +265,7 @@ func buildNotificationInfo(sent []entity.TicketNotification) []TicketNotificatio
 func (uc *TicketUseCase) UpdateTicket(
 	ctx context.Context,
 	ticketID, userID uuid.UUID,
-	statusID *uuid.UUID,
-	assigneeID *uuid.UUID,
-	clearAssignee bool,
-	priority *entity.Priority,
+	in UpdateTicketInput,
 ) (TicketDetail, []NotificationResult, error) {
 	ticket, err := uc.ticketRepo.GetByID(ctx, ticketID)
 	if err != nil {
@@ -255,31 +279,28 @@ func (uc *TicketUseCase) UpdateTicket(
 		return TicketDetail{}, nil, err
 	}
 
-	if clearAssignee && assigneeID != nil {
-		return TicketDetail{}, nil, entity.NewError(entity.CodeValidation)
-	}
-
 	changedByName, err := getUserDisplayName(ctx, uc.userRepo, userID)
 	if err != nil {
 		return TicketDetail{}, nil, err
 	}
 
 	var newStatus *entity.FormStatus
-	if statusID != nil {
-		s, err := uc.getVisibleStatus(ctx, ticket.FormID, *statusID)
+	if in.StatusID != nil {
+		s, err := uc.getVisibleStatus(ctx, ticket.FormID, *in.StatusID)
 		if err != nil {
 			return TicketDetail{}, nil, err
 		}
 		newStatus = &s
 	}
 
-	if assigneeID != nil {
-		if err := uc.validateAssignee(ctx, ticket.FormID, *assigneeID); err != nil {
+	newAssignee, assigneeSpecified := in.Assignee.Resolve()
+	if newAssignee != nil {
+		if err := uc.validateAssignee(ctx, ticket.FormID, *newAssignee); err != nil {
 			return TicketDetail{}, nil, err
 		}
 	}
 
-	if priority != nil && !priority.Valid() {
+	if in.Priority != nil && !in.Priority.Valid() {
 		return TicketDetail{}, nil, entity.NewError(entity.CodeValidation)
 	}
 
@@ -314,33 +335,30 @@ func (uc *TicketUseCase) UpdateTicket(
 			notifyTypes = append(notifyTypes, entity.NotificationTypeStatusChange)
 		}
 
-		if clearAssignee || assigneeID != nil {
-			newAssignee := assigneeID
-			if !uuidPtrEqual(current.AssigneeID, newAssignee) {
-				oldName, err := resolveUserName(ctx, repos.User, current.AssigneeID)
-				if err != nil {
-					return err
-				}
-				newName, err := resolveUserName(ctx, repos.User, newAssignee)
-				if err != nil {
-					return err
-				}
-				if err := repos.Ticket.UpdateAssignee(ctx, ticketID, newAssignee); err != nil {
-					return err
-				}
-				rec.record("assignee", oldName, newName)
-				// 担当者の解除は通知の対象外
-				if newAssignee != nil {
-					notifyTypes = append(notifyTypes, entity.NotificationTypeAssigneeAssigned)
-				}
+		if assigneeSpecified && !uuidPtrEqual(current.AssigneeID, newAssignee) {
+			oldName, err := resolveUserName(ctx, repos.User, current.AssigneeID)
+			if err != nil {
+				return err
+			}
+			newName, err := resolveUserName(ctx, repos.User, newAssignee)
+			if err != nil {
+				return err
+			}
+			if err := repos.Ticket.UpdateAssignee(ctx, ticketID, newAssignee); err != nil {
+				return err
+			}
+			rec.record("assignee", oldName, newName)
+			// 担当者の解除は通知の対象外
+			if newAssignee != nil {
+				notifyTypes = append(notifyTypes, entity.NotificationTypeAssigneeAssigned)
 			}
 		}
 
-		if priority != nil && *priority != current.Priority {
-			if err := repos.Ticket.UpdatePriority(ctx, ticketID, *priority); err != nil {
+		if in.Priority != nil && *in.Priority != current.Priority {
+			if err := repos.Ticket.UpdatePriority(ctx, ticketID, *in.Priority); err != nil {
 				return err
 			}
-			rec.record("priority", strPtr(string(current.Priority)), strPtr(string(*priority)))
+			rec.record("priority", strPtr(string(current.Priority)), strPtr(string(*in.Priority)))
 		}
 
 		return rec.save(ctx, repos.Ticket)
