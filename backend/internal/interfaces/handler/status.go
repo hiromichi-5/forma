@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
 	"github.com/hiromichi-5/forma/backend/internal/interfaces/middleware"
+	"github.com/hiromichi-5/forma/backend/internal/usecase"
 )
 
 type StatusUseCase interface {
@@ -15,17 +16,12 @@ type StatusUseCase interface {
 	CreateStatus(
 		ctx context.Context,
 		formID, userID uuid.UUID,
-		name string,
-		color *string,
-		displayOrder int32,
-		isDefault bool,
+		in usecase.CreateStatusInput,
 	) (entity.FormStatus, error)
 	UpdateStatus(
 		ctx context.Context,
 		formID, userID, statusID uuid.UUID,
-		name, color *string,
-		displayOrder *int32,
-		isDefault *bool,
+		in usecase.UpdateStatusInput,
 	) (entity.FormStatus, error)
 	DeleteStatus(ctx context.Context, formID, userID, statusID uuid.UUID) error
 }
@@ -90,15 +86,12 @@ func (h *StatusHandler) PostV1FormsIdStatuses(c *gin.Context) {
 		return
 	}
 
-	status, err := h.uc.CreateStatus(
-		c,
-		formID,
-		userID,
-		req.Name,
-		req.Color,
-		req.DisplayOrder,
-		req.IsDefault,
-	)
+	status, err := h.uc.CreateStatus(c, formID, userID, usecase.CreateStatusInput{
+		Name:         req.Name,
+		Color:        req.Color,
+		DisplayOrder: req.DisplayOrder,
+		IsDefault:    req.IsDefault,
+	})
 	if err != nil {
 		handleError(c, err)
 		return
@@ -129,16 +122,12 @@ func (h *StatusHandler) PatchV1FormsIdStatusesStatusId(c *gin.Context) {
 		return
 	}
 
-	status, err := h.uc.UpdateStatus(
-		c,
-		formID,
-		userID,
-		statusID,
-		req.Name,
-		req.Color,
-		req.DisplayOrder,
-		req.IsDefault,
-	)
+	status, err := h.uc.UpdateStatus(c, formID, userID, statusID, usecase.UpdateStatusInput{
+		Name:         req.Name,
+		Color:        req.Color,
+		DisplayOrder: req.DisplayOrder,
+		IsDefault:    req.IsDefault,
+	})
 	if err != nil {
 		handleError(c, err)
 		return
