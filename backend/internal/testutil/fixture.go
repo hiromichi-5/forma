@@ -151,6 +151,28 @@ func AddMember(
 	}
 }
 
+func CreateInvite(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	formID, invitedBy uuid.UUID,
+	email string,
+	role entity.Role,
+) uuid.UUID {
+	t.Helper()
+
+	inviteID := uuid.New()
+	now := time.Now()
+	_, err := pool.Exec(ctx, `
+		INSERT INTO form_invites (id, form_id, email, role, invited_by, expires_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, inviteID, formID, email, role, invitedBy, now.Add(24*time.Hour), now)
+	if err != nil {
+		t.Fatalf("insert form_invite: %v", err)
+	}
+	return inviteID
+}
+
 func CreateTicket(
 	t *testing.T,
 	ctx context.Context,
