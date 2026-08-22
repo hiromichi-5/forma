@@ -92,12 +92,6 @@ components:
       properties:
         display_name: { type: string }
 
-    WhoamiResponse:
-      type: object
-      required: [user_id]
-      properties:
-        user_id: { type: string, format: uuid }
-
     RegisterFormRequest:
       type: object
       required: [url]
@@ -696,21 +690,6 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "403":
           description: Current password incorrect
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
-  /v1/whoami:
-    get:
-      summary: 現在のユーザーID取得
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/WhoamiResponse" }
-        "401":
-          description: Unauthorized
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

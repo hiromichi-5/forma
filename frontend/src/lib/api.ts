@@ -170,10 +170,6 @@ class ApiClient {
 
   // User
 
-  async whoami(): Promise<{ user_id: string }> {
-    return this.request<{ user_id: string }>("/v1/whoami");
-  }
-
   async getProfile(): Promise<UserProfile> {
     return this.request<UserProfile>("/v1/me");
   }
