@@ -32,6 +32,14 @@ func newSessionRepo() repository.SessionRepository {
 	return postgres.NewSessionRepository(testPool)
 }
 
+func newEmailTokenRepo() repository.EmailVerificationTokenRepository {
+	return postgres.NewEmailVerificationTokenRepository(testPool)
+}
+
+func newResetTokenRepo() repository.PasswordResetTokenRepository {
+	return postgres.NewPasswordResetTokenRepository(testPool)
+}
+
 func newFormRepo() repository.FormRepository     { return postgres.NewFormRepository(testPool) }
 func newMemberRepo() repository.MemberRepository { return postgres.NewMemberRepository(testPool) }
 func newStatusRepo() repository.StatusRepository { return postgres.NewStatusRepository(testPool) }
@@ -43,7 +51,8 @@ func newNotificationRepo() repository.NotificationRepository {
 
 func newAuthUseCase() *usecase.AuthUseCase {
 	return usecase.NewAuthUseCase(
-		newUserRepo(), newSessionRepo(), postgres.NewAuthUoW(testPool),
+		newUserRepo(), newSessionRepo(), newEmailTokenRepo(), newResetTokenRepo(),
+		postgres.NewAuthUoW(testPool),
 		&mockEmailSender{}, "http://localhost:5173",
 	)
 }

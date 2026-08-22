@@ -20,6 +20,8 @@ const tokenTTL = 24 * time.Hour
 type AuthUseCase struct {
 	userRepo        repository.UserRepository
 	sessionRepo     repository.SessionRepository
+	emailTokenRepo  repository.EmailVerificationTokenRepository
+	resetTokenRepo  repository.PasswordResetTokenRepository
 	uow             repository.UnitOfWork[repository.AuthRepos]
 	emailSender     repository.EmailSender
 	frontendBaseURL string
@@ -30,6 +32,8 @@ type AuthUseCase struct {
 func NewAuthUseCase(
 	userRepo repository.UserRepository,
 	sessionRepo repository.SessionRepository,
+	emailTokenRepo repository.EmailVerificationTokenRepository,
+	resetTokenRepo repository.PasswordResetTokenRepository,
 	uow repository.UnitOfWork[repository.AuthRepos],
 	emailSender repository.EmailSender,
 	frontendBaseURL string,
@@ -37,6 +41,8 @@ func NewAuthUseCase(
 	return &AuthUseCase{
 		userRepo:        userRepo,
 		sessionRepo:     sessionRepo,
+		emailTokenRepo:  emailTokenRepo,
+		resetTokenRepo:  resetTokenRepo,
 		uow:             uow,
 		emailSender:     emailSender,
 		frontendBaseURL: frontendBaseURL,
@@ -113,10 +119,14 @@ func (uc *AuthUseCase) Signup(
 
 		var tokenStr string
 		if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
-			if err := repos.User.DeleteEmailVerificationTokensByUser(ctx, existing.ID); err != nil {
+			if err := repos.EmailVerificationToken.DeleteByUser(ctx, existing.ID); err != nil {
 				return err
 			}
-			tokenStr, err = uc.issueEmailVerificationTokenTx(ctx, repos.User, existing.ID)
+			tokenStr, err = uc.issueEmailVerificationTokenTx(
+				ctx,
+				repos.EmailVerificationToken,
+				existing.ID,
+			)
 			return err
 		}); err != nil {
 			return uuid.UUID{}, err
@@ -153,7 +163,7 @@ func (uc *AuthUseCase) Signup(
 		}
 		createdUserID = user.ID
 
-		tokenStr, err = uc.issueEmailVerificationTokenTx(ctx, repos.User, user.ID)
+		tokenStr, err = uc.issueEmailVerificationTokenTx(ctx, repos.EmailVerificationToken, user.ID)
 		return err
 	}); err != nil {
 		return uuid.UUID{}, err
@@ -184,7 +194,7 @@ func (uc *AuthUseCase) VerifyEmail(ctx context.Context, token string) error {
 		return entity.NewError(entity.CodeValidation)
 	}
 
-	t, err := uc.userRepo.GetEmailVerificationTokenByToken(ctx, token)
+	t, err := uc.emailTokenRepo.GetByToken(ctx, token)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeTokenNotFound)
@@ -193,7 +203,7 @@ func (uc *AuthUseCase) VerifyEmail(ctx context.Context, token string) error {
 	}
 
 	if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
-		if err := repos.User.UseEmailVerificationToken(ctx, t.ID); err != nil {
+		if err := repos.EmailVerificationToken.Use(ctx, t.ID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return entity.NewError(entity.CodeTokenNotFound)
 			}
@@ -234,10 +244,10 @@ func (uc *AuthUseCase) ResendEmailVerification(ctx context.Context, email string
 
 	var tokenStr string
 	if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
-		if err := repos.User.DeleteEmailVerificationTokensByUser(ctx, user.ID); err != nil {
+		if err := repos.EmailVerificationToken.DeleteByUser(ctx, user.ID); err != nil {
 			return err
 		}
-		tokenStr, err = uc.issueEmailVerificationTokenTx(ctx, repos.User, user.ID)
+		tokenStr, err = uc.issueEmailVerificationTokenTx(ctx, repos.EmailVerificationToken, user.ID)
 		return err
 	}); err != nil {
 		return err
@@ -267,10 +277,10 @@ func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) e
 
 	var tokenStr string
 	if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
-		if err := repos.User.DeletePasswordResetTokensByUser(ctx, user.ID); err != nil {
+		if err := repos.PasswordResetToken.DeleteByUser(ctx, user.ID); err != nil {
 			return err
 		}
-		tokenStr, err = uc.issuePasswordResetTokenTx(ctx, repos.User, user.ID)
+		tokenStr, err = uc.issuePasswordResetTokenTx(ctx, repos.PasswordResetToken, user.ID)
 		return err
 	}); err != nil {
 		return err
@@ -298,7 +308,7 @@ func (uc *AuthUseCase) ConfirmPasswordReset(ctx context.Context, token, newPassw
 		return entity.NewError(entity.CodeValidation)
 	}
 
-	t, err := uc.userRepo.GetPasswordResetTokenByToken(ctx, token)
+	t, err := uc.resetTokenRepo.GetByToken(ctx, token)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeTokenNotFound)
@@ -312,7 +322,7 @@ func (uc *AuthUseCase) ConfirmPasswordReset(ctx context.Context, token, newPassw
 	}
 
 	if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
-		if err := repos.User.UsePasswordResetToken(ctx, t.ID); err != nil {
+		if err := repos.PasswordResetToken.Use(ctx, t.ID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return entity.NewError(entity.CodeTokenNotFound)
 			}
@@ -324,7 +334,7 @@ func (uc *AuthUseCase) ConfirmPasswordReset(ctx context.Context, token, newPassw
 			}
 			return err
 		}
-		return repos.User.DeletePasswordResetTokensByUser(ctx, t.UserID)
+		return repos.PasswordResetToken.DeleteByUser(ctx, t.UserID)
 	}); err != nil {
 		return err
 	}
@@ -345,14 +355,14 @@ func (uc *AuthUseCase) sendEmailVerification(ctx context.Context, email, token s
 
 func (uc *AuthUseCase) issueEmailVerificationTokenTx(
 	ctx context.Context,
-	userRepo repository.UserRepository,
+	tokenRepo repository.EmailVerificationTokenRepository,
 	userID uuid.UUID,
 ) (string, error) {
 	token, err := uc.generateToken()
 	if err != nil {
 		return "", err
 	}
-	_, err = userRepo.CreateEmailVerificationToken(ctx, entity.EmailVerificationToken{
+	_, err = tokenRepo.Create(ctx, entity.EmailVerificationToken{
 		ID:        uuid.New(),
 		UserID:    userID,
 		Token:     token,
@@ -366,14 +376,14 @@ func (uc *AuthUseCase) issueEmailVerificationTokenTx(
 
 func (uc *AuthUseCase) issuePasswordResetTokenTx(
 	ctx context.Context,
-	userRepo repository.UserRepository,
+	tokenRepo repository.PasswordResetTokenRepository,
 	userID uuid.UUID,
 ) (string, error) {
 	token, err := uc.generateToken()
 	if err != nil {
 		return "", err
 	}
-	_, err = userRepo.CreatePasswordResetToken(ctx, entity.PasswordResetToken{
+	_, err = tokenRepo.Create(ctx, entity.PasswordResetToken{
 		ID:        uuid.New(),
 		UserID:    userID,
 		Token:     token,

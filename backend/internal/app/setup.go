@@ -46,6 +46,8 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 
 	userRepo := postgres.NewUserRepository(deps.Pool)
 	sessionRepo := postgres.NewSessionRepository(deps.Pool)
+	emailTokenRepo := postgres.NewEmailVerificationTokenRepository(deps.Pool)
+	resetTokenRepo := postgres.NewPasswordResetTokenRepository(deps.Pool)
 	formRepo := postgres.NewFormRepository(deps.Pool)
 	memberRepo := postgres.NewMemberRepository(deps.Pool)
 	statusRepo := postgres.NewStatusRepository(deps.Pool)
@@ -56,6 +58,8 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	authUC := usecase.NewAuthUseCase(
 		userRepo,
 		sessionRepo,
+		emailTokenRepo,
+		resetTokenRepo,
 		postgres.NewAuthUoW(deps.Pool),
 		deps.EmailSender,
 		deps.FrontendBaseURL,
