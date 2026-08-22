@@ -1,5 +1,4 @@
-import type { FormStatus } from "@/types"
-import type { FormResponse } from "@/types/form-response"
+import type { FormStatus, TicketPriority } from "@/types"
 
 /** 優先度の表示ラベルと配色。一覧・カンバン・詳細で共通に使う。 */
 export const priorityConfig = {
@@ -11,12 +10,24 @@ export const priorityConfig = {
 /** ステータスに色が設定されていない場合に使う色。 */
 export const fallbackStatusColor = "#9CA3AF"
 
-const isPriorityValue = (value: string): value is FormResponse["priority"] =>
+const isPriorityValue = (value: string): value is TicketPriority =>
   value === "low" || value === "medium" || value === "high"
 
 /** Select の値（string）を優先度に戻す。想定外の値は既定値の medium とする。 */
-export const toPriorityValue = (value: string): FormResponse["priority"] =>
+export const toPriorityValue = (value: string): TicketPriority =>
   isPriorityValue(value) ? value : "medium"
+
+/** 回答者のメールアドレス。フォームが収集していない場合は代替の文言を表示する。 */
+export const respondentEmailLabel = (email: string | null | undefined): string =>
+  email ?? "メールアドレス未登録"
+
+/**
+ * ステータスを id で引く Map。
+ * チケットが持つステータスは取得時点のスナップショットなので、名前や色の変更を即座に反映するため
+ * 表示は最新の一覧から引く。
+ */
+export const statusById = (statuses: FormStatus[]): Map<string, FormStatus> =>
+  new Map(statuses.map((status) => [status.id, status]))
 
 /** ステータス色から淡い背景色を作る。色が未設定ならグレーにフォールバックする。 */
 export const hexToRgba = (hex: string | null | undefined, alpha: number): string => {

@@ -1,7 +1,7 @@
 "use client";
 
-import type { FormResponse, User } from "@/types/form-response";
-import type { FormStatus } from "@/types";
+import type { User } from "@/types/form-response";
+import type { FormStatus, TicketDetail, TicketPriority } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   fallbackStatusColor,
   hexToRgba,
   priorityConfig,
+  respondentEmailLabel,
   sortStatuses,
   toPriorityValue,
 } from "@/lib/ticket-display";
@@ -37,29 +38,26 @@ import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { useState } from "react";
 
 type ResponseKanbanViewProps = {
-  responses: FormResponse[];
+  responses: TicketDetail[];
   users: User[];
   statuses: FormStatus[];
-  titleQuestionId: string | null;
   onStatusChange: (id: string, statusId: string) => void;
   onAssignChange: (id: string, userId: string | null) => void;
-  onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
-  onOpenDetail: (response: FormResponse) => void;
+  onPriorityChange: (id: string, priority: TicketPriority) => void;
+  onOpenDetail: (response: TicketDetail) => void;
 };
 
 type DraggableCardProps = {
-  response: FormResponse;
+  response: TicketDetail;
   users: User[];
-  titleQuestionId: string | null;
   onAssignChange: (id: string, userId: string | null) => void;
-  onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
-  onOpenDetail: (response: FormResponse) => void;
+  onPriorityChange: (id: string, priority: TicketPriority) => void;
+  onOpenDetail: (response: TicketDetail) => void;
 };
 
 function DraggableCard({
   response,
   users,
-  titleQuestionId,
   onAssignChange,
   onPriorityChange,
   onOpenDetail,
@@ -78,14 +76,7 @@ function DraggableCard({
       }
     : undefined;
 
-  const getTitleAnswer = (): string | null => {
-    if (!titleQuestionId) return null;
-    const titleQuestion = response.questions.find(
-      (q) => q.questionId === titleQuestionId
-    );
-    return titleQuestion?.answer || null;
-  };
-  const titleAnswer = getTitleAnswer();
+  const email = respondentEmailLabel(response.respondent_email);
 
   return (
     <Card
@@ -105,17 +96,13 @@ function DraggableCard({
             type="button"
             className="h-auto min-w-0 flex-1 justify-start p-0 text-left hover:bg-transparent"
             onClick={() => onOpenDetail(response)}
-            aria-label={`回答詳細を開く: ${titleAnswer || response.respondentEmail}`}
+            aria-label={`回答詳細を開く: ${response.title}`}
           >
             <div className="min-w-0">
               <h4 className="mb-0.5 truncate text-sm font-semibold text-foreground">
-                {titleAnswer || response.respondentEmail}
+                {response.title}
               </h4>
-              {titleAnswer && (
-                <p className="truncate text-xs text-muted-foreground">
-                  {response.respondentEmail}
-                </p>
-              )}
+              <p className="truncate text-xs text-muted-foreground">{email}</p>
             </div>
           </Button>
           <Select
@@ -156,7 +143,7 @@ function DraggableCard({
         </div>
 
         <Select
-          value={response.assignedTo || "unassigned"}
+          value={response.assignee?.id ?? "unassigned"}
           onValueChange={(value) =>
             onAssignChange(response.id, value === "unassigned" ? null : value)
           }
@@ -181,7 +168,7 @@ function DraggableCard({
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
             <span>
-              {formatDistanceToNow(response.submittedAt, { locale: ja })}
+              {formatDistanceToNow(new Date(response.submitted_at), { locale: ja })}
             </span>
           </div>
           <Button
@@ -192,7 +179,7 @@ function DraggableCard({
               onOpenDetail(response);
             }}
             className="gap-1 h-7 px-2"
-            aria-label={`回答詳細を開く: ${response.respondentEmail}`}
+            aria-label={`回答詳細を開く: ${email}`}
           >
             <MessageSquare className="h-3 w-3" />
           </Button>
@@ -262,7 +249,6 @@ export function ResponseKanbanView({
   responses,
   users,
   statuses,
-  titleQuestionId,
   onStatusChange,
   onAssignChange,
   onPriorityChange,
@@ -271,14 +257,6 @@ export function ResponseKanbanView({
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sortedStatuses = sortStatuses(statuses);
-
-  const getTitleAnswer = (response: FormResponse): string | null => {
-    if (!titleQuestionId) return null;
-    const titleQuestion = response.questions.find(
-      (q) => q.questionId === titleQuestionId
-    );
-    return titleQuestion?.answer || null;
-  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -304,7 +282,7 @@ export function ResponseKanbanView({
     const newStatusId = over.id as string;
 
     const response = responses.find((r) => r.id === responseId);
-    if (response && response.status !== newStatusId) {
+    if (response && response.status.id !== newStatusId) {
       onStatusChange(responseId, newStatusId);
     }
 
@@ -329,16 +307,15 @@ export function ResponseKanbanView({
             statusId={status.id}
             statusName={status.name}
             statusColor={status.color}
-            count={responses.filter((r) => r.status === status.id).length}
+            count={responses.filter((r) => r.status.id === status.id).length}
           >
             {responses
-              .filter((r) => r.status === status.id)
+              .filter((r) => r.status.id === status.id)
               .map((response) => (
                 <DraggableCard
                   key={response.id}
                   response={response}
                   users={users}
-                  titleQuestionId={titleQuestionId}
                   onAssignChange={onAssignChange}
                   onPriorityChange={onPriorityChange}
                   onOpenDetail={onOpenDetail}
@@ -355,13 +332,11 @@ export function ResponseKanbanView({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                   <h4 className="font-semibold text-sm text-foreground mb-1">
-                    {getTitleAnswer(activeResponse) || activeResponse.respondentEmail}
+                    {activeResponse.title}
                   </h4>
-                  {getTitleAnswer(activeResponse) && (
-                    <p className="text-xs text-muted-foreground">
-                      {activeResponse.respondentEmail}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {respondentEmailLabel(activeResponse.respondent_email)}
+                  </p>
                 </div>
                 <span
                   className={cn(
