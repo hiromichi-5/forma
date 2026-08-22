@@ -2,7 +2,12 @@
 
 import { Fragment, useMemo, useState } from "react";
 import type { User } from "@/types/form-response";
-import type { FormStatus, TicketDetail, TicketPriority } from "@/types";
+import type {
+  FormStatus,
+  TicketDetail,
+  TicketPriority,
+  TicketSummary,
+} from "@/types";
 import {
   Table,
   TableBody,
@@ -33,19 +38,23 @@ import {
 } from "@/lib/ticket-display";
 
 type ResponseTableViewProps = {
-  responses: TicketDetail[];
+  responses: TicketSummary[];
+  details: Record<string, TicketDetail>;
   users: User[];
   statuses: FormStatus[];
+  onExpandRow: (id: string) => void;
   onStatusChange: (id: string, statusId: string) => void;
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: TicketPriority) => void;
-  onOpenDetail: (response: TicketDetail) => void;
+  onOpenDetail: (response: TicketSummary) => void;
 };
 
 export function ResponseTableView({
   responses,
+  details,
   users,
   statuses,
+  onExpandRow,
   onStatusChange,
   onAssignChange,
   onPriorityChange,
@@ -55,6 +64,15 @@ export function ResponseTableView({
 
   const sortedStatuses = sortStatuses(statuses);
   const statusMap = useMemo(() => statusById(statuses), [statuses]);
+
+  const toggleRow = (id: string) => {
+    if (expandedRow === id) {
+      setExpandedRow(null);
+      return;
+    }
+    setExpandedRow(id);
+    onExpandRow(id);
+  };
 
   return (
     <div className="bg-card rounded-lg border">
@@ -83,9 +101,7 @@ export function ResponseTableView({
                     <button
                       type="button"
                       className="flex w-full items-start justify-between gap-3 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      onClick={() =>
-                        setExpandedRow(isExpanded ? null : response.id)
-                      }
+                      onClick={() => toggleRow(response.id)}
                       aria-expanded={isExpanded}
                       aria-controls={detailId}
                     >
@@ -224,19 +240,25 @@ export function ResponseTableView({
                         <h4 className="font-semibold text-sm text-foreground">
                           回答内容
                         </h4>
-                        {response.answers.map((answer, index) => (
-                          <div
-                            key={`${answer.question_id}-${index}`}
-                            className="text-sm"
-                          >
-                            <span className="text-muted-foreground">
-                              {answer.question_title}{" "}
-                            </span>
-                            <span className="text-foreground">
-                              {answer.display_value}
-                            </span>
-                          </div>
-                        ))}
+                        {details[response.id] ? (
+                          details[response.id].answers.map((answer, index) => (
+                            <div
+                              key={`${answer.question_id}-${index}`}
+                              className="text-sm"
+                            >
+                              <span className="text-muted-foreground">
+                                {answer.question_title}{" "}
+                              </span>
+                              <span className="text-foreground">
+                                {answer.display_value}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            読み込み中...
+                          </p>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

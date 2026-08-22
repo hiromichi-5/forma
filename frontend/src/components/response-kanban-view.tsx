@@ -1,7 +1,7 @@
 "use client";
 
 import type { User } from "@/types/form-response";
-import type { FormStatus, TicketDetail, TicketPriority } from "@/types";
+import type { FormStatus, TicketSummary, TicketPriority } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,21 +38,21 @@ import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { useState } from "react";
 
 type ResponseKanbanViewProps = {
-  responses: TicketDetail[];
+  responses: TicketSummary[];
   users: User[];
   statuses: FormStatus[];
   onStatusChange: (id: string, statusId: string) => void;
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: TicketPriority) => void;
-  onOpenDetail: (response: TicketDetail) => void;
+  onOpenDetail: (response: TicketSummary) => void;
 };
 
 type DraggableCardProps = {
-  response: TicketDetail;
+  response: TicketSummary;
   users: User[];
   onAssignChange: (id: string, userId: string | null) => void;
   onPriorityChange: (id: string, priority: TicketPriority) => void;
-  onOpenDetail: (response: TicketDetail) => void;
+  onOpenDetail: (response: TicketSummary) => void;
 };
 
 function DraggableCard({

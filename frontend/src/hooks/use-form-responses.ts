@@ -31,37 +31,40 @@ const NOTIFICATION_LABELS: Record<NotificationType, string> = {
 export const notificationLabel = (type: NotificationType): string =>
   NOTIFICATION_LABELS[type]
 
-// 一覧には回答本文と通知履歴が含まれないため、詳細が届くまでは空で埋めて先に表示する。
-const withoutDetail = (ticket: TicketSummary): TicketDetail => ({
-  ...ticket,
-  answers: [],
-  notifications: [],
-})
-
 export function useFormResponses(formId: string | null) {
-  const [responses, setResponses] = useState<TicketDetail[]>([])
+  const [responses, setResponses] = useState<TicketSummary[]>([])
+  const [details, setDetails] = useState<Record<string, TicketDetail>>({})
   const [loading, setLoading] = useState(false)
   const [pendingNotification, setPendingNotification] = useState<PendingNotification | null>(null)
   const { modeOf } = useNotificationSettings(formId)
 
-  const handleTicketUpdated = useCallback((ticket: TicketDetail) => {
-    setResponses((prev) => prev.map((r) => (r.id === ticket.id ? ticket : r)))
+  // 詳細は一覧の要約も含むため、両方に反映して表示のずれを防ぐ。
+  const cacheDetail = useCallback((detail: TicketDetail) => {
+    setResponses((prev) => prev.map((r) => (r.id === detail.id ? detail : r)))
+    setDetails((prev) => ({ ...prev, [detail.id]: detail }))
   }, [])
 
-  useTicketStream(formId, handleTicketUpdated)
+  useTicketStream(formId, cacheDetail)
+
+  // 回答本文と通知履歴は一覧に含まれないため、チケットを開いた時点で取得する。
+  const loadDetail = useCallback(
+    async (id: string) => {
+      try {
+        cacheDetail(await apiClient.getTicket(id))
+      } catch (error) {
+        console.error("Failed to load ticket detail:", error)
+      }
+    },
+    [cacheDetail]
+  )
 
   const refetch = useCallback(async () => {
     if (!formId) return
     setLoading(true)
+    setDetails({})
     try {
-      // 外部API(バックエンド)との同期のための処理
       const ticketList = await apiClient.getTickets(formId)
-      setResponses(ticketList.tickets.map(withoutDetail))
-
-      const details = await Promise.all(
-        ticketList.tickets.map((ticket) => apiClient.getTicket(ticket.id))
-      )
-      setResponses(details)
+      setResponses(ticketList.tickets)
     } catch (error) {
       console.error("Failed to load responses:", error)
       setResponses([])
@@ -85,8 +88,8 @@ export function useFormResponses(formId: string | null) {
       })
   }
 
-  const applyUpdate = (id: string, updated: TicketUpdateResponse) => {
-    setResponses((prev) => prev.map((r) => (r.id === id ? updated : r)))
+  const applyUpdate = (updated: TicketUpdateResponse) => {
+    cacheDetail(updated)
     warnFailedNotifications(updated.notification_results)
   }
 
@@ -96,7 +99,7 @@ export function useFormResponses(formId: string | null) {
     failureMessage: string
   ): Promise<boolean> => {
     try {
-      applyUpdate(id, await apiClient.updateTicket(id, request))
+      applyUpdate(await apiClient.updateTicket(id, request))
       return true
     } catch (error) {
       console.error(failureMessage, error)
@@ -185,7 +188,9 @@ export function useFormResponses(formId: string | null) {
 
   return {
     responses,
+    details,
     loading,
+    loadDetail,
     updateResponseStatus,
     assignResponse,
     updatePriority,

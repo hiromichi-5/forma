@@ -42,6 +42,7 @@ import type {
   TicketDetail,
   TicketHistory,
   TicketPriority,
+  TicketSummary,
 } from "@/types";
 
 type TimelineItem =
@@ -61,7 +62,9 @@ type TimelineItem =
     };
 
 type ResponseDetailProps = {
-  response: TicketDetail;
+  response: TicketSummary;
+  /** 回答本文と通知履歴。一覧には含まれないため、読み込みが終わるまで undefined。 */
+  detail: TicketDetail | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentUserId: string;
@@ -79,6 +82,7 @@ type ResponseDetailProps = {
 
 export function ResponseDetail({
   response,
+  detail,
   open,
   onOpenChange,
   currentUserId,
@@ -108,7 +112,7 @@ export function ResponseDetail({
   };
 
   const getLastSentAt = (notificationType: NotificationType): string | null =>
-    response.notifications.find((n) => n.notification_type === notificationType)
+    detail?.notifications.find((n) => n.notification_type === notificationType)
       ?.last_sent_at ?? null;
 
   const formatLastSentAt = (sentAt: string | null): string =>
@@ -377,17 +381,21 @@ export function ResponseDetail({
                 </span>
               </div>
               <div className="space-y-3">
-                {response.answers.map((answer, index) => (
-                  <div
-                    key={`${answer.question_id}-${index}`}
-                    className="bg-muted/50 p-3 rounded-lg"
-                  >
-                    <p className="font-medium text-muted-foreground text-xs mb-1">
-                      {answer.question_title}
-                    </p>
-                    <p className="text-sm">{answer.display_value}</p>
-                  </div>
-                ))}
+                {detail ? (
+                  detail.answers.map((answer, index) => (
+                    <div
+                      key={`${answer.question_id}-${index}`}
+                      className="bg-muted/50 p-3 rounded-lg"
+                    >
+                      <p className="font-medium text-muted-foreground text-xs mb-1">
+                        {answer.question_title}
+                      </p>
+                      <p className="text-sm">{answer.display_value}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">読み込み中...</p>
+                )}
               </div>
             </div>
 

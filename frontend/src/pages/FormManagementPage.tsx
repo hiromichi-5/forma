@@ -27,7 +27,7 @@ import {
   FALLBACK_STATUS_NAME,
 } from "@/lib/notification-email-preview"
 import { respondentEmailLabel } from "@/lib/ticket-display"
-import type { Member, FormStatus, Form, FormQuestion, TicketDetail } from "@/types"
+import type { Member, FormStatus, Form, FormQuestion, TicketSummary } from "@/types"
 import { toast } from "sonner"
 
 export default function FormManagementPage() {
@@ -36,6 +36,8 @@ export default function FormManagementPage() {
   const formId = params.id
   const {
     responses,
+    details,
+    loadDetail,
     updateResponseStatus,
     assignResponse,
     updatePriority,
@@ -111,9 +113,10 @@ export default function FormManagementPage() {
     [form?.title, formTitle, formStatuses, members, user?.id]
   )
 
-  const handleOpenDetail = (response: TicketDetail) => {
+  const handleOpenDetail = (response: TicketSummary) => {
     setSelectedResponseId(response.id)
     setIsDetailOpen(true)
+    loadDetail(response.id)
   }
 
   const handleTitleQuestionChange = async (questionId: string | null) => {
@@ -258,8 +261,10 @@ export default function FormManagementPage() {
         {viewMode === "list" ? (
           <ResponseTableView
             responses={filteredResponses}
+            details={details}
             users={memberUsers}
             statuses={formStatuses}
+            onExpandRow={loadDetail}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
@@ -281,6 +286,7 @@ export default function FormManagementPage() {
       {selectedResponse && (
         <ResponseDetail
           response={selectedResponse}
+          detail={details[selectedResponse.id]}
           open={isDetailOpen}
           onOpenChange={setIsDetailOpen}
           currentUserId="1"
