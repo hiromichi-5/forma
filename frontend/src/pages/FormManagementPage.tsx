@@ -124,6 +124,7 @@ export default function FormManagementPage() {
     try {
       await apiClient.updateForm(formId, { title_question_id: questionId })
       setForm((prev) => (prev ? { ...prev, title_question_id: questionId } : null))
+      await refetch()
     } catch (error) {
       console.error("Failed to update title question:", error)
       toast.error(
