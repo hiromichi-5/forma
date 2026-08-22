@@ -1,5 +1,13 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import type {
   UserProfile,
@@ -39,6 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isProfileLoading, setIsProfileLoading] = useState(false);
 
   const isAuthenticated = !!user;
+  const isAuthenticatedRef = useRef(false);
+
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   const hydrateUser = useCallback(async () => {
     try {
@@ -80,6 +93,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
   }, [hydrateUser]);
+
+  // ログイン中にセッションが失効した場合、ログイン画面へ戻すために状態を落とす。
+  // 未ログイン時の 401 は通常の応答なので何もしない。
+  useEffect(() => {
+    apiClient.setSessionExpiredHandler(() => {
+      if (!isAuthenticatedRef.current) return;
+      isAuthenticatedRef.current = false;
+      setUser(null);
+      setProfile(null);
+      toast.error("セッションの有効期限が切れました。再度ログインしてください");
+    });
+
+    return () => apiClient.setSessionExpiredHandler(null);
+  }, []);
 
   const login = async (credentials: LoginRequest) => {
     await apiClient.login(credentials);

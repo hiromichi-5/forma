@@ -69,6 +69,11 @@ export class ApiError extends Error {
 
 class ApiClient {
   private baseUrl: string = import.meta.env.VITE_API_URL || "http://localhost:8080";
+  private sessionExpiredHandler: (() => void) | null = null;
+
+  setSessionExpiredHandler(handler: (() => void) | null) {
+    this.sessionExpiredHandler = handler;
+  }
 
   private async request<T>(
     endpoint: string,
@@ -95,6 +100,10 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData: ErrorResponse = await response.json();
+        // ログインの失敗は INVALID_CREDENTIALS なので、セッション失効とは区別できる
+        if (errorData.code === "INVALID_SESSION") {
+          this.sessionExpiredHandler?.();
+        }
         throw new ApiError(response.status, errorData);
       }
 

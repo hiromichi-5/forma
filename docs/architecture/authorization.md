@@ -36,6 +36,16 @@ func (r Role) CanAdmin() bool // 管理権限があるか
 
 認証不要のエンドポイント（`/v1/auth/*`）はこのミドルウェアを経由しない。
 
+### セッションの有効期限
+
+セッションはログインから 14 日で失効する（`usecase/auth.go` の `sessionTTL`）。延長はせず、期限を過ぎたら再ログインが必要になる。
+
+期限切れの判定は `GetSessionByID` の SQL（`expires_at > NOW()`）で行うため、ミドルウェアからは存在しないセッションと同じ `ErrNotFound` として扱われる。メール認証・パスワードリセットのトークンと同じ方式。
+
+同じ有効期限を Cookie の `Max-Age` にも設定するため、期限切れの Cookie はブラウザから送信されなくなる。
+
+フロントエンドは `INVALID_SESSION` を受け取ると `AuthProvider` の認証状態を破棄し、ログイン画面へ遷移させる（`frontend/src/lib/api.ts` の `setSessionExpiredHandler`）。ログイン失敗は `INVALID_CREDENTIALS` なので、この経路とは区別される。
+
 ## 権限チェックパターン
 
 `usecase/authorization.go` の `Authorizer` が担当する。`MemberRepository` を保持し、各 UseCase に注入される。
