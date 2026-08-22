@@ -110,7 +110,7 @@ func (uc *AuthUseCase) Signup(
 		return uuid.UUID{}, err
 	}
 
-	// 既存ユーザーが未認証の場合はトークンを再発行する
+	// 既存ユーザーが未認証の場合はパスワード・表示名を更新し、トークンを再発行する
 	existing, err := uc.userRepo.GetByEmail(ctx, email)
 	if err == nil {
 		if existing.VerifiedAt != nil {
@@ -119,6 +119,15 @@ func (uc *AuthUseCase) Signup(
 
 		var tokenStr string
 		if err := uc.uow.Do(ctx, func(repos repository.AuthRepos) error {
+			if err := uc.updateUnverifiedUserTx(
+				ctx,
+				repos.User,
+				existing.ID,
+				string(hashed),
+				displayName,
+			); err != nil {
+				return err
+			}
 			if err := repos.EmailVerificationToken.DeleteByUser(ctx, existing.ID); err != nil {
 				return err
 			}
@@ -351,6 +360,27 @@ func (uc *AuthUseCase) sendEmailVerification(ctx context.Context, email, token s
 		TemplateName: repository.TemplateEmailVerification,
 		TemplateData: map[string]string{"verify_url": verifyURL},
 	})
+}
+
+func (uc *AuthUseCase) updateUnverifiedUserTx(
+	ctx context.Context,
+	userRepo repository.UserRepository,
+	userID uuid.UUID,
+	passwordHash, displayName string,
+) error {
+	if err := userRepo.UpdatePasswordHash(ctx, userID, passwordHash); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.NewError(entity.CodeUserNotFound)
+		}
+		return err
+	}
+	if _, err := userRepo.UpdateDisplayName(ctx, userID, displayName); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return entity.NewError(entity.CodeUserNotFound)
+		}
+		return err
+	}
+	return nil
 }
 
 func (uc *AuthUseCase) issueEmailVerificationTokenTx(

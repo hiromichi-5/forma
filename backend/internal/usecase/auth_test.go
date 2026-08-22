@@ -40,6 +40,28 @@ func TestAuthUseCase_Signup(t *testing.T) {
 		assert.NotEqual(t, before, after)
 	})
 
+	t.Run("正常系: 未認証ユーザーが再度signupするとパスワード・表示名が更新されること", func(t *testing.T) {
+		truncate(t)
+		uc := newAuthUseCase()
+		ctx := context.Background()
+
+		userID, err := uc.Signup(ctx, "resignup@example.com", "password123", "User1")
+		require.NoError(t, err)
+
+		_, err = uc.Signup(ctx, "resignup@example.com", "newpassword456", "User2")
+		require.NoError(t, err)
+
+		token := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
+		require.NoError(t, uc.VerifyEmail(ctx, token))
+
+		_, err = uc.Authenticate(ctx, "resignup@example.com", "newpassword456")
+		require.NoError(t, err)
+
+		user, err := newUserRepo().GetByID(ctx, userID)
+		require.NoError(t, err)
+		assert.Equal(t, "User2", user.DisplayName)
+	})
+
 	t.Run("準正常系: 認証済みユーザーの重複メールアドレスで CONFLICT エラーになること", func(t *testing.T) {
 		truncate(t)
 		uc := newAuthUseCase()
