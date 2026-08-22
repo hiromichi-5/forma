@@ -8,7 +8,7 @@
 
 このプロジェクトでは`/makefile`に主要なコマンドが定義されています。  
 
-### API 仕様の変更（oapi-codegen）
+### API 仕様の変更（oapi-codegen / openapi-typescript）
 
 1. `openapi/openapi.yaml` を編集  
 2. コード再生成
@@ -16,6 +16,9 @@
    ```bash
    make openapi
    ```
+
+   バックエンドは Swagger UI 用の仕様（`backend/internal/api/gen.go`）、フロントエンドは API の型（`frontend/src/types/api.ts`）が生成される。  
+   Go のリクエスト・レスポンス構造体は生成せず、`interfaces/handler` に手書きする。
 
 ### データベース構造の変更（goose）
 

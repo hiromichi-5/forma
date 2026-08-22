@@ -131,51 +131,28 @@ func (q *Queries) ListTickets(ctx context.Context, arg ListTicketsParams) ([]Tic
 	return items, nil
 }
 
-const updateTicketAssignee = `-- name: UpdateTicketAssignee :execrows
-UPDATE tickets SET assignee_id = $2 WHERE id = $1
+const updateTicket = `-- name: UpdateTicket :execrows
+UPDATE tickets
+SET status_id = $2,
+    assignee_id = $3,
+    priority = $4
+WHERE id = $1
 `
 
-type UpdateTicketAssigneeParams struct {
+type UpdateTicketParams struct {
 	ID         pgtype.UUID `json:"id"`
+	StatusID   pgtype.UUID `json:"status_id"`
 	AssigneeID pgtype.UUID `json:"assignee_id"`
+	Priority   string      `json:"priority"`
 }
 
-func (q *Queries) UpdateTicketAssignee(ctx context.Context, arg UpdateTicketAssigneeParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateTicketAssignee, arg.ID, arg.AssigneeID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const updateTicketPriority = `-- name: UpdateTicketPriority :execrows
-UPDATE tickets SET priority = $2 WHERE id = $1
-`
-
-type UpdateTicketPriorityParams struct {
-	ID       pgtype.UUID `json:"id"`
-	Priority string      `json:"priority"`
-}
-
-func (q *Queries) UpdateTicketPriority(ctx context.Context, arg UpdateTicketPriorityParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateTicketPriority, arg.ID, arg.Priority)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const updateTicketStatus = `-- name: UpdateTicketStatus :execrows
-UPDATE tickets SET status_id = $2 WHERE id = $1
-`
-
-type UpdateTicketStatusParams struct {
-	ID       pgtype.UUID `json:"id"`
-	StatusID pgtype.UUID `json:"status_id"`
-}
-
-func (q *Queries) UpdateTicketStatus(ctx context.Context, arg UpdateTicketStatusParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateTicketStatus, arg.ID, arg.StatusID)
+func (q *Queries) UpdateTicket(ctx context.Context, arg UpdateTicketParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateTicket,
+		arg.ID,
+		arg.StatusID,
+		arg.AssigneeID,
+		arg.Priority,
+	)
 	if err != nil {
 		return 0, err
 	}

@@ -10,29 +10,17 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
-type TicketStatus struct {
-	ID    uuid.UUID
-	Name  string
-	Color *string
-}
-
-type TicketAssignee struct {
-	ID          uuid.UUID
-	Email       string
-	DisplayName string
-}
-
 type TicketSummary struct {
 	ID              uuid.UUID
 	FormID          uuid.UUID
 	FormTitle       string
 	ResponseID      string
 	RespondentEmail *string
-	Status          TicketStatus
-	Priority        string
+	Status          entity.FormStatus
+	Priority        entity.Priority
 	TitleQuestionID *string
 	Title           string
-	Assignee        *TicketAssignee
+	Assignee        *entity.UserRef
 	SubmittedAt     time.Time
 	CreatedAt       time.Time
 }
@@ -42,7 +30,6 @@ type TicketAnswer struct {
 	QuestionTitle string
 	QuestionType  string
 	Values        []string
-	DisplayValue  string
 }
 
 type TicketNotificationInfo struct {
@@ -54,6 +41,12 @@ type TicketDetail struct {
 	TicketSummary
 	Answers       []TicketAnswer
 	Notifications []TicketNotificationInfo
+}
+
+type UpdateTicketInput struct {
+	StatusID *uuid.UUID
+	Assignee entity.AssigneeChange
+	Priority *entity.Priority
 }
 
 type TicketNotifier interface {
@@ -71,6 +64,7 @@ type TicketUseCase struct {
 	statusRepo repository.StatusRepository
 	memberRepo repository.MemberRepository
 	userRepo   repository.UserRepository
+	authz      *Authorizer
 	uow        repository.UnitOfWork[repository.TicketRepos]
 	publisher  EventPublisher
 	notifier   TicketNotifier
@@ -82,6 +76,7 @@ func NewTicketUseCase(
 	statusRepo repository.StatusRepository,
 	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
+	authz *Authorizer,
 	uow repository.UnitOfWork[repository.TicketRepos],
 	publisher EventPublisher,
 	notifier TicketNotifier,
@@ -92,6 +87,7 @@ func NewTicketUseCase(
 		statusRepo: statusRepo,
 		memberRepo: memberRepo,
 		userRepo:   userRepo,
+		authz:      authz,
 		uow:        uow,
 		publisher:  publisher,
 		notifier:   notifier,
@@ -157,7 +153,7 @@ func (uc *TicketUseCase) ListTickets(
 	formID, userID uuid.UUID,
 	statusID *uuid.UUID,
 ) ([]TicketSummary, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return nil, err
 	}
 
@@ -203,7 +199,7 @@ func (uc *TicketUseCase) GetTicket(
 		return TicketDetail{}, err
 	}
 
-	if err := requireEditor(ctx, uc.memberRepo, ticket.FormID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, ticket.FormID, userID); err != nil {
 		return TicketDetail{}, err
 	}
 
@@ -250,10 +246,7 @@ func buildNotificationInfo(sent []entity.TicketNotification) []TicketNotificatio
 func (uc *TicketUseCase) UpdateTicket(
 	ctx context.Context,
 	ticketID, userID uuid.UUID,
-	statusID *uuid.UUID,
-	assigneeID *uuid.UUID,
-	clearAssignee bool,
-	priority *string,
+	in UpdateTicketInput,
 ) (TicketDetail, []NotificationResult, error) {
 	ticket, err := uc.ticketRepo.GetByID(ctx, ticketID)
 	if err != nil {
@@ -263,12 +256,8 @@ func (uc *TicketUseCase) UpdateTicket(
 		return TicketDetail{}, nil, err
 	}
 
-	if err := requireEditor(ctx, uc.memberRepo, ticket.FormID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, ticket.FormID, userID); err != nil {
 		return TicketDetail{}, nil, err
-	}
-
-	if clearAssignee && assigneeID != nil {
-		return TicketDetail{}, nil, entity.NewError(entity.CodeValidation)
 	}
 
 	changedByName, err := getUserDisplayName(ctx, uc.userRepo, userID)
@@ -277,24 +266,23 @@ func (uc *TicketUseCase) UpdateTicket(
 	}
 
 	var newStatus *entity.FormStatus
-	if statusID != nil {
-		s, err := uc.getVisibleStatus(ctx, ticket.FormID, *statusID)
+	if in.StatusID != nil {
+		s, err := uc.getVisibleStatus(ctx, ticket.FormID, *in.StatusID)
 		if err != nil {
 			return TicketDetail{}, nil, err
 		}
 		newStatus = &s
 	}
 
-	if assigneeID != nil {
-		if err := uc.validateAssignee(ctx, ticket.FormID, *assigneeID); err != nil {
+	newAssignee := in.Assignee.UserID()
+	if newAssignee != nil {
+		if err := uc.validateAssignee(ctx, ticket.FormID, *newAssignee); err != nil {
 			return TicketDetail{}, nil, err
 		}
 	}
 
-	if priority != nil {
-		if !isValidTicketPriority(*priority) {
-			return TicketDetail{}, nil, entity.NewError(entity.CodeValidation)
-		}
+	if in.Priority != nil && !in.Priority.Valid() {
+		return TicketDetail{}, nil, entity.NewError(entity.CodeValidation)
 	}
 
 	var notifyTypes []entity.NotificationType
@@ -316,47 +304,46 @@ func (uc *TicketUseCase) UpdateTicket(
 			name:      changedByName,
 		}
 
-		if newStatus != nil && newStatus.ID != current.StatusID {
-			oldStatus, err := repos.Status.GetByID(ctx, current.StatusID)
+		if oldStatusID, changed := current.ChangeStatus(newStatus); changed {
+			oldStatus, err := repos.Status.GetByID(ctx, oldStatusID)
 			if err != nil {
 				return err
 			}
-			if err := repos.Ticket.UpdateStatus(ctx, ticketID, newStatus.ID); err != nil {
-				return err
-			}
-			rec.record("status", strPtr(oldStatus.Name), strPtr(newStatus.Name))
+			rec.record(entity.FieldStatus, strPtr(oldStatus.Name), strPtr(newStatus.Name))
 			notifyTypes = append(notifyTypes, entity.NotificationTypeStatusChange)
 		}
 
-		if clearAssignee || assigneeID != nil {
-			newAssignee := assigneeID
-			if !uuidPtrEqual(current.AssigneeID, newAssignee) {
-				oldName, err := resolveUserName(ctx, repos.User, current.AssigneeID)
-				if err != nil {
-					return err
-				}
-				newName, err := resolveUserName(ctx, repos.User, newAssignee)
-				if err != nil {
-					return err
-				}
-				if err := repos.Ticket.UpdateAssignee(ctx, ticketID, newAssignee); err != nil {
-					return err
-				}
-				rec.record("assignee", oldName, newName)
-				// 担当者の解除は通知の対象外
-				if newAssignee != nil {
-					notifyTypes = append(notifyTypes, entity.NotificationTypeAssigneeAssigned)
-				}
-			}
-		}
-
-		if priority != nil && *priority != current.Priority {
-			if err := repos.Ticket.UpdatePriority(ctx, ticketID, *priority); err != nil {
+		if oldAssigneeID, changed := current.ChangeAssignee(in.Assignee); changed {
+			oldName, err := resolveUserName(ctx, repos.User, oldAssigneeID)
+			if err != nil {
 				return err
 			}
-			rec.record("priority", strPtr(current.Priority), strPtr(*priority))
+			newName, err := resolveUserName(ctx, repos.User, newAssignee)
+			if err != nil {
+				return err
+			}
+			rec.record(entity.FieldAssignee, oldName, newName)
+			// 担当者の解除は通知の対象外
+			if newAssignee != nil {
+				notifyTypes = append(notifyTypes, entity.NotificationTypeAssigneeAssigned)
+			}
 		}
 
+		if oldPriority, changed := current.ChangePriority(in.Priority); changed {
+			rec.record(
+				entity.FieldPriority,
+				strPtr(string(oldPriority)),
+				strPtr(string(current.Priority)),
+			)
+		}
+
+		if len(rec.entries) == 0 {
+			return nil
+		}
+
+		if err := repos.Ticket.Save(ctx, current); err != nil {
+			return err
+		}
 		return rec.save(ctx, repos.Ticket)
 	}); err != nil {
 		return TicketDetail{}, nil, err
@@ -386,15 +373,11 @@ func (uc *TicketUseCase) ListTicketHistories(
 		return nil, err
 	}
 
-	if err := requireEditor(ctx, uc.memberRepo, ticket.FormID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, ticket.FormID, userID); err != nil {
 		return nil, err
 	}
 
 	return uc.ticketRepo.ListHistories(ctx, ticketID)
-}
-
-func (uc *TicketUseCase) CheckFormAccess(ctx context.Context, formID, userID uuid.UUID) error {
-	return requireEditor(ctx, uc.memberRepo, formID, userID)
 }
 
 type changeRecorder struct {
@@ -404,7 +387,7 @@ type changeRecorder struct {
 	entries   []entity.TicketHistory
 }
 
-func (r *changeRecorder) record(field string, oldValue, newValue *string) {
+func (r *changeRecorder) record(field entity.TicketField, oldValue, newValue *string) {
 	r.entries = append(r.entries, entity.TicketHistory{
 		ID:            uuid.New(),
 		TicketID:      r.ticketID,
@@ -466,7 +449,7 @@ func (uc *TicketUseCase) validateAssignee(
 		return err
 	}
 
-	_, err := uc.memberRepo.GetRole(ctx, assigneeID, formID)
+	_, err := uc.memberRepo.GetRole(ctx, formID, assigneeID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeResourceHidden)
@@ -491,25 +474,6 @@ func (uc *TicketUseCase) getVisibleStatus(
 		return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
 	}
 	return status, nil
-}
-
-func isValidTicketPriority(p string) bool {
-	switch p {
-	case entity.PriorityHigh, entity.PriorityMedium, entity.PriorityLow:
-		return true
-	default:
-		return false
-	}
-}
-
-func uuidPtrEqual(a, b *uuid.UUID) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
 }
 
 func strPtr(s string) *string {

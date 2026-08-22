@@ -27,6 +27,7 @@ type FormUseCase struct {
 	formRepo   repository.FormRepository
 	memberRepo repository.MemberRepository
 	statusRepo repository.StatusRepository
+	authz      *Authorizer
 	fetcher    repository.FormFetcher
 	uow        repository.UnitOfWork[repository.FormRepos]
 	syncer     FormSyncer
@@ -36,6 +37,7 @@ func NewFormUseCase(
 	formRepo repository.FormRepository,
 	memberRepo repository.MemberRepository,
 	statusRepo repository.StatusRepository,
+	authz *Authorizer,
 	fetcher repository.FormFetcher,
 	uow repository.UnitOfWork[repository.FormRepos],
 	syncer FormSyncer,
@@ -44,6 +46,7 @@ func NewFormUseCase(
 		formRepo:   formRepo,
 		memberRepo: memberRepo,
 		statusRepo: statusRepo,
+		authz:      authz,
 		fetcher:    fetcher,
 		uow:        uow,
 		syncer:     syncer,
@@ -62,13 +65,7 @@ func (uc *FormUseCase) RegisterForm(
 
 	gf, err := uc.fetcher.GetForm(ctx, googleFormID)
 	if err != nil {
-		if errors.Is(err, repository.ErrForbidden) {
-			return entity.Form{}, entity.NewError(entity.CodeFormNotShared)
-		}
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.Form{}, entity.NewError(entity.CodeFormNotFound)
-		}
-		return entity.Form{}, err
+		return entity.Form{}, mapFormFetcherError(err)
 	}
 	if gf == nil {
 		return entity.Form{}, entity.NewError(entity.CodeFormNotFound)
@@ -89,7 +86,7 @@ func (uc *FormUseCase) RegisterForm(
 		var txErr error
 		form, txErr = repos.Form.Create(ctx, entity.Form{
 			ID:                  uuid.New(),
-			FormID:              googleFormID,
+			GoogleFormID:        googleFormID,
 			Title:               title,
 			Description:         description,
 			EmailCollectionType: emailCollectionType(gf.EmailCollectionType),
@@ -98,7 +95,7 @@ func (uc *FormUseCase) RegisterForm(
 			return txErr
 		}
 
-		if txErr = repos.Member.Upsert(ctx, userID, form.ID, entity.RoleAdmin); txErr != nil {
+		if txErr = repos.Member.Upsert(ctx, form.ID, userID, entity.RoleAdmin); txErr != nil {
 			return txErr
 		}
 
@@ -113,7 +110,7 @@ func (uc *FormUseCase) RegisterForm(
 
 	logger.From(ctx).Info("form registered",
 		"form_id", form.ID.String(),
-		"google_form_id", form.FormID,
+		"google_form_id", form.GoogleFormID,
 	)
 
 	if _, _, syncErr := uc.syncer.SyncFormOnce(ctx, form.ID, userID); syncErr != nil {
@@ -162,7 +159,7 @@ func (uc *FormUseCase) ListForms(ctx context.Context, userID uuid.UUID) ([]entit
 }
 
 func (uc *FormUseCase) GetForm(ctx context.Context, formID, userID uuid.UUID) (entity.Form, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return entity.Form{}, err
 	}
 
@@ -181,7 +178,7 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 	formID, userID uuid.UUID,
 	questionID *string,
 ) error {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return err
 	}
 
@@ -215,7 +212,7 @@ func (uc *FormUseCase) DeleteForm(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) error {
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return err
 	}
 
@@ -237,7 +234,7 @@ func (uc *FormUseCase) ListQuestions(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.FormQuestion, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.formRepo.ListQuestions(ctx, formID)
@@ -256,11 +253,12 @@ func extractFormID(u string) (string, error) {
 	return "", entity.NewError(entity.CodeValidation)
 }
 
-func emailCollectionType(v string) *string {
-	if v == "" || v == "EMAIL_COLLECTION_TYPE_UNSPECIFIED" {
+func emailCollectionType(v string) *entity.EmailCollectionType {
+	t := entity.EmailCollectionType(v)
+	if t == "" || t == entity.EmailCollectionUnspecified {
 		return nil
 	}
-	return &v
+	return &t
 }
 
 func mapFormFetcherError(err error) error {

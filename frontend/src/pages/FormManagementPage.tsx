@@ -26,8 +26,8 @@ import {
   FALLBACK_ASSIGNEE_NAME,
   FALLBACK_STATUS_NAME,
 } from "@/lib/notification-email-preview"
-import type { FormResponse } from "@/types/form-response"
-import type { Member, FormStatus, Form, FormQuestion } from "@/types"
+import { respondentEmailLabel } from "@/lib/ticket-display"
+import type { Member, FormStatus, Form, FormQuestion, TicketSummary } from "@/types"
 import { toast } from "sonner"
 
 export default function FormManagementPage() {
@@ -36,6 +36,8 @@ export default function FormManagementPage() {
   const formId = params.id
   const {
     responses,
+    details,
+    loadDetail,
     updateResponseStatus,
     assignResponse,
     updatePriority,
@@ -79,41 +81,25 @@ export default function FormManagementPage() {
     [members]
   )
 
-  const statusMap = useMemo(() => new Map(formStatuses.map((status) => [status.id, status])), [formStatuses])
-  const formResponses = useMemo(
-    () =>
-      responses.map((response) => {
-        const status = statusMap.get(response.status)
-        if (!status) return response
-        if (response.statusName === status.name && response.statusColor === status.color) {
-          return response
-        }
-        return {
-          ...response,
-          statusName: status.name,
-          statusColor: status.color,
-        }
-      }),
-    [responses, statusMap]
-  )
-
   const filteredResponses = useMemo(
     () =>
-      formResponses.filter((response) => {
-        const matchesSearch = response.respondentEmail.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesStatus = statusFilters.length === 0 || statusFilters.includes(response.status)
+      responses.filter((response) => {
+        const email = respondentEmailLabel(response.respondent_email)
+        const matchesSearch = email.toLowerCase().includes(searchQuery.toLowerCase())
+        const matchesStatus =
+          statusFilters.length === 0 || statusFilters.includes(response.status.id)
         return matchesSearch && matchesStatus
       }),
-    [formResponses, searchQuery, statusFilters]
+    [responses, searchQuery, statusFilters]
   )
 
   // 更新後の値をダイアログに反映するため、開いた時点のスナップショットではなく最新の一覧から引く。
   const selectedResponse = useMemo(
-    () => formResponses.find((response) => response.id === selectedResponseId) ?? null,
-    [formResponses, selectedResponseId]
+    () => responses.find((response) => response.id === selectedResponseId) ?? null,
+    [responses, selectedResponseId]
   )
 
-  const formTitle = formResponses[0]?.formTitle || "フォーム管理"
+  const formTitle = responses[0]?.form_title || "フォーム管理"
 
   const notificationEmailSample = useMemo(
     () => ({
@@ -127,9 +113,10 @@ export default function FormManagementPage() {
     [form?.title, formTitle, formStatuses, members, user?.id]
   )
 
-  const handleOpenDetail = (response: FormResponse) => {
+  const handleOpenDetail = (response: TicketSummary) => {
     setSelectedResponseId(response.id)
     setIsDetailOpen(true)
+    loadDetail(response.id)
   }
 
   const handleTitleQuestionChange = async (questionId: string | null) => {
@@ -137,6 +124,7 @@ export default function FormManagementPage() {
     try {
       await apiClient.updateForm(formId, { title_question_id: questionId })
       setForm((prev) => (prev ? { ...prev, title_question_id: questionId } : null))
+      await refetch()
     } catch (error) {
       console.error("Failed to update title question:", error)
       toast.error(
@@ -274,9 +262,10 @@ export default function FormManagementPage() {
         {viewMode === "list" ? (
           <ResponseTableView
             responses={filteredResponses}
+            details={details}
             users={memberUsers}
             statuses={formStatuses}
-            titleQuestionId={form?.title_question_id ?? null}
+            onExpandRow={loadDetail}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
@@ -287,7 +276,6 @@ export default function FormManagementPage() {
             responses={filteredResponses}
             users={memberUsers}
             statuses={formStatuses}
-            titleQuestionId={form?.title_question_id ?? null}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
@@ -299,6 +287,7 @@ export default function FormManagementPage() {
       {selectedResponse && (
         <ResponseDetail
           response={selectedResponse}
+          detail={details[selectedResponse.id]}
           open={isDetailOpen}
           onOpenChange={setIsDetailOpen}
           currentUserId="1"

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/hiromichi-5/forma/backend/internal/app"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
@@ -21,6 +22,7 @@ import (
 var (
 	testPool        *pgxpool.Pool
 	testServer      *httptest.Server
+	testRouter      *gin.Engine
 	mockFetcher     *MockFormFetcher
 	mockEmailSender *MockEmailSender
 )
@@ -33,7 +35,7 @@ func TestMain(m *testing.M) {
 
 	mockFetcher = &MockFormFetcher{}
 	mockEmailSender = &MockEmailSender{}
-	router := app.NewRouter(
+	testRouter = app.NewRouter(
 		app.Deps{
 			Pool:            pool,
 			Fetcher:         mockFetcher,
@@ -42,7 +44,7 @@ func TestMain(m *testing.M) {
 		},
 		app.Option{CookieSecure: false},
 	)
-	testServer = httptest.NewServer(router)
+	testServer = httptest.NewServer(testRouter)
 
 	code := m.Run()
 
@@ -93,6 +95,22 @@ func loginUser(t *testing.T, email, password, displayName string) *http.Client {
 
 	testutil.CreateVerifiedUser(t, ctx, testPool, email, password, displayName)
 
+	jar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+	client := &http.Client{Jar: jar}
+
+	resp := postJSON(t, client, "/v1/auth/login", map[string]string{
+		"email":    email,
+		"password": password,
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
+
+	return client
+}
+
+func loginUserExisting(t *testing.T, email, password string) *http.Client {
+	t.Helper()
 	jar, err := cookiejar.New(nil)
 	require.NoError(t, err)
 	client := &http.Client{Jar: jar}

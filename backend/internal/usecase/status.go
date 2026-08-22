@@ -10,23 +10,37 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
+type CreateStatusInput struct {
+	Name         string
+	Color        *string
+	DisplayOrder int32
+	IsDefault    bool
+}
+
+type UpdateStatusInput struct {
+	Name         *string
+	Color        *string
+	DisplayOrder *int32
+	IsDefault    *bool
+}
+
 type StatusUseCase struct {
 	statusRepo repository.StatusRepository
-	memberRepo repository.MemberRepository
 	ticketRepo repository.TicketRepository
+	authz      *Authorizer
 	uow        repository.UnitOfWork[repository.StatusRepos]
 }
 
 func NewStatusUseCase(
 	statusRepo repository.StatusRepository,
-	memberRepo repository.MemberRepository,
 	ticketRepo repository.TicketRepository,
+	authz *Authorizer,
 	uow repository.UnitOfWork[repository.StatusRepos],
 ) *StatusUseCase {
 	return &StatusUseCase{
 		statusRepo: statusRepo,
-		memberRepo: memberRepo,
 		ticketRepo: ticketRepo,
+		authz:      authz,
 		uow:        uow,
 	}
 }
@@ -35,7 +49,7 @@ func (uc *StatusUseCase) ListStatuses(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.FormStatus, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.statusRepo.List(ctx, formID)
@@ -44,34 +58,31 @@ func (uc *StatusUseCase) ListStatuses(
 func (uc *StatusUseCase) CreateStatus(
 	ctx context.Context,
 	formID, userID uuid.UUID,
-	name string,
-	color *string,
-	displayOrder int32,
-	isDefault bool,
+	in CreateStatusInput,
 ) (entity.FormStatus, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return entity.FormStatus{}, err
 	}
 
-	if name == "" || displayOrder <= 0 {
+	if in.Name == "" || in.DisplayOrder <= 0 {
 		return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
 	}
 
 	var trimmedColor *string
-	if color != nil && *color != "" {
-		c := *color
+	if in.Color != nil && *in.Color != "" {
+		c := *in.Color
 		trimmedColor = &c
 	}
 
 	statusID := uuid.New()
 
-	if !isDefault {
+	if !in.IsDefault {
 		status, err := uc.statusRepo.Create(ctx, entity.FormStatus{
 			ID:           statusID,
 			FormID:       formID,
-			Name:         name,
+			Name:         in.Name,
 			Color:        trimmedColor,
-			DisplayOrder: displayOrder,
+			DisplayOrder: in.DisplayOrder,
 			IsDefault:    false,
 		})
 		if err != nil {
@@ -89,9 +100,9 @@ func (uc *StatusUseCase) CreateStatus(
 		status, createErr = repos.Status.Create(ctx, entity.FormStatus{
 			ID:           statusID,
 			FormID:       formID,
-			Name:         name,
+			Name:         in.Name,
 			Color:        trimmedColor,
-			DisplayOrder: displayOrder,
+			DisplayOrder: in.DisplayOrder,
 			IsDefault:    false,
 		})
 		if createErr != nil {
@@ -116,15 +127,13 @@ func (uc *StatusUseCase) CreateStatus(
 func (uc *StatusUseCase) UpdateStatus(
 	ctx context.Context,
 	formID, userID, statusID uuid.UUID,
-	name, color *string,
-	displayOrder *int32,
-	isDefault *bool,
+	in UpdateStatusInput,
 ) (entity.FormStatus, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return entity.FormStatus{}, err
 	}
 
-	if isDefault != nil && !*isDefault {
+	if in.IsDefault != nil && !*in.IsDefault {
 		return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
 	}
 
@@ -139,12 +148,12 @@ func (uc *StatusUseCase) UpdateStatus(
 		return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
 	}
 
-	next, err := applyStatusUpdate(current, name, color, displayOrder)
+	next, err := applyStatusUpdate(current, in)
 	if err != nil {
 		return entity.FormStatus{}, err
 	}
 
-	if isDefault == nil {
+	if in.IsDefault == nil {
 		updated, updateErr := uc.statusRepo.Update(ctx, next)
 		if updateErr != nil {
 			if errors.Is(updateErr, repository.ErrNotFound) {
@@ -188,29 +197,28 @@ func (uc *StatusUseCase) UpdateStatus(
 
 func applyStatusUpdate(
 	current entity.FormStatus,
-	name, color *string,
-	displayOrder *int32,
+	in UpdateStatusInput,
 ) (entity.FormStatus, error) {
-	if name != nil {
-		if *name == "" || strings.TrimSpace(*name) == "" {
+	if in.Name != nil {
+		if strings.TrimSpace(*in.Name) == "" {
 			return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
 		}
-		current.Name = *name
+		current.Name = *in.Name
 	}
 
-	if color != nil {
-		if *color == "" || strings.TrimSpace(*color) == "" {
+	if in.Color != nil {
+		if strings.TrimSpace(*in.Color) == "" {
 			current.Color = nil
 		} else {
-			current.Color = color
+			current.Color = in.Color
 		}
 	}
 
-	if displayOrder != nil {
-		if *displayOrder <= 0 {
+	if in.DisplayOrder != nil {
+		if *in.DisplayOrder <= 0 {
 			return entity.FormStatus{}, entity.NewError(entity.CodeValidation)
 		}
-		current.DisplayOrder = *displayOrder
+		current.DisplayOrder = *in.DisplayOrder
 	}
 
 	return current, nil
@@ -220,7 +228,7 @@ func (uc *StatusUseCase) DeleteStatus(
 	ctx context.Context,
 	formID, userID, statusID uuid.UUID,
 ) error {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return err
 	}
 

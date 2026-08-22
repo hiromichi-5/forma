@@ -17,6 +17,7 @@ type InviteUseCase struct {
 	inviteRepo      repository.InviteRepository
 	memberRepo      repository.MemberRepository
 	userRepo        repository.UserRepository
+	authz           *Authorizer
 	uow             repository.UnitOfWork[repository.InviteRepos]
 	emailSender     repository.EmailSender
 	frontendBaseURL string
@@ -27,6 +28,7 @@ func NewInviteUseCase(
 	inviteRepo repository.InviteRepository,
 	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
+	authz *Authorizer,
 	uow repository.UnitOfWork[repository.InviteRepos],
 	emailSender repository.EmailSender,
 	frontendBaseURL string,
@@ -35,6 +37,7 @@ func NewInviteUseCase(
 		inviteRepo:      inviteRepo,
 		memberRepo:      memberRepo,
 		userRepo:        userRepo,
+		authz:           authz,
 		uow:             uow,
 		emailSender:     emailSender,
 		frontendBaseURL: frontendBaseURL,
@@ -45,13 +48,14 @@ func NewInviteUseCase(
 func (uc *InviteUseCase) CreateInvite(
 	ctx context.Context,
 	formID, userID uuid.UUID,
-	email, role string,
+	email string,
+	role entity.Role,
 ) (entity.Invite, error) {
-	if role != entity.RoleAdmin && role != entity.RoleEditor {
+	if !role.Valid() {
 		return entity.Invite{}, entity.NewError(entity.CodeValidation)
 	}
 
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return entity.Invite{}, err
 	}
 
@@ -80,7 +84,7 @@ func (uc *InviteUseCase) CreateInvite(
 		TemplateName: repository.TemplateInvite,
 		TemplateData: map[string]string{
 			"accept_url": acceptURL,
-			"role":       invite.Role,
+			"role":       string(invite.Role),
 		},
 	}); err != nil {
 		_ = uc.inviteRepo.Delete(ctx, invite.ID)
@@ -99,7 +103,7 @@ func (uc *InviteUseCase) ListInvites(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.Invite, error) {
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.inviteRepo.ListActive(ctx, formID)
@@ -109,7 +113,7 @@ func (uc *InviteUseCase) DeleteInvite(
 	ctx context.Context,
 	formID, userID, inviteID uuid.UUID,
 ) error {
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return err
 	}
 
@@ -176,7 +180,7 @@ func (uc *InviteUseCase) AcceptInvite(ctx context.Context, inviteID, userID uuid
 			return err
 		}
 
-		if err := repos.Member.Upsert(ctx, userID, invite.FormID, invite.Role); err != nil {
+		if err := repos.Member.Upsert(ctx, invite.FormID, userID, invite.Role); err != nil {
 			return err
 		}
 
@@ -210,7 +214,7 @@ func ensureUserNotMember(
 	memberRepo repository.MemberRepository,
 	formID, userID uuid.UUID,
 ) error {
-	_, err := memberRepo.GetRole(ctx, userID, formID)
+	_, err := memberRepo.GetRole(ctx, formID, userID)
 	if err == nil {
 		return entity.NewError(entity.CodeAlreadyMember)
 	}

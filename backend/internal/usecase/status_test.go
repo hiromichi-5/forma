@@ -7,6 +7,7 @@ import (
 
 	"github.com/hiromichi-5/forma/backend/internal/entity"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
+	"github.com/hiromichi-5/forma/backend/internal/usecase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,7 +78,11 @@ func TestStatusUseCase_CreateStatus(t *testing.T) {
 
 		uc := newStatusUseCase()
 		color := "#0000FF"
-		status, err := uc.CreateStatus(ctx, formID, adminID, "保留", &color, 4, false)
+		status, err := uc.CreateStatus(ctx, formID, adminID, usecase.CreateStatusInput{
+			Name:         "保留",
+			Color:        &color,
+			DisplayOrder: 4,
+		})
 		require.NoError(t, err)
 		assert.Equal(t, "保留", status.Name)
 		assert.False(t, status.IsDefault)
@@ -97,7 +102,11 @@ func TestStatusUseCase_CreateStatus(t *testing.T) {
 		formID, _ := testutil.CreateForm(t, ctx, testPool, "gform1", "Form", adminID)
 
 		uc := newStatusUseCase()
-		newDefault, err := uc.CreateStatus(ctx, formID, adminID, "新デフォルト", nil, 4, true)
+		newDefault, err := uc.CreateStatus(ctx, formID, adminID, usecase.CreateStatusInput{
+			Name:         "新デフォルト",
+			DisplayOrder: 4,
+			IsDefault:    true,
+		})
 		require.NoError(t, err)
 		assert.True(t, newDefault.IsDefault)
 
@@ -128,7 +137,7 @@ func TestStatusUseCase_CreateStatus(t *testing.T) {
 		formID, _ := testutil.CreateForm(t, ctx, testPool, "gform1", "Form", adminID)
 
 		uc := newStatusUseCase()
-		_, err := uc.CreateStatus(ctx, formID, adminID, "", nil, 4, false)
+		_, err := uc.CreateStatus(ctx, formID, adminID, usecase.CreateStatusInput{DisplayOrder: 4})
 		require.Error(t, err)
 		var appErr *entity.Error
 		require.True(t, errors.As(err, &appErr))
@@ -160,10 +169,7 @@ func TestStatusUseCase_UpdateStatus(t *testing.T) {
 			formID,
 			adminID,
 			statuses[2].ID,
-			&newName,
-			nil,
-			nil,
-			nil,
+			usecase.UpdateStatusInput{Name: &newName},
 		)
 		require.NoError(t, err)
 		assert.Equal(t, "対応済み", updated.Name)
@@ -188,7 +194,13 @@ func TestStatusUseCase_UpdateStatus(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, statuses2)
 
-		_, err = uc.UpdateStatus(ctx, formID1, adminID, statuses2[0].ID, nil, nil, nil, nil)
+		_, err = uc.UpdateStatus(
+			ctx,
+			formID1,
+			adminID,
+			statuses2[0].ID,
+			usecase.UpdateStatusInput{},
+		)
 		require.Error(t, err)
 		var appErr *entity.Error
 		require.True(t, errors.As(err, &appErr))
@@ -271,7 +283,11 @@ func TestStatusUseCase_DeleteStatus(t *testing.T) {
 		uc := newStatusUseCase()
 		// 非デフォルトステータスを作成してチケットを紐づける
 		color := "#0000FF"
-		status, err := uc.CreateStatus(ctx, formID, adminID, "テスト", &color, 4, false)
+		status, err := uc.CreateStatus(ctx, formID, adminID, usecase.CreateStatusInput{
+			Name:         "テスト",
+			Color:        &color,
+			DisplayOrder: 4,
+		})
 		require.NoError(t, err)
 
 		testutil.CreateTicket(t, ctx, testPool, formID, status.ID, "resp-1")

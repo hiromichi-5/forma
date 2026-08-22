@@ -29,7 +29,7 @@ func (r *TicketRepository) Create(ctx context.Context, ticket entity.Ticket) (bo
 		Answers:         ticket.Answers,
 		StatusID:        toUUID(ticket.StatusID),
 		AssigneeID:      toNullUUID(ticket.AssigneeID),
-		Priority:        ticket.Priority,
+		Priority:        string(ticket.Priority),
 		SubmittedAt:     toTimestamptz(ticket.SubmittedAt),
 	})
 	if err != nil {
@@ -65,44 +65,12 @@ func (r *TicketRepository) List(
 	return result, nil
 }
 
-func (r *TicketRepository) UpdateStatus(
-	ctx context.Context,
-	id uuid.UUID,
-	statusID uuid.UUID,
-) error {
-	n, err := r.q.UpdateTicketStatus(ctx, db.UpdateTicketStatusParams{
-		ID:       toUUID(id),
-		StatusID: toUUID(statusID),
-	})
-	if err != nil {
-		return repoError(err)
-	}
-	return rowsError(n)
-}
-
-func (r *TicketRepository) UpdateAssignee(
-	ctx context.Context,
-	id uuid.UUID,
-	assigneeID *uuid.UUID,
-) error {
-	n, err := r.q.UpdateTicketAssignee(ctx, db.UpdateTicketAssigneeParams{
-		ID:         toUUID(id),
-		AssigneeID: toNullUUID(assigneeID),
-	})
-	if err != nil {
-		return repoError(err)
-	}
-	return rowsError(n)
-}
-
-func (r *TicketRepository) UpdatePriority(
-	ctx context.Context,
-	id uuid.UUID,
-	priority string,
-) error {
-	n, err := r.q.UpdateTicketPriority(ctx, db.UpdateTicketPriorityParams{
-		ID:       toUUID(id),
-		Priority: priority,
+func (r *TicketRepository) Save(ctx context.Context, ticket entity.Ticket) error {
+	n, err := r.q.UpdateTicket(ctx, db.UpdateTicketParams{
+		ID:         toUUID(ticket.ID),
+		StatusID:   toUUID(ticket.StatusID),
+		AssigneeID: toNullUUID(ticket.AssigneeID),
+		Priority:   string(ticket.Priority),
 	})
 	if err != nil {
 		return repoError(err)
@@ -119,7 +87,7 @@ func (r *TicketRepository) CreateHistory(
 		TicketID:      toUUID(history.TicketID),
 		ChangedBy:     toNullUUID(history.ChangedBy),
 		ChangedByName: history.ChangedByName,
-		FieldName:     history.FieldName,
+		FieldName:     string(history.FieldName),
 		OldValue:      toTextPtr(history.OldValue),
 		NewValue:      toTextPtr(history.NewValue),
 	})
@@ -157,7 +125,7 @@ func toTicket(row db.Ticket) entity.Ticket {
 		Answers:         row.Answers,
 		StatusID:        fromUUID(row.StatusID),
 		AssigneeID:      fromNullUUID(row.AssigneeID),
-		Priority:        row.Priority,
+		Priority:        entity.Priority(row.Priority),
 		SubmittedAt:     fromTimestamptz(row.SubmittedAt),
 		CreatedAt:       fromTimestamptz(row.CreatedAt),
 	}
@@ -169,7 +137,7 @@ func toTicketHistory(row db.TicketHistory) entity.TicketHistory {
 		TicketID:      fromUUID(row.TicketID),
 		ChangedBy:     fromNullUUID(row.ChangedBy),
 		ChangedByName: row.ChangedByName,
-		FieldName:     row.FieldName,
+		FieldName:     entity.TicketField(row.FieldName),
 		OldValue:      fromTextPtr(row.OldValue),
 		NewValue:      fromTextPtr(row.NewValue),
 		CreatedAt:     fromTimestamptz(row.CreatedAt),
