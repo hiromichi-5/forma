@@ -45,6 +45,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	r.Use(cors.New(config))
 
 	userRepo := postgres.NewUserRepository(deps.Pool)
+	sessionRepo := postgres.NewSessionRepository(deps.Pool)
 	formRepo := postgres.NewFormRepository(deps.Pool)
 	memberRepo := postgres.NewMemberRepository(deps.Pool)
 	statusRepo := postgres.NewStatusRepository(deps.Pool)
@@ -54,6 +55,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 
 	authUC := usecase.NewAuthUseCase(
 		userRepo,
+		sessionRepo,
 		postgres.NewAuthUoW(deps.Pool),
 		deps.EmailSender,
 		deps.FrontendBaseURL,
@@ -116,7 +118,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	r.POST("/v1/auth/password-reset/confirm", ah.PostV1AuthPasswordResetConfirm)
 
 	authz := r.Group("/v1")
-	authz.Use(middleware.SessionMiddleware(userRepo, cookieCfg.Name))
+	authz.Use(middleware.SessionMiddleware(sessionRepo, cookieCfg.Name))
 
 	authz.GET("/me", ph.GetV1Me)
 	authz.PATCH("/me", ph.PatchV1Me)

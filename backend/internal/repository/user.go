@@ -17,10 +17,6 @@ type UserRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	SetVerifiedAt(ctx context.Context, id uuid.UUID, verifiedAt time.Time) error
 
-	GetSessionByID(ctx context.Context, id uuid.UUID) (entity.Session, error)
-	CreateSession(ctx context.Context, session entity.Session) (entity.Session, error)
-	DeleteSession(ctx context.Context, id uuid.UUID) error
-
 	CreateEmailVerificationToken(
 		ctx context.Context,
 		token entity.EmailVerificationToken,

@@ -27,7 +27,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func newUserRepo() repository.UserRepository     { return postgres.NewUserRepository(testPool) }
+func newUserRepo() repository.UserRepository { return postgres.NewUserRepository(testPool) }
+func newSessionRepo() repository.SessionRepository {
+	return postgres.NewSessionRepository(testPool)
+}
+
 func newFormRepo() repository.FormRepository     { return postgres.NewFormRepository(testPool) }
 func newMemberRepo() repository.MemberRepository { return postgres.NewMemberRepository(testPool) }
 func newStatusRepo() repository.StatusRepository { return postgres.NewStatusRepository(testPool) }
@@ -39,7 +43,7 @@ func newNotificationRepo() repository.NotificationRepository {
 
 func newAuthUseCase() *usecase.AuthUseCase {
 	return usecase.NewAuthUseCase(
-		newUserRepo(), postgres.NewAuthUoW(testPool),
+		newUserRepo(), newSessionRepo(), postgres.NewAuthUoW(testPool),
 		&mockEmailSender{}, "http://localhost:5173",
 	)
 }

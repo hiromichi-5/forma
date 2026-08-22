@@ -21,12 +21,6 @@ type User struct {
 	CreatedAt    time.Time
 }
 
-type Session struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	CreatedAt time.Time
-}
-
 type EmailVerificationToken struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID

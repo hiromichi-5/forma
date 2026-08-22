@@ -104,36 +104,6 @@ func (r *UserRepository) SetVerifiedAt(
 	return rowsError(n)
 }
 
-func (r *UserRepository) GetSessionByID(ctx context.Context, id uuid.UUID) (entity.Session, error) {
-	row, err := r.q.GetSessionByID(ctx, toUUID(id))
-	if err != nil {
-		return entity.Session{}, repoError(err)
-	}
-	return toSession(row), nil
-}
-
-func (r *UserRepository) CreateSession(
-	ctx context.Context,
-	session entity.Session,
-) (entity.Session, error) {
-	row, err := r.q.CreateSession(ctx, db.CreateSessionParams{
-		ID:     toUUID(session.ID),
-		UserID: toUUID(session.UserID),
-	})
-	if err != nil {
-		return entity.Session{}, repoError(err)
-	}
-	return toSession(row), nil
-}
-
-func (r *UserRepository) DeleteSession(ctx context.Context, id uuid.UUID) error {
-	n, err := r.q.DeleteSession(ctx, toUUID(id))
-	if err != nil {
-		return repoError(err)
-	}
-	return rowsError(n)
-}
-
 func (r *UserRepository) CreateEmailVerificationToken(
 	ctx context.Context,
 	token entity.EmailVerificationToken,
@@ -259,14 +229,6 @@ func toUserFromUpdateDisplayName(row db.UpdateUserDisplayNameRow) entity.User {
 		DisplayName:  row.DisplayName,
 		VerifiedAt:   fromTimestamptzPtr(row.VerifiedAt),
 		CreatedAt:    fromTimestamptz(row.CreatedAt),
-	}
-}
-
-func toSession(row db.Session) entity.Session {
-	return entity.Session{
-		ID:        fromUUID(row.ID),
-		UserID:    fromUUID(row.UserID),
-		CreatedAt: fromTimestamptz(row.CreatedAt),
 	}
 }
 

@@ -19,6 +19,7 @@ const tokenTTL = 24 * time.Hour
 
 type AuthUseCase struct {
 	userRepo        repository.UserRepository
+	sessionRepo     repository.SessionRepository
 	uow             repository.UnitOfWork[repository.AuthRepos]
 	emailSender     repository.EmailSender
 	frontendBaseURL string
@@ -28,12 +29,14 @@ type AuthUseCase struct {
 
 func NewAuthUseCase(
 	userRepo repository.UserRepository,
+	sessionRepo repository.SessionRepository,
 	uow repository.UnitOfWork[repository.AuthRepos],
 	emailSender repository.EmailSender,
 	frontendBaseURL string,
 ) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:        userRepo,
+		sessionRepo:     sessionRepo,
 		uow:             uow,
 		emailSender:     emailSender,
 		frontendBaseURL: frontendBaseURL,
@@ -75,7 +78,7 @@ func (uc *AuthUseCase) Authenticate(
 		return entity.Session{}, entity.NewError(entity.CodeEmailNotVerified)
 	}
 
-	session, err := uc.userRepo.CreateSession(ctx, entity.Session{
+	session, err := uc.sessionRepo.Create(ctx, entity.Session{
 		ID:     uuid.New(),
 		UserID: user.ID,
 	})
@@ -166,7 +169,7 @@ func (uc *AuthUseCase) Signup(
 }
 
 func (uc *AuthUseCase) Logout(ctx context.Context, sessionID uuid.UUID) error {
-	err := uc.userRepo.DeleteSession(ctx, sessionID)
+	err := uc.sessionRepo.Delete(ctx, sessionID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeInvalidSession)
