@@ -12,20 +12,26 @@ import (
 )
 
 const createSession = `-- name: CreateSession :one
-INSERT INTO sessions (id, user_id)
-VALUES ($1, $2)
-RETURNING id, user_id, created_at
+INSERT INTO sessions (id, user_id, expires_at)
+VALUES ($1, $2, $3)
+RETURNING id, user_id, created_at, expires_at
 `
 
 type CreateSessionParams struct {
-	ID     pgtype.UUID `json:"id"`
-	UserID pgtype.UUID `json:"user_id"`
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
-	row := q.db.QueryRow(ctx, createSession, arg.ID, arg.UserID)
+	row := q.db.QueryRow(ctx, createSession, arg.ID, arg.UserID, arg.ExpiresAt)
 	var i Session
-	err := row.Scan(&i.ID, &i.UserID, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
 	return i, err
 }
 
@@ -43,14 +49,20 @@ func (q *Queries) DeleteSession(ctx context.Context, id pgtype.UUID) (int64, err
 }
 
 const getSessionByID = `-- name: GetSessionByID :one
-SELECT id, user_id, created_at
+SELECT id, user_id, created_at, expires_at
 FROM sessions
 WHERE id = $1
+  AND expires_at > NOW()
 `
 
 func (q *Queries) GetSessionByID(ctx context.Context, id pgtype.UUID) (Session, error) {
 	row := q.db.QueryRow(ctx, getSessionByID, id)
 	var i Session
-	err := row.Scan(&i.ID, &i.UserID, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
 	return i, err
 }

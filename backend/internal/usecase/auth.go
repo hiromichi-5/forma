@@ -15,7 +15,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const tokenTTL = 24 * time.Hour
+const (
+	tokenTTL   = 24 * time.Hour
+	sessionTTL = 14 * 24 * time.Hour
+)
 
 type AuthUseCase struct {
 	userRepo        repository.UserRepository
@@ -85,8 +88,9 @@ func (uc *AuthUseCase) Authenticate(
 	}
 
 	session, err := uc.sessionRepo.Create(ctx, entity.Session{
-		ID:     uuid.New(),
-		UserID: user.ID,
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		ExpiresAt: uc.now().Add(sessionTTL),
 	})
 	if err != nil {
 		return entity.Session{}, err

@@ -60,6 +60,18 @@ func GetEmailVerificationToken(
 	return token
 }
 
+func ExpireSessions(t *testing.T, ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) {
+	t.Helper()
+
+	_, err := pool.Exec(ctx, `
+		UPDATE sessions SET expires_at = NOW() - INTERVAL '1 second'
+		WHERE user_id = $1
+	`, userID)
+	if err != nil {
+		t.Fatalf("expire sessions: %v", err)
+	}
+}
+
 func GetPasswordResetToken(
 	t *testing.T,
 	ctx context.Context,

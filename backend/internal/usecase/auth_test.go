@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -102,6 +104,53 @@ func TestAuthUseCase_Authenticate(t *testing.T) {
 		session, err := uc.Authenticate(ctx, "auth@example.com", "password123")
 		require.NoError(t, err)
 		assert.NotEmpty(t, session.ID)
+	})
+
+	t.Run("正常系: セッションに14日後の有効期限が設定されること", func(t *testing.T) {
+		truncate(t)
+		uc := newAuthUseCase()
+		ctx := context.Background()
+
+		testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"expiry@example.com",
+			"password123",
+			"Expiry User",
+		)
+
+		session, err := uc.Authenticate(ctx, "expiry@example.com", "password123")
+		require.NoError(t, err)
+		assert.WithinDuration(
+			t,
+			time.Now().Add(14*24*time.Hour),
+			session.ExpiresAt,
+			time.Minute,
+		)
+	})
+
+	t.Run("準正常系: 期限切れのセッションが取得できないこと", func(t *testing.T) {
+		truncate(t)
+		uc := newAuthUseCase()
+		ctx := context.Background()
+
+		userID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"expired@example.com",
+			"password123",
+			"Expired User",
+		)
+
+		session, err := uc.Authenticate(ctx, "expired@example.com", "password123")
+		require.NoError(t, err)
+
+		testutil.ExpireSessions(t, ctx, testPool, userID)
+
+		_, err = newSessionRepo().GetByID(ctx, session.ID)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 
 	t.Run("準正常系: パスワードが間違っている場合 INVALID_CREDENTIALS エラーになること", func(t *testing.T) {

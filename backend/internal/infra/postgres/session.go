@@ -33,8 +33,9 @@ func (r *SessionRepository) Create(
 	session entity.Session,
 ) (entity.Session, error) {
 	row, err := r.q.CreateSession(ctx, db.CreateSessionParams{
-		ID:     toUUID(session.ID),
-		UserID: toUUID(session.UserID),
+		ID:        toUUID(session.ID),
+		UserID:    toUUID(session.UserID),
+		ExpiresAt: toTimestamptz(session.ExpiresAt),
 	})
 	if err != nil {
 		return entity.Session{}, repoError(err)
@@ -54,6 +55,7 @@ func toSession(row db.Session) entity.Session {
 	return entity.Session{
 		ID:        fromUUID(row.ID),
 		UserID:    fromUUID(row.UserID),
+		ExpiresAt: fromTimestamptz(row.ExpiresAt),
 		CreatedAt: fromTimestamptz(row.CreatedAt),
 	}
 }

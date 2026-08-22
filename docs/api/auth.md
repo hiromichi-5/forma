@@ -93,7 +93,8 @@
 
 ### 補足
 
-- Cookie 設定: `HttpOnly=true`, `SameSite=Lax`, `Secure=true`
+- Cookie 設定: `HttpOnly=true`, `SameSite=Lax`, `Secure`（環境設定に従う）, `Max-Age`（セッションの残り有効期間）
+- セッションの有効期限はログインから 14 日。延長はされず、期限切れのセッションでのアクセスは `INVALID_SESSION`（401）になる
 
 ## POST /v1/auth/logout
 
