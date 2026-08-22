@@ -76,7 +76,7 @@ POST /v1/invites/:id/accept
 ## 新しいエンドポイント追加時のチェックリスト
 
 - `openapi/openapi.yaml` にエンドポイントを定義
-- `make openapi` で型を生成
+- `make openapi` で仕様とフロントエンドの型を生成
 - UseCase にビジネスロジックを実装
 - Handler でリクエストパース・レスポンス変換を実装
 - 必要に応じてレスポンス DTO を `handler/response.go` に追加

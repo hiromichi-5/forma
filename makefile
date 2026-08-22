@@ -33,7 +33,7 @@ sqlc:
 	sqlc generate
 
 openapi:
-	oapi-codegen -generate types,gin,spec -o backend/internal/api/gen.go -package api openapi/openapi.yaml
+	oapi-codegen -generate spec -o backend/internal/api/gen.go -package api openapi/openapi.yaml
 	pnpm --dir frontend gen:types
 
 seed:
