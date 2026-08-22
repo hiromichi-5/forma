@@ -9,12 +9,18 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
-func requireEditor(
-	ctx context.Context,
-	memberRepo repository.MemberRepository,
-	formID, userID uuid.UUID,
-) error {
-	role, err := resolveRole(ctx, memberRepo, formID, userID)
+type Authorizer struct {
+	memberRepo repository.MemberRepository
+}
+
+func NewAuthorizer(memberRepo repository.MemberRepository) *Authorizer {
+	return &Authorizer{memberRepo: memberRepo}
+}
+
+// RequireEditor は非メンバーとロール不足を区別せず RESOURCE_HIDDEN を返す。
+// メンバーであることが確認できていないため、フォームの存在自体を隠す。
+func (a *Authorizer) RequireEditor(ctx context.Context, formID, userID uuid.UUID) error {
+	role, err := a.resolveRole(ctx, formID, userID)
 	if err != nil {
 		return err
 	}
@@ -24,12 +30,10 @@ func requireEditor(
 	return nil
 }
 
-func requireAdmin(
-	ctx context.Context,
-	memberRepo repository.MemberRepository,
-	formID, userID uuid.UUID,
-) error {
-	role, err := resolveRole(ctx, memberRepo, formID, userID)
+// RequireAdmin は非メンバーには RESOURCE_HIDDEN、メンバーだが権限が足りない場合は
+// FORBIDDEN を返す。メンバーであることは既に分かっているため権限不足を明示する。
+func (a *Authorizer) RequireAdmin(ctx context.Context, formID, userID uuid.UUID) error {
+	role, err := a.resolveRole(ctx, formID, userID)
 	if err != nil {
 		return err
 	}
@@ -39,12 +43,11 @@ func requireAdmin(
 	return nil
 }
 
-func resolveRole(
+func (a *Authorizer) resolveRole(
 	ctx context.Context,
-	memberRepo repository.MemberRepository,
 	formID, userID uuid.UUID,
 ) (entity.Role, error) {
-	role, err := memberRepo.GetRole(ctx, formID, userID)
+	role, err := a.memberRepo.GetRole(ctx, formID, userID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return "", entity.NewError(entity.CodeResourceHidden)

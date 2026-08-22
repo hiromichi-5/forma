@@ -84,6 +84,7 @@ func TestInviteUseCase_CreateInvite(t *testing.T) {
 			newInviteRepo(),
 			newMemberRepo(),
 			newUserRepo(),
+			newAuthorizer(),
 			postgres.NewInviteUoW(testPool),
 			&mockEmailSender{
 				sendEmailFunc: func(_ context.Context, _ repository.SendEmailInput) error {

@@ -17,6 +17,7 @@ type InviteUseCase struct {
 	inviteRepo      repository.InviteRepository
 	memberRepo      repository.MemberRepository
 	userRepo        repository.UserRepository
+	authz           *Authorizer
 	uow             repository.UnitOfWork[repository.InviteRepos]
 	emailSender     repository.EmailSender
 	frontendBaseURL string
@@ -27,6 +28,7 @@ func NewInviteUseCase(
 	inviteRepo repository.InviteRepository,
 	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
+	authz *Authorizer,
 	uow repository.UnitOfWork[repository.InviteRepos],
 	emailSender repository.EmailSender,
 	frontendBaseURL string,
@@ -35,6 +37,7 @@ func NewInviteUseCase(
 		inviteRepo:      inviteRepo,
 		memberRepo:      memberRepo,
 		userRepo:        userRepo,
+		authz:           authz,
 		uow:             uow,
 		emailSender:     emailSender,
 		frontendBaseURL: frontendBaseURL,
@@ -52,7 +55,7 @@ func (uc *InviteUseCase) CreateInvite(
 		return entity.Invite{}, entity.NewError(entity.CodeValidation)
 	}
 
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return entity.Invite{}, err
 	}
 
@@ -100,7 +103,7 @@ func (uc *InviteUseCase) ListInvites(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.Invite, error) {
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.inviteRepo.ListActive(ctx, formID)
@@ -110,7 +113,7 @@ func (uc *InviteUseCase) DeleteInvite(
 	ctx context.Context,
 	formID, userID, inviteID uuid.UUID,
 ) error {
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return err
 	}
 

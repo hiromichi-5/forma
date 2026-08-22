@@ -34,8 +34,8 @@ type NotificationUseCase struct {
 	ticketRepo       repository.TicketRepository
 	formRepo         repository.FormRepository
 	statusRepo       repository.StatusRepository
-	memberRepo       repository.MemberRepository
 	userRepo         repository.UserRepository
+	authz            *Authorizer
 	uow              repository.UnitOfWork[repository.NotificationRepos]
 	emailSender      repository.EmailSender
 	now              func() time.Time
@@ -46,8 +46,8 @@ func NewNotificationUseCase(
 	ticketRepo repository.TicketRepository,
 	formRepo repository.FormRepository,
 	statusRepo repository.StatusRepository,
-	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
+	authz *Authorizer,
 	uow repository.UnitOfWork[repository.NotificationRepos],
 	emailSender repository.EmailSender,
 ) *NotificationUseCase {
@@ -56,8 +56,8 @@ func NewNotificationUseCase(
 		ticketRepo:       ticketRepo,
 		formRepo:         formRepo,
 		statusRepo:       statusRepo,
-		memberRepo:       memberRepo,
 		userRepo:         userRepo,
+		authz:            authz,
 		uow:              uow,
 		emailSender:      emailSender,
 		now:              time.Now,
@@ -68,7 +68,7 @@ func (uc *NotificationUseCase) GetSettings(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) (NotificationSettings, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return NotificationSettings{}, err
 	}
 
@@ -96,7 +96,7 @@ func (uc *NotificationUseCase) UpdateSettings(
 	formID, userID uuid.UUID,
 	inputs []NotificationSettingInput,
 ) (NotificationSettings, error) {
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return NotificationSettings{}, err
 	}
 
@@ -151,7 +151,7 @@ func (uc *NotificationUseCase) SendNotification(
 		return entity.TicketNotification{}, err
 	}
 
-	if err := requireEditor(ctx, uc.memberRepo, ticket.FormID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, ticket.FormID, userID); err != nil {
 		return entity.TicketNotification{}, err
 	}
 

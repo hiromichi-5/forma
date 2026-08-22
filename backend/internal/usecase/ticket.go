@@ -64,6 +64,7 @@ type TicketUseCase struct {
 	statusRepo repository.StatusRepository
 	memberRepo repository.MemberRepository
 	userRepo   repository.UserRepository
+	authz      *Authorizer
 	uow        repository.UnitOfWork[repository.TicketRepos]
 	publisher  EventPublisher
 	notifier   TicketNotifier
@@ -75,6 +76,7 @@ func NewTicketUseCase(
 	statusRepo repository.StatusRepository,
 	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
+	authz *Authorizer,
 	uow repository.UnitOfWork[repository.TicketRepos],
 	publisher EventPublisher,
 	notifier TicketNotifier,
@@ -85,6 +87,7 @@ func NewTicketUseCase(
 		statusRepo: statusRepo,
 		memberRepo: memberRepo,
 		userRepo:   userRepo,
+		authz:      authz,
 		uow:        uow,
 		publisher:  publisher,
 		notifier:   notifier,
@@ -150,7 +153,7 @@ func (uc *TicketUseCase) ListTickets(
 	formID, userID uuid.UUID,
 	statusID *uuid.UUID,
 ) ([]TicketSummary, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return nil, err
 	}
 
@@ -196,7 +199,7 @@ func (uc *TicketUseCase) GetTicket(
 		return TicketDetail{}, err
 	}
 
-	if err := requireEditor(ctx, uc.memberRepo, ticket.FormID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, ticket.FormID, userID); err != nil {
 		return TicketDetail{}, err
 	}
 
@@ -253,7 +256,7 @@ func (uc *TicketUseCase) UpdateTicket(
 		return TicketDetail{}, nil, err
 	}
 
-	if err := requireEditor(ctx, uc.memberRepo, ticket.FormID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, ticket.FormID, userID); err != nil {
 		return TicketDetail{}, nil, err
 	}
 
@@ -370,15 +373,11 @@ func (uc *TicketUseCase) ListTicketHistories(
 		return nil, err
 	}
 
-	if err := requireEditor(ctx, uc.memberRepo, ticket.FormID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, ticket.FormID, userID); err != nil {
 		return nil, err
 	}
 
 	return uc.ticketRepo.ListHistories(ctx, ticketID)
-}
-
-func (uc *TicketUseCase) CheckFormAccess(ctx context.Context, formID, userID uuid.UUID) error {
-	return requireEditor(ctx, uc.memberRepo, formID, userID)
 }
 
 type changeRecorder struct {

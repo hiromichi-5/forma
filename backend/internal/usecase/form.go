@@ -27,6 +27,7 @@ type FormUseCase struct {
 	formRepo   repository.FormRepository
 	memberRepo repository.MemberRepository
 	statusRepo repository.StatusRepository
+	authz      *Authorizer
 	fetcher    repository.FormFetcher
 	uow        repository.UnitOfWork[repository.FormRepos]
 	syncer     FormSyncer
@@ -36,6 +37,7 @@ func NewFormUseCase(
 	formRepo repository.FormRepository,
 	memberRepo repository.MemberRepository,
 	statusRepo repository.StatusRepository,
+	authz *Authorizer,
 	fetcher repository.FormFetcher,
 	uow repository.UnitOfWork[repository.FormRepos],
 	syncer FormSyncer,
@@ -44,6 +46,7 @@ func NewFormUseCase(
 		formRepo:   formRepo,
 		memberRepo: memberRepo,
 		statusRepo: statusRepo,
+		authz:      authz,
 		fetcher:    fetcher,
 		uow:        uow,
 		syncer:     syncer,
@@ -156,7 +159,7 @@ func (uc *FormUseCase) ListForms(ctx context.Context, userID uuid.UUID) ([]entit
 }
 
 func (uc *FormUseCase) GetForm(ctx context.Context, formID, userID uuid.UUID) (entity.Form, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return entity.Form{}, err
 	}
 
@@ -175,7 +178,7 @@ func (uc *FormUseCase) UpdateTitleQuestion(
 	formID, userID uuid.UUID,
 	questionID *string,
 ) error {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return err
 	}
 
@@ -209,7 +212,7 @@ func (uc *FormUseCase) DeleteForm(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) error {
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return err
 	}
 
@@ -231,7 +234,7 @@ func (uc *FormUseCase) ListQuestions(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.FormQuestion, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.formRepo.ListQuestions(ctx, formID)

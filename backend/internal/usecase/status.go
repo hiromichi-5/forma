@@ -26,21 +26,21 @@ type UpdateStatusInput struct {
 
 type StatusUseCase struct {
 	statusRepo repository.StatusRepository
-	memberRepo repository.MemberRepository
 	ticketRepo repository.TicketRepository
+	authz      *Authorizer
 	uow        repository.UnitOfWork[repository.StatusRepos]
 }
 
 func NewStatusUseCase(
 	statusRepo repository.StatusRepository,
-	memberRepo repository.MemberRepository,
 	ticketRepo repository.TicketRepository,
+	authz *Authorizer,
 	uow repository.UnitOfWork[repository.StatusRepos],
 ) *StatusUseCase {
 	return &StatusUseCase{
 		statusRepo: statusRepo,
-		memberRepo: memberRepo,
 		ticketRepo: ticketRepo,
+		authz:      authz,
 		uow:        uow,
 	}
 }
@@ -49,7 +49,7 @@ func (uc *StatusUseCase) ListStatuses(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.FormStatus, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.statusRepo.List(ctx, formID)
@@ -60,7 +60,7 @@ func (uc *StatusUseCase) CreateStatus(
 	formID, userID uuid.UUID,
 	in CreateStatusInput,
 ) (entity.FormStatus, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return entity.FormStatus{}, err
 	}
 
@@ -129,7 +129,7 @@ func (uc *StatusUseCase) UpdateStatus(
 	formID, userID, statusID uuid.UUID,
 	in UpdateStatusInput,
 ) (entity.FormStatus, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return entity.FormStatus{}, err
 	}
 
@@ -228,7 +228,7 @@ func (uc *StatusUseCase) DeleteStatus(
 	ctx context.Context,
 	formID, userID, statusID uuid.UUID,
 ) error {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return err
 	}
 

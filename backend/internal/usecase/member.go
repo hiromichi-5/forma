@@ -12,15 +12,18 @@ import (
 type MemberUseCase struct {
 	memberRepo repository.MemberRepository
 	userRepo   repository.UserRepository
+	authz      *Authorizer
 }
 
 func NewMemberUseCase(
 	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
+	authz *Authorizer,
 ) *MemberUseCase {
 	return &MemberUseCase{
 		memberRepo: memberRepo,
 		userRepo:   userRepo,
+		authz:      authz,
 	}
 }
 
@@ -34,7 +37,7 @@ func (uc *MemberUseCase) AddMember(
 		return entity.NewError(entity.CodeValidation)
 	}
 
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return err
 	}
 
@@ -64,7 +67,7 @@ func (uc *MemberUseCase) ChangeRole(
 		return entity.NewError(entity.CodeValidation)
 	}
 
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return err
 	}
 
@@ -93,7 +96,7 @@ func (uc *MemberUseCase) RemoveMember(
 	ctx context.Context,
 	formID, userID, targetUserID uuid.UUID,
 ) error {
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return err
 	}
 
@@ -114,7 +117,7 @@ func (uc *MemberUseCase) ListMembers(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.Member, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.memberRepo.List(ctx, formID)
