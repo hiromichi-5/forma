@@ -14,11 +14,40 @@ components:
       in: cookie
       name: forma_token
   schemas:
+    ErrorCode:
+      type: string
+      enum:
+        - INVALID_CREDENTIALS
+        - INVALID_SESSION
+        - EMAIL_NOT_VERIFIED
+        - FORBIDDEN
+        - RESOURCE_HIDDEN
+        - USER_NOT_FOUND
+        - FORM_NOT_FOUND
+        - FORM_NOT_SHARED
+        - TOKEN_NOT_FOUND
+        - INVITE_NOT_FOUND
+        - INVITE_EXPIRED
+        - ALREADY_MEMBER
+        - INCORRECT_PASSWORD
+        - LAST_ADMIN
+        - CONFLICT
+        - FORM_ALREADY_REGISTERED
+        - ACTIVE_INVITE_ALREADY_EXISTS
+        - STATUS_CONFLICT
+        - NOTIFICATION_DISABLED
+        - RESPONDENT_EMAIL_MISSING
+        - NOTIFICATION_RATE_LIMITED
+        - VALIDATION_ERROR
+        - INTERNAL
+    FieldErrorCode:
+      type: string
+      enum: [REQUIRED, TOO_SHORT, INVALID_FORMAT, INVALID_VALUE]
     Error:
       type: object
       required: [code]
       properties:
-        code: { type: string }
+        code: { $ref: "#/components/schemas/ErrorCode" }
         message: { type: string }
         fields:
           type: array
@@ -27,7 +56,7 @@ components:
             required: [field, code]
             properties:
               field: { type: string }
-              code: { type: string }
+              code: { $ref: "#/components/schemas/FieldErrorCode" }
 
     LoginRequest:
       type: object
@@ -92,6 +121,13 @@ components:
       properties:
         display_name: { type: string }
 
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string }
+        new_password: { type: string, minLength: 8 }
+
     RegisterFormRequest:
       type: object
       required: [url]
@@ -111,6 +147,7 @@ components:
         form_id: { type: string }
         title: { type: string }
         description: { type: string, nullable: true }
+        title_question_id: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
     FormSummary:
       type: object
@@ -137,7 +174,7 @@ components:
 
     Member:
       type: object
-      required: [id, email, role]
+      required: [id, email, display_name, role]
       properties:
         id: { type: string, format: uuid }
         email: { type: string, format: email }
@@ -430,11 +467,12 @@ components:
 
     SyncResponse:
       type: object
-      required: [synced, new_tickets]
+      required: [synced, new_tickets, last]
       properties:
         synced: { type: boolean }
-        newTickets: { type: integer }
-        last: { type: string, format: date-time }
+        new_tickets: { type: integer }
+        # 未同期のフォームでは空文字になる
+        last: { type: string }
 
 security:
   - cookieAuth: []
@@ -669,12 +707,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [current_password, new_password]
-              properties:
-                current_password: { type: string }
-                new_password: { type: string, minLength: 8 }
+            schema: { $ref: "#/components/schemas/ChangePasswordRequest" }
       responses:
         "204":
           description: No Content
