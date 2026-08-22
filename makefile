@@ -34,6 +34,7 @@ sqlc:
 
 openapi:
 	oapi-codegen -generate types,gin,spec -o backend/internal/api/gen.go -package api openapi/openapi.yaml
+	pnpm --dir frontend gen:types
 
 seed:
 	go run ./backend/cmd/seeduser
