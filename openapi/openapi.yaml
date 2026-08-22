@@ -430,6 +430,15 @@ components:
               type: array
               items: { $ref: "#/components/schemas/NotificationResult" }
 
+    TicketUpdatedEvent:
+      type: object
+      description: SSE の ticket_updated イベントの data 部
+      required: [ticket_id, form_id, ticket]
+      properties:
+        ticket_id: { type: string, format: uuid }
+        form_id: { type: string, format: uuid }
+        ticket: { $ref: "#/components/schemas/TicketDetail" }
+
     ListTicketsResponse:
       type: object
       required: [tickets]
@@ -1167,6 +1176,36 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ListFormQuestionsResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/forms/{form_id}/stream:
+    parameters:
+      - in: path
+        name: form_id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: チケット更新の購読（SSE）
+      description: |
+        Server-Sent Events でフォーム内のチケット更新を配信する。イベントは2種類。
+
+        - `ticket_updated`: data は TicketUpdatedEvent
+        - `ping`: 30秒ごとの疎通確認。data は `{}`
+      responses:
+        "200":
+          description: イベントストリーム
+          content:
+            text/event-stream:
+              schema: { type: string }
         "401":
           description: Unauthorized
           content:

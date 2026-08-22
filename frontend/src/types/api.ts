@@ -1586,6 +1586,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/forms/{form_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                form_id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * チケット更新の購読（SSE）
+         * @description Server-Sent Events でフォーム内のチケット更新を配信する。イベントは2種類。
+         *
+         *     - `ticket_updated`: data は TicketUpdatedEvent
+         *     - `ping`: 30秒ごとの疎通確認。data は `{}`
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    form_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description イベントストリーム */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/event-stream": string;
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/forms/{form_id}/statuses": {
         parameters: {
             query?: never;
@@ -2397,6 +2461,14 @@ export interface components {
         TicketUpdateResponse: components["schemas"]["TicketDetail"] & {
             notification_results: components["schemas"]["NotificationResult"][];
         };
+        /** @description SSE の ticket_updated イベントの data 部 */
+        TicketUpdatedEvent: {
+            /** Format: uuid */
+            ticket_id: string;
+            /** Format: uuid */
+            form_id: string;
+            ticket: components["schemas"]["TicketDetail"];
+        };
         ListTicketsResponse: {
             tickets: components["schemas"]["TicketSummary"][];
         };
@@ -2486,6 +2558,7 @@ export type SendNotificationRequest = components['schemas']['SendNotificationReq
 export type SentNotificationResponse = components['schemas']['SentNotificationResponse'];
 export type TicketDetail = components['schemas']['TicketDetail'];
 export type TicketUpdateResponse = components['schemas']['TicketUpdateResponse'];
+export type TicketUpdatedEvent = components['schemas']['TicketUpdatedEvent'];
 export type ListTicketsResponse = components['schemas']['ListTicketsResponse'];
 export type UpdateTicketRequest = components['schemas']['UpdateTicketRequest'];
 export type TicketHistory = components['schemas']['TicketHistory'];
