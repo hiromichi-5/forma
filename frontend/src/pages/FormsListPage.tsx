@@ -25,8 +25,7 @@ export default function FormsListPage() {
     setErrorMessage("")
     try {
       const formsResponse = await apiClient.getForms()
-      const formItems = await buildFormList(formsResponse.forms)
-      setForms(formItems)
+      setForms(formsResponse.forms.map(toFormListItem))
     } catch (error) {
       console.error("Failed to load forms:", error)
       setErrorMessage("フォーム一覧の取得に失敗しました")
@@ -44,9 +43,7 @@ export default function FormsListPage() {
       try {
         const formsResponse = await apiClient.getForms()
         if (!isActive) return
-        const formItems = await buildFormList(formsResponse.forms)
-        if (!isActive) return
-        setForms(formItems)
+        setForms(formsResponse.forms.map(toFormListItem))
       } catch (error) {
         if (!isActive) return
         console.error("Failed to load forms:", error)
@@ -151,34 +148,13 @@ export default function FormsListPage() {
   )
 }
 
-async function buildFormList(forms: FormSummary[]): Promise<FormListItem[]> {
-  const results = await Promise.all(
-    forms.map(async (form) => {
-      try {
-        const ticketsRes = await apiClient.getTickets(form.id)
-        const latestSubmittedAt = ticketsRes.tickets.reduce<Date | null>((latest, ticket) => {
-          const submittedAt = new Date(ticket.submitted_at)
-          if (!latest || submittedAt > latest) return submittedAt
-          return latest
-        }, null)
-
-        return {
-          id: form.id,
-          title: form.title,
-          responseCount: ticketsRes.tickets.length,
-          latestSubmittedAt,
-        }
-      } catch {
-        return {
-          id: form.id,
-          title: form.title,
-          responseCount: 0,
-          latestSubmittedAt: null,
-        }
-      }
-    })
-  )
-  return results
+function toFormListItem(form: FormSummary): FormListItem {
+  return {
+    id: form.id,
+    title: form.title,
+    responseCount: form.ticket_count,
+    latestSubmittedAt: form.latest_submitted_at ? new Date(form.latest_submitted_at) : null,
+  }
 }
 
 function formatCompactDate(date: Date): string {
