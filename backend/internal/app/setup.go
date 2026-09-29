@@ -45,6 +45,9 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	r.Use(cors.New(config))
 
 	userRepo := postgres.NewUserRepository(deps.Pool)
+	sessionRepo := postgres.NewSessionRepository(deps.Pool)
+	emailTokenRepo := postgres.NewEmailVerificationTokenRepository(deps.Pool)
+	resetTokenRepo := postgres.NewPasswordResetTokenRepository(deps.Pool)
 	formRepo := postgres.NewFormRepository(deps.Pool)
 	memberRepo := postgres.NewMemberRepository(deps.Pool)
 	statusRepo := postgres.NewStatusRepository(deps.Pool)
@@ -52,37 +55,42 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	inviteRepo := postgres.NewInviteRepository(deps.Pool)
 	notificationRepo := postgres.NewNotificationRepository(deps.Pool)
 
+	authz := usecase.NewAuthorizer(memberRepo)
+
 	authUC := usecase.NewAuthUseCase(
 		userRepo,
+		sessionRepo,
+		emailTokenRepo,
+		resetTokenRepo,
 		postgres.NewAuthUoW(deps.Pool),
 		deps.EmailSender,
 		deps.FrontendBaseURL,
 	)
 	profileUC := usecase.NewProfileUseCase(userRepo)
-	syncUC := usecase.NewSyncUseCase(formRepo, ticketRepo, statusRepo, memberRepo, deps.Fetcher)
+	syncUC := usecase.NewSyncUseCase(formRepo, ticketRepo, statusRepo, authz, deps.Fetcher)
 	formUC := usecase.NewFormUseCase(
-		formRepo, memberRepo, statusRepo, deps.Fetcher,
+		formRepo, memberRepo, statusRepo, authz, deps.Fetcher,
 		postgres.NewFormUoW(deps.Pool),
 		syncUC,
 	)
-	memberUC := usecase.NewMemberUseCase(memberRepo, userRepo)
+	memberUC := usecase.NewMemberUseCase(memberRepo, userRepo, authz)
 	inviteUC := usecase.NewInviteUseCase(
-		inviteRepo, memberRepo, userRepo,
+		inviteRepo, memberRepo, userRepo, authz,
 		postgres.NewInviteUoW(deps.Pool),
 		deps.EmailSender, deps.FrontendBaseURL,
 	)
 	statusUC := usecase.NewStatusUseCase(
-		statusRepo, memberRepo, ticketRepo,
+		statusRepo, ticketRepo, authz,
 		postgres.NewStatusUoW(deps.Pool),
 	)
 	notificationUC := usecase.NewNotificationUseCase(
-		notificationRepo, ticketRepo, formRepo, statusRepo, memberRepo, userRepo,
+		notificationRepo, ticketRepo, formRepo, statusRepo, userRepo, authz,
 		postgres.NewNotificationUoW(deps.Pool),
 		deps.EmailSender,
 	)
 	hub := pubsub.NewMemoryHub()
 	ticketUC := usecase.NewTicketUseCase(
-		ticketRepo, formRepo, statusRepo, memberRepo, userRepo,
+		ticketRepo, formRepo, statusRepo, memberRepo, userRepo, authz,
 		postgres.NewTicketUoW(deps.Pool),
 		hub,
 		notificationUC,
@@ -103,7 +111,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	sh := handler.NewStatusHandler(statusUC)
 	tkh := handler.NewTicketHandler(ticketUC)
 	thh := handler.NewTicketHistoryHandler(ticketUC)
-	sseh := handler.NewStreamHandler(ticketUC, hub)
+	sseh := handler.NewStreamHandler(ticketUC, authz, hub)
 	syh := handler.NewSyncHandler(syncUC)
 	nh := handler.NewNotificationHandler(notificationUC)
 
@@ -115,48 +123,48 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	r.POST("/v1/auth/password-reset", ah.PostV1AuthPasswordReset)
 	r.POST("/v1/auth/password-reset/confirm", ah.PostV1AuthPasswordResetConfirm)
 
-	authz := r.Group("/v1")
-	authz.Use(middleware.SessionMiddleware(userRepo, cookieCfg.Name))
+	authed := r.Group("/v1")
+	authed.Use(middleware.SessionMiddleware(sessionRepo, cookieCfg.Name))
 
-	authz.GET("/me", ph.GetV1Me)
-	authz.PATCH("/me", ph.PatchV1Me)
-	authz.DELETE("/me", ph.DeleteV1Me)
-	authz.PATCH("/me/password", ph.PatchV1MePassword)
+	authed.GET("/me", ph.GetV1Me)
+	authed.PATCH("/me", ph.PatchV1Me)
+	authed.DELETE("/me", ph.DeleteV1Me)
+	authed.PATCH("/me/password", ph.PatchV1MePassword)
 
-	authz.POST("/forms", fh.PostV1Forms)
-	authz.GET("/forms", fh.GetV1Forms)
-	authz.GET("/forms/:form_id", fh.GetV1FormsId)
-	authz.PATCH("/forms/:form_id", fh.PatchV1FormsId)
-	authz.DELETE("/forms/:form_id", fh.DeleteV1FormsId)
-	authz.POST("/forms/:form_id/sync", syh.PostV1FormsFormIdSync)
-	authz.GET("/forms/:form_id/members", mh.GetV1FormsFormIdMembers)
-	authz.POST("/forms/:form_id/members", mh.PostV1FormsFormIdMembers)
-	authz.PUT("/forms/:form_id/members/:user_id", mh.PutV1FormsFormIdMembersUserId)
-	authz.DELETE("/forms/:form_id/members/:user_id", mh.DeleteV1FormsFormIdMembersUserId)
-	authz.GET("/forms/:form_id/invites", ih.GetV1FormsFormIdInvites)
-	authz.POST("/forms/:form_id/invites", ih.PostV1FormsFormIdInvites)
-	authz.DELETE("/forms/:form_id/invites/:invite_id", ih.DeleteV1FormsFormIdInvitesInviteId)
-	authz.GET("/forms/:form_id/statuses", sh.GetV1FormsIdStatuses)
-	authz.POST("/forms/:form_id/statuses", sh.PostV1FormsIdStatuses)
-	authz.PATCH("/forms/:form_id/statuses/:status_id", sh.PatchV1FormsIdStatusesStatusId)
-	authz.DELETE("/forms/:form_id/statuses/:status_id", sh.DeleteV1FormsIdStatusesStatusId)
-	authz.GET("/forms/:form_id/questions", fh.GetV1FormsFormIdQuestions)
-	authz.GET(
+	authed.POST("/forms", fh.PostV1Forms)
+	authed.GET("/forms", fh.GetV1Forms)
+	authed.GET("/forms/:form_id", fh.GetV1FormsId)
+	authed.PATCH("/forms/:form_id", fh.PatchV1FormsId)
+	authed.DELETE("/forms/:form_id", fh.DeleteV1FormsId)
+	authed.POST("/forms/:form_id/sync", syh.PostV1FormsFormIdSync)
+	authed.GET("/forms/:form_id/members", mh.GetV1FormsFormIdMembers)
+	authed.POST("/forms/:form_id/members", mh.PostV1FormsFormIdMembers)
+	authed.PUT("/forms/:form_id/members/:user_id", mh.PutV1FormsFormIdMembersUserId)
+	authed.DELETE("/forms/:form_id/members/:user_id", mh.DeleteV1FormsFormIdMembersUserId)
+	authed.GET("/forms/:form_id/invites", ih.GetV1FormsFormIdInvites)
+	authed.POST("/forms/:form_id/invites", ih.PostV1FormsFormIdInvites)
+	authed.DELETE("/forms/:form_id/invites/:invite_id", ih.DeleteV1FormsFormIdInvitesInviteId)
+	authed.GET("/forms/:form_id/statuses", sh.GetV1FormsIdStatuses)
+	authed.POST("/forms/:form_id/statuses", sh.PostV1FormsIdStatuses)
+	authed.PATCH("/forms/:form_id/statuses/:status_id", sh.PatchV1FormsIdStatusesStatusId)
+	authed.DELETE("/forms/:form_id/statuses/:status_id", sh.DeleteV1FormsIdStatusesStatusId)
+	authed.GET("/forms/:form_id/questions", fh.GetV1FormsFormIdQuestions)
+	authed.GET(
 		"/forms/:form_id/notification-settings",
 		nh.GetV1FormsFormIdNotificationSettings,
 	)
-	authz.PATCH(
+	authed.PATCH(
 		"/forms/:form_id/notification-settings",
 		nh.PatchV1FormsFormIdNotificationSettings,
 	)
-	authz.GET("/forms/:form_id/stream", sseh.GetV1FormsFormIdStream)
-	authz.POST("/invites/:invite_id/accept", ih.PostV1InvitesInviteIdAccept)
+	authed.GET("/forms/:form_id/stream", sseh.GetV1FormsFormIdStream)
+	authed.POST("/invites/:invite_id/accept", ih.PostV1InvitesInviteIdAccept)
 
-	authz.GET("/tickets", tkh.GetV1Tickets)
-	authz.GET("/tickets/:ticket_id", tkh.GetV1TicketsTicketId)
-	authz.PATCH("/tickets/:ticket_id", tkh.PatchV1TicketsTicketId)
-	authz.GET("/tickets/:ticket_id/histories", thh.GetV1TicketsTicketIdHistories)
-	authz.POST("/tickets/:ticket_id/notifications", nh.PostV1TicketsTicketIdNotifications)
+	authed.GET("/tickets", tkh.GetV1Tickets)
+	authed.GET("/tickets/:ticket_id", tkh.GetV1TicketsTicketId)
+	authed.PATCH("/tickets/:ticket_id", tkh.PatchV1TicketsTicketId)
+	authed.GET("/tickets/:ticket_id/histories", thh.GetV1TicketsTicketIdHistories)
+	authed.POST("/tickets/:ticket_id/notifications", nh.PostV1TicketsTicketIdNotifications)
 
 	return r
 }

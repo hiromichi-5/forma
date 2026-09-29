@@ -22,13 +22,6 @@ const (
 	NotificationModeOff     NotificationMode = "off"
 )
 
-// Google Forms のメールアドレス収集設定
-const (
-	EmailCollectionDoNotCollect  = "DO_NOT_COLLECT"
-	EmailCollectionVerified      = "VERIFIED"
-	EmailCollectionResponderInpt = "RESPONDER_INPUT"
-)
-
 type NotificationSetting struct {
 	FormID           uuid.UUID
 	NotificationType NotificationType
@@ -54,7 +47,6 @@ func NotificationTypes() []NotificationType {
 	return notificationTypes
 }
 
-// Valid は t が既知の通知種別かどうかを返す。
 func (t NotificationType) Valid() bool {
 	return slices.Contains(notificationTypes, t)
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hiromichi-5/forma/backend/internal/entity"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -138,7 +139,7 @@ func AddMember(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	userID, formID uuid.UUID,
-	role string,
+	role entity.Role,
 ) {
 	t.Helper()
 	_, err := pool.Exec(ctx, `
@@ -148,6 +149,28 @@ func AddMember(
 	if err != nil {
 		t.Fatalf("insert form_member: %v", err)
 	}
+}
+
+func CreateInvite(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	formID, invitedBy uuid.UUID,
+	email string,
+	role entity.Role,
+) uuid.UUID {
+	t.Helper()
+
+	inviteID := uuid.New()
+	now := time.Now()
+	_, err := pool.Exec(ctx, `
+		INSERT INTO form_invites (id, form_id, email, role, invited_by, expires_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, inviteID, formID, email, role, invitedBy, now.Add(24*time.Hour), now)
+	if err != nil {
+		t.Fatalf("insert form_invite: %v", err)
+	}
+	return inviteID
 }
 
 func CreateTicket(

@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import type { ReactNode } from "react";
 import { apiClient } from "@/lib/api";
 import type {
-  User,
   UserProfile,
   LoginRequest,
   SignupRequest,
@@ -10,8 +9,14 @@ import type {
   ChangePasswordRequest,
 } from "@/types";
 
+/** ログイン中のユーザー。プロフィールから同一性の判定に要る分だけ持つ。 */
+type SessionUser = {
+  id: string;
+  email?: string;
+};
+
 type AuthContextType = {
-  user: User | null;
+  user: SessionUser | null;
   profile: UserProfile | null;
   isLoading: boolean;
   isProfileLoading: boolean;
@@ -28,7 +33,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
@@ -38,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hydrateUser = useCallback(async () => {
     try {
       const profileData = await apiClient.getProfile();
-      const currentUser: User = {
+      const currentUser: SessionUser = {
         id: profileData.id,
         email: profileData.email,
       };

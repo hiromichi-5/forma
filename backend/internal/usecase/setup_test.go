@@ -27,7 +27,19 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func newUserRepo() repository.UserRepository     { return postgres.NewUserRepository(testPool) }
+func newUserRepo() repository.UserRepository { return postgres.NewUserRepository(testPool) }
+func newSessionRepo() repository.SessionRepository {
+	return postgres.NewSessionRepository(testPool)
+}
+
+func newEmailTokenRepo() repository.EmailVerificationTokenRepository {
+	return postgres.NewEmailVerificationTokenRepository(testPool)
+}
+
+func newResetTokenRepo() repository.PasswordResetTokenRepository {
+	return postgres.NewPasswordResetTokenRepository(testPool)
+}
+
 func newFormRepo() repository.FormRepository     { return postgres.NewFormRepository(testPool) }
 func newMemberRepo() repository.MemberRepository { return postgres.NewMemberRepository(testPool) }
 func newStatusRepo() repository.StatusRepository { return postgres.NewStatusRepository(testPool) }
@@ -37,9 +49,12 @@ func newNotificationRepo() repository.NotificationRepository {
 	return postgres.NewNotificationRepository(testPool)
 }
 
+func newAuthorizer() *usecase.Authorizer { return usecase.NewAuthorizer(newMemberRepo()) }
+
 func newAuthUseCase() *usecase.AuthUseCase {
 	return usecase.NewAuthUseCase(
-		newUserRepo(), postgres.NewAuthUoW(testPool),
+		newUserRepo(), newSessionRepo(), newEmailTokenRepo(), newResetTokenRepo(),
+		postgres.NewAuthUoW(testPool),
 		&mockEmailSender{}, "http://localhost:5173",
 	)
 }
@@ -57,19 +72,19 @@ func newFormUseCaseWithSyncer(
 	syncer usecase.FormSyncer,
 ) *usecase.FormUseCase {
 	return usecase.NewFormUseCase(
-		newFormRepo(), newMemberRepo(), newStatusRepo(), fetcher,
+		newFormRepo(), newMemberRepo(), newStatusRepo(), newAuthorizer(), fetcher,
 		postgres.NewFormUoW(testPool),
 		syncer,
 	)
 }
 
 func newMemberUseCase() *usecase.MemberUseCase {
-	return usecase.NewMemberUseCase(newMemberRepo(), newUserRepo())
+	return usecase.NewMemberUseCase(newMemberRepo(), newUserRepo(), newAuthorizer())
 }
 
 func newInviteUseCase() *usecase.InviteUseCase {
 	return usecase.NewInviteUseCase(
-		newInviteRepo(), newMemberRepo(), newUserRepo(),
+		newInviteRepo(), newMemberRepo(), newUserRepo(), newAuthorizer(),
 		postgres.NewInviteUoW(testPool),
 		&mockEmailSender{}, "http://localhost:5173",
 	)
@@ -77,7 +92,7 @@ func newInviteUseCase() *usecase.InviteUseCase {
 
 func newStatusUseCase() *usecase.StatusUseCase {
 	return usecase.NewStatusUseCase(
-		newStatusRepo(), newMemberRepo(), newTicketRepo(),
+		newStatusRepo(), newTicketRepo(), newAuthorizer(),
 		postgres.NewStatusUoW(testPool),
 	)
 }
@@ -95,7 +110,12 @@ func newTicketUseCaseWith(
 	notifier usecase.TicketNotifier,
 ) *usecase.TicketUseCase {
 	return usecase.NewTicketUseCase(
-		newTicketRepo(), newFormRepo(), newStatusRepo(), newMemberRepo(), newUserRepo(),
+		newTicketRepo(),
+		newFormRepo(),
+		newStatusRepo(),
+		newMemberRepo(),
+		newUserRepo(),
+		newAuthorizer(),
 		postgres.NewTicketUoW(testPool),
 		publisher,
 		notifier,
@@ -105,7 +125,7 @@ func newTicketUseCaseWith(
 func newNotificationUseCase(sender repository.EmailSender) *usecase.NotificationUseCase {
 	return usecase.NewNotificationUseCase(
 		newNotificationRepo(), newTicketRepo(), newFormRepo(), newStatusRepo(),
-		newMemberRepo(), newUserRepo(),
+		newUserRepo(), newAuthorizer(),
 		postgres.NewNotificationUoW(testPool),
 		sender,
 	)
@@ -113,7 +133,7 @@ func newNotificationUseCase(sender repository.EmailSender) *usecase.Notification
 
 func newSyncUseCase(fetcher repository.FormFetcher) *usecase.SyncUseCase {
 	return usecase.NewSyncUseCase(
-		newFormRepo(), newTicketRepo(), newStatusRepo(), newMemberRepo(), fetcher,
+		newFormRepo(), newTicketRepo(), newStatusRepo(), newAuthorizer(), fetcher,
 	)
 }
 

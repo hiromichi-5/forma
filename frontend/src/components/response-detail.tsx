@@ -3,7 +3,7 @@
 import type React from "react";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import type { FormResponse, User as MemberUser } from "@/types/form-response";
+import type { User as MemberUser } from "@/types/form-response";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,10 +31,19 @@ import {
   fallbackStatusColor,
   hexToRgba,
   priorityConfig,
+  respondentEmailLabel,
   sortStatuses,
+  statusById,
   toPriorityValue,
 } from "@/lib/ticket-display";
-import type { FormStatus, NotificationType, TicketHistory } from "@/types";
+import type {
+  FormStatus,
+  NotificationType,
+  TicketDetail,
+  TicketHistory,
+  TicketPriority,
+  TicketSummary,
+} from "@/types";
 
 type TimelineItem =
   | {
@@ -53,7 +62,9 @@ type TimelineItem =
     };
 
 type ResponseDetailProps = {
-  response: FormResponse;
+  response: TicketSummary;
+  /** 回答本文と通知履歴。一覧には含まれないため、読み込みが終わるまで undefined。 */
+  detail: TicketDetail | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentUserId: string;
@@ -62,7 +73,7 @@ type ResponseDetailProps = {
   statuses: FormStatus[];
   onStatusChange: (id: string, statusId: string) => void;
   onAssignChange: (id: string, userId: string | null) => void;
-  onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
+  onPriorityChange: (id: string, priority: TicketPriority) => void;
   onSendNotification?: (
     responseId: string,
     notificationType: NotificationType
@@ -71,6 +82,7 @@ type ResponseDetailProps = {
 
 export function ResponseDetail({
   response,
+  detail,
   open,
   onOpenChange,
   currentUserId,
@@ -83,6 +95,9 @@ export function ResponseDetail({
   onSendNotification,
 }: ResponseDetailProps) {
   const sortedStatuses = sortStatuses(statuses);
+  const email = respondentEmailLabel(response.respondent_email);
+  const status =
+    statusById(statuses).get(response.status.id) ?? response.status;
   const [sendingNotification, setSendingNotification] =
     useState<NotificationType | null>(null);
 
@@ -96,12 +111,12 @@ export function ResponseDetail({
     }
   };
 
-  const getLastSentAt = (notificationType: NotificationType): Date | null =>
-    response.notifications.find((n) => n.notificationType === notificationType)
-      ?.lastSentAt ?? null;
+  const getLastSentAt = (notificationType: NotificationType): string | null =>
+    detail?.notifications.find((n) => n.notification_type === notificationType)
+      ?.last_sent_at ?? null;
 
-  const formatLastSentAt = (date: Date | null): string =>
-    date ? `最終送信: ${format(date, "MM/dd HH:mm")}` : "未送信";
+  const formatLastSentAt = (sentAt: string | null): string =>
+    sentAt ? `最終送信: ${format(new Date(sentAt), "MM/dd HH:mm")}` : "未送信";
   const { messages, sendMessage } = useChatMessages(response.id);
   const { histories } = useTicketHistories(response.id);
   const [inputValue, setInputValue] = useState("");
@@ -153,12 +168,7 @@ export function ResponseDetail({
 
   const handleSend = () => {
     if (inputValue.trim()) {
-      sendMessage(
-        inputValue.trim(),
-        currentUserId,
-        currentUserName,
-        response.respondentEmail
-      );
+      sendMessage(inputValue.trim(), currentUserId, currentUserName, email);
       setInputValue("");
     }
   };
@@ -217,8 +227,8 @@ export function ResponseDetail({
       <DialogContent className="flex h-[90vh] max-w-7xl flex-col gap-0 overflow-hidden p-0 sm:max-w-7xl">
         <div className="border-b p-4 pr-12">
           <DialogHeader className="flex-row items-center justify-between gap-3 text-left">
-            <DialogTitle>{response.respondentEmail}の詳細</DialogTitle>
-            {onSendNotification && response.hasRespondentEmail && (
+            <DialogTitle>{email}の詳細</DialogTitle>
+            {onSendNotification && response.respondent_email && (
               <div className="flex items-center gap-3">
                 <div className="flex flex-col items-center gap-1">
                   <Button
@@ -239,9 +249,7 @@ export function ResponseDetail({
                     variant="outline"
                     size="sm"
                     onClick={() => handleSendNotification("assignee_assigned")}
-                    disabled={
-                      sendingNotification !== null || response.assignedTo === null
-                    }
+                    disabled={sendingNotification !== null || !response.assignee}
                   >
                     <Mail className="h-4 w-4" />
                     担当者を通知
@@ -258,7 +266,7 @@ export function ResponseDetail({
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-muted-foreground">ステータス</span>
               <Select
-                value={response.status}
+                value={response.status.id}
                 onValueChange={(value) => onStatusChange(response.id, value)}
               >
                 <SelectTrigger
@@ -268,17 +276,16 @@ export function ResponseDetail({
                   <div
                     className="flex items-center gap-2 px-2 py-1 rounded"
                     style={{
-                      backgroundColor: hexToRgba(response.statusColor, 0.1),
+                      backgroundColor: hexToRgba(status.color, 0.1),
                     }}
                   >
                     <div
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{
-                        backgroundColor:
-                          response.statusColor || fallbackStatusColor,
+                        backgroundColor: status.color || fallbackStatusColor,
                       }}
                     />
-                    <span className="text-sm">{response.statusName}</span>
+                    <span className="text-sm">{status.name}</span>
                   </div>
                 </SelectTrigger>
                 <SelectContent>
@@ -294,7 +301,7 @@ export function ResponseDetail({
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-muted-foreground">担当者</span>
               <Select
-                value={response.assignedTo || "unassigned"}
+                value={response.assignee?.id ?? "unassigned"}
                 onValueChange={(value) =>
                   onAssignChange(
                     response.id,
@@ -364,27 +371,31 @@ export function ResponseDetail({
               <div className="flex items-center gap-2 mb-3">
                 <Badge variant="outline">元の回答</Badge>
                 <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(response.submittedAt, {
+                  {formatDistanceToNow(new Date(response.submitted_at), {
                     addSuffix: true,
                     locale: ja,
                   })}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  ({format(response.submittedAt, "yyyy/MM/dd HH:mm")})
+                  ({format(new Date(response.submitted_at), "yyyy/MM/dd HH:mm")})
                 </span>
               </div>
               <div className="space-y-3">
-                {response.questions.map((question, index) => (
-                  <div
-                    key={`${question.questionId}-${index}`}
-                    className="bg-muted/50 p-3 rounded-lg"
-                  >
-                    <p className="font-medium text-muted-foreground text-xs mb-1">
-                      {question.question}
-                    </p>
-                    <p className="text-sm">{question.answer}</p>
-                  </div>
-                ))}
+                {detail ? (
+                  detail.answers.map((answer, index) => (
+                    <div
+                      key={`${answer.question_id}-${index}`}
+                      className="bg-muted/50 p-3 rounded-lg"
+                    >
+                      <p className="font-medium text-muted-foreground text-xs mb-1">
+                        {answer.question_title}
+                      </p>
+                      <p className="text-sm">{answer.display_value}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">読み込み中...</p>
+                )}
               </div>
             </div>
 

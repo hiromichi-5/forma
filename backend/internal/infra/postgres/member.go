@@ -22,9 +22,9 @@ func NewMemberRepository(pool *pgxpool.Pool) *MemberRepository {
 
 func (r *MemberRepository) Upsert(
 	ctx context.Context,
-	userID uuid.UUID,
 	formID uuid.UUID,
-	role string,
+	userID uuid.UUID,
+	role entity.Role,
 ) error {
 	return r.q.UpsertFormMember(ctx, db.UpsertFormMemberParams{
 		UserID: toUUID(userID),
@@ -33,7 +33,7 @@ func (r *MemberRepository) Upsert(
 	})
 }
 
-func (r *MemberRepository) Delete(ctx context.Context, userID uuid.UUID, formID uuid.UUID) error {
+func (r *MemberRepository) Delete(ctx context.Context, formID uuid.UUID, userID uuid.UUID) error {
 	n, err := r.q.DeleteFormMember(ctx, db.DeleteFormMemberParams{
 		UserID: toUUID(userID),
 		FormID: toUUID(formID),
@@ -46,9 +46,9 @@ func (r *MemberRepository) Delete(ctx context.Context, userID uuid.UUID, formID 
 
 func (r *MemberRepository) GetRole(
 	ctx context.Context,
-	userID uuid.UUID,
 	formID uuid.UUID,
-) (string, error) {
+	userID uuid.UUID,
+) (entity.Role, error) {
 	role, err := r.q.GetFormMemberRole(ctx, db.GetFormMemberRoleParams{
 		UserID: toUUID(userID),
 		FormID: toUUID(formID),
@@ -56,7 +56,7 @@ func (r *MemberRepository) GetRole(
 	if err != nil {
 		return "", repoError(err)
 	}
-	return string(role), nil
+	return entity.Role(role), nil
 }
 
 func (r *MemberRepository) List(ctx context.Context, formID uuid.UUID) ([]entity.Member, error) {
@@ -67,10 +67,12 @@ func (r *MemberRepository) List(ctx context.Context, formID uuid.UUID) ([]entity
 	result := make([]entity.Member, len(rows))
 	for i, row := range rows {
 		result[i] = entity.Member{
-			ID:          fromUUID(row.ID),
-			Email:       row.Email,
-			DisplayName: row.DisplayName,
-			Role:        string(row.Role),
+			UserRef: entity.UserRef{
+				ID:          fromUUID(row.ID),
+				Email:       row.Email,
+				DisplayName: row.DisplayName,
+			},
+			Role: entity.Role(row.Role),
 		}
 	}
 	return result, nil
@@ -91,10 +93,10 @@ func (r *MemberRepository) ListAccessibleForms(
 	result := make([]entity.Form, len(rows))
 	for i, row := range rows {
 		result[i] = entity.Form{
-			ID:       fromUUID(row.ID),
-			FormID:   row.FormID,
-			Title:    row.Title,
-			SyncedAt: fromTimestamptzPtr(row.SyncedAt),
+			ID:           fromUUID(row.ID),
+			GoogleFormID: row.FormID,
+			Title:        row.Title,
+			SyncedAt:     fromTimestamptzPtr(row.SyncedAt),
 		}
 	}
 	return result, nil

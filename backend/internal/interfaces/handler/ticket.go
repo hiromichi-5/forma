@@ -23,10 +23,7 @@ type TicketUseCase interface {
 	UpdateTicket(
 		ctx context.Context,
 		ticketID, userID uuid.UUID,
-		statusID *uuid.UUID,
-		assigneeID *uuid.UUID,
-		clearAssignee bool,
-		priority *string,
+		in usecase.UpdateTicketInput,
 	) (usecase.TicketDetail, []usecase.NotificationResult, error)
 }
 
@@ -123,6 +120,17 @@ func (n *nullableUUIDPayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (n nullableUUIDPayload) assigneeChange() entity.AssigneeChange {
+	switch {
+	case !n.set:
+		return entity.KeepAssignee()
+	case n.null:
+		return entity.ClearAssignee()
+	default:
+		return entity.SetAssignee(n.value)
+	}
+}
+
 func (h *TicketHandler) PatchV1TicketsTicketId(c *gin.Context) {
 	userID, ok := middleware.UserID(c)
 	if !ok {
@@ -151,26 +159,11 @@ func (h *TicketHandler) PatchV1TicketsTicketId(c *gin.Context) {
 		statusID = &sid
 	}
 
-	var assigneeID *uuid.UUID
-	clearAssignee := false
-	if req.Assignee.set {
-		if req.Assignee.null {
-			clearAssignee = true
-		} else {
-			id := req.Assignee.value
-			assigneeID = &id
-		}
-	}
-
-	detail, results, err := h.uc.UpdateTicket(
-		c,
-		ticketID,
-		userID,
-		statusID,
-		assigneeID,
-		clearAssignee,
-		req.Priority,
-	)
+	detail, results, err := h.uc.UpdateTicket(c, ticketID, userID, usecase.UpdateTicketInput{
+		StatusID: statusID,
+		Assignee: req.Assignee.assigneeChange(),
+		Priority: (*entity.Priority)(req.Priority),
+	})
 	if err != nil {
 		handleError(c, err)
 		return

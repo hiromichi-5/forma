@@ -14,7 +14,10 @@ import (
 
 const ctxUserID = "userID"
 
-func SessionMiddleware(userRepo repository.UserRepository, cookieName string) gin.HandlerFunc {
+func SessionMiddleware(
+	sessionRepo repository.SessionRepository,
+	cookieName string,
+) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if cookieName == "" {
 			abortInvalidSession(c)
@@ -32,7 +35,7 @@ func SessionMiddleware(userRepo repository.UserRepository, cookieName string) gi
 		}
 		log := logger.From(c.Request.Context())
 
-		session, err := userRepo.GetSessionByID(c, sid)
+		session, err := sessionRepo.GetByID(c, sid)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				log.Debug("session not found")

@@ -12,28 +12,32 @@ import (
 type MemberUseCase struct {
 	memberRepo repository.MemberRepository
 	userRepo   repository.UserRepository
+	authz      *Authorizer
 }
 
 func NewMemberUseCase(
 	memberRepo repository.MemberRepository,
 	userRepo repository.UserRepository,
+	authz *Authorizer,
 ) *MemberUseCase {
 	return &MemberUseCase{
 		memberRepo: memberRepo,
 		userRepo:   userRepo,
+		authz:      authz,
 	}
 }
 
 func (uc *MemberUseCase) AddMember(
 	ctx context.Context,
 	formID, userID uuid.UUID,
-	email, role string,
+	email string,
+	role entity.Role,
 ) error {
-	if role != entity.RoleAdmin && role != entity.RoleEditor {
+	if !role.Valid() {
 		return entity.NewError(entity.CodeValidation)
 	}
 
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return err
 	}
 
@@ -45,29 +49,29 @@ func (uc *MemberUseCase) AddMember(
 		return err
 	}
 
-	if _, err := uc.memberRepo.GetRole(ctx, target.ID, formID); err == nil {
+	if _, err := uc.memberRepo.GetRole(ctx, formID, target.ID); err == nil {
 		return entity.NewError(entity.CodeAlreadyMember)
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return err
 	}
 
-	return uc.memberRepo.Upsert(ctx, target.ID, formID, role)
+	return uc.memberRepo.Upsert(ctx, formID, target.ID, role)
 }
 
 func (uc *MemberUseCase) ChangeRole(
 	ctx context.Context,
 	formID, userID, targetUserID uuid.UUID,
-	role string,
+	role entity.Role,
 ) error {
-	if role != entity.RoleAdmin && role != entity.RoleEditor {
+	if !role.Valid() {
 		return entity.NewError(entity.CodeValidation)
 	}
 
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return err
 	}
 
-	currentRole, err := uc.memberRepo.GetRole(ctx, targetUserID, formID)
+	currentRole, err := uc.memberRepo.GetRole(ctx, formID, targetUserID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeResourceHidden)
@@ -79,20 +83,20 @@ func (uc *MemberUseCase) ChangeRole(
 		return nil
 	}
 
-	if role != entity.RoleAdmin {
+	if !role.CanAdmin() {
 		if err := uc.ensureFormKeepsAdmin(ctx, formID, targetUserID); err != nil {
 			return err
 		}
 	}
 
-	return uc.memberRepo.Upsert(ctx, targetUserID, formID, role)
+	return uc.memberRepo.Upsert(ctx, formID, targetUserID, role)
 }
 
 func (uc *MemberUseCase) RemoveMember(
 	ctx context.Context,
 	formID, userID, targetUserID uuid.UUID,
 ) error {
-	if err := requireAdmin(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireAdmin(ctx, formID, userID); err != nil {
 		return err
 	}
 
@@ -100,7 +104,7 @@ func (uc *MemberUseCase) RemoveMember(
 		return err
 	}
 
-	if err := uc.memberRepo.Delete(ctx, targetUserID, formID); err != nil {
+	if err := uc.memberRepo.Delete(ctx, formID, targetUserID); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil
 		}
@@ -113,7 +117,7 @@ func (uc *MemberUseCase) ListMembers(
 	ctx context.Context,
 	formID, userID uuid.UUID,
 ) ([]entity.Member, error) {
-	if err := requireEditor(ctx, uc.memberRepo, formID, userID); err != nil {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
 		return nil, err
 	}
 	return uc.memberRepo.List(ctx, formID)
@@ -123,14 +127,14 @@ func (uc *MemberUseCase) ensureFormKeepsAdmin(
 	ctx context.Context,
 	formID, targetUserID uuid.UUID,
 ) error {
-	role, err := uc.memberRepo.GetRole(ctx, targetUserID, formID)
+	role, err := uc.memberRepo.GetRole(ctx, formID, targetUserID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil
 		}
 		return err
 	}
-	if role != entity.RoleAdmin {
+	if !role.CanAdmin() {
 		return nil
 	}
 	count, err := uc.memberRepo.CountAdmins(ctx, formID)

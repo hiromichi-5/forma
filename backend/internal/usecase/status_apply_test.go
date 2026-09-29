@@ -29,9 +29,7 @@ func TestApplyStatusUpdate(t *testing.T) {
 	tests := []struct {
 		name        string
 		current     entity.FormStatus
-		nameArg     *string
-		colorArg    *string
-		orderArg    *int32
+		in          UpdateStatusInput
 		wantName    string
 		wantColor   *string
 		wantOrder   int32
@@ -48,7 +46,7 @@ func TestApplyStatusUpdate(t *testing.T) {
 		{
 			name:      "名前を更新できること",
 			current:   base,
-			nameArg:   strp("対応中"),
+			in:        UpdateStatusInput{Name: strp("対応中")},
 			wantName:  "対応中",
 			wantColor: base.Color,
 			wantOrder: base.DisplayOrder,
@@ -56,21 +54,21 @@ func TestApplyStatusUpdate(t *testing.T) {
 		{
 			name:        "空文字名はバリデーションエラー",
 			current:     base,
-			nameArg:     strp(""),
+			in:          UpdateStatusInput{Name: strp("")},
 			wantErr:     true,
 			wantErrCode: entity.CodeValidation,
 		},
 		{
 			name:        "空白のみの名前はバリデーションエラー",
 			current:     base,
-			nameArg:     strp("   "),
+			in:          UpdateStatusInput{Name: strp("   ")},
 			wantErr:     true,
 			wantErrCode: entity.CodeValidation,
 		},
 		{
 			name:      "色を更新できること",
 			current:   base,
-			colorArg:  strp("#43A047"),
+			in:        UpdateStatusInput{Color: strp("#43A047")},
 			wantName:  base.Name,
 			wantColor: strp("#43A047"),
 			wantOrder: base.DisplayOrder,
@@ -78,7 +76,7 @@ func TestApplyStatusUpdate(t *testing.T) {
 		{
 			name:      "空文字色でnilにリセットできること",
 			current:   base,
-			colorArg:  strp(""),
+			in:        UpdateStatusInput{Color: strp("")},
 			wantName:  base.Name,
 			wantColor: nil,
 			wantOrder: base.DisplayOrder,
@@ -86,7 +84,7 @@ func TestApplyStatusUpdate(t *testing.T) {
 		{
 			name:      "displayOrderを更新できること",
 			current:   base,
-			orderArg:  int32p(5),
+			in:        UpdateStatusInput{DisplayOrder: int32p(5)},
 			wantName:  base.Name,
 			wantColor: base.Color,
 			wantOrder: 5,
@@ -94,31 +92,33 @@ func TestApplyStatusUpdate(t *testing.T) {
 		{
 			name:        "displayOrder 0 はバリデーションエラー",
 			current:     base,
-			orderArg:    int32p(0),
+			in:          UpdateStatusInput{DisplayOrder: int32p(0)},
 			wantErr:     true,
 			wantErrCode: entity.CodeValidation,
 		},
 		{
 			name:        "displayOrder 負数はバリデーションエラー",
 			current:     base,
-			orderArg:    int32p(-1),
+			in:          UpdateStatusInput{DisplayOrder: int32p(-1)},
 			wantErr:     true,
 			wantErrCode: entity.CodeValidation,
 		},
 		{
 			name:      "displayOrder 1に更新できること",
 			current:   base,
-			orderArg:  int32p(1),
+			in:        UpdateStatusInput{DisplayOrder: int32p(1)},
 			wantName:  base.Name,
 			wantColor: base.Color,
 			wantOrder: 1,
 		},
 		{
-			name:      "すべてのフィールドを同時に更新できること",
-			current:   base,
-			nameArg:   strp("完了"),
-			colorArg:  strp("#00BCD4"),
-			orderArg:  int32p(3),
+			name:    "すべてのフィールドを同時に更新できること",
+			current: base,
+			in: UpdateStatusInput{
+				Name:         strp("完了"),
+				Color:        strp("#00BCD4"),
+				DisplayOrder: int32p(3),
+			},
 			wantName:  "完了",
 			wantColor: strp("#00BCD4"),
 			wantOrder: 3,
@@ -128,7 +128,7 @@ func TestApplyStatusUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := applyStatusUpdate(tt.current, tt.nameArg, tt.colorArg, tt.orderArg)
+			got, err := applyStatusUpdate(tt.current, tt.in)
 			if tt.wantErr {
 				require.Error(t, err)
 				var appErr *entity.Error

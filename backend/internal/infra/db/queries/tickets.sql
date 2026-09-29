@@ -18,14 +18,12 @@ SELECT id, form_id, response_id, respondent_email, answers,
 FROM tickets
 WHERE id = $1;
 
--- name: UpdateTicketStatus :execrows
-UPDATE tickets SET status_id = $2 WHERE id = $1;
-
--- name: UpdateTicketAssignee :execrows
-UPDATE tickets SET assignee_id = $2 WHERE id = $1;
-
--- name: UpdateTicketPriority :execrows
-UPDATE tickets SET priority = $2 WHERE id = $1;
+-- name: UpdateTicket :execrows
+UPDATE tickets
+SET status_id = $2,
+    assignee_id = $3,
+    priority = $4
+WHERE id = $1;
 
 -- name: CountTicketsByStatus :one
 SELECT COUNT(1)

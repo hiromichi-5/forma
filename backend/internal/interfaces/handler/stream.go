@@ -15,8 +15,11 @@ import (
 )
 
 type StreamUseCase interface {
-	CheckFormAccess(ctx context.Context, formID, userID uuid.UUID) error
 	GetTicket(ctx context.Context, ticketID, userID uuid.UUID) (usecase.TicketDetail, error)
+}
+
+type FormAuthorizer interface {
+	RequireEditor(ctx context.Context, formID, userID uuid.UUID) error
 }
 
 type EventSubscriber interface {
@@ -24,12 +27,17 @@ type EventSubscriber interface {
 }
 
 type StreamHandler struct {
-	uc  StreamUseCase
-	hub EventSubscriber
+	uc    StreamUseCase
+	authz FormAuthorizer
+	hub   EventSubscriber
 }
 
-func NewStreamHandler(uc StreamUseCase, hub EventSubscriber) *StreamHandler {
-	return &StreamHandler{uc: uc, hub: hub}
+func NewStreamHandler(
+	uc StreamUseCase,
+	authz FormAuthorizer,
+	hub EventSubscriber,
+) *StreamHandler {
+	return &StreamHandler{uc: uc, authz: authz, hub: hub}
 }
 
 type ticketUpdatedEventData struct {
@@ -51,7 +59,7 @@ func (h *StreamHandler) GetV1FormsFormIdStream(c *gin.Context) {
 		return
 	}
 
-	if err := h.uc.CheckFormAccess(c.Request.Context(), formID, userID); err != nil {
+	if err := h.authz.RequireEditor(c.Request.Context(), formID, userID); err != nil {
 		handleError(c, err)
 		return
 	}

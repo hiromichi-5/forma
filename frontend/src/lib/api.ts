@@ -33,9 +33,15 @@ import type {
   SentNotificationResponse,
   UserProfile,
   UpdateUserProfileRequest,
-  ErrorResponse,
   ChangePasswordRequest,
+  Error as ApiErrorBody,
+  ErrorCode as ServerErrorCode,
 } from "../types";
+
+/** ネットワークに到達できない場合はレスポンス自体が無いため、クライアント側でコードを補う。 */
+export type ErrorCode = ServerErrorCode | "NETWORK_ERROR";
+
+export type ErrorResponse = Omit<ApiErrorBody, "code"> & { code: ErrorCode };
 
 export class ApiError extends Error {
   status: number;
