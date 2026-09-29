@@ -30,24 +30,24 @@ func (r *EmailVerificationTokenRepository) Create(
 	row, err := r.q.CreateEmailVerificationToken(ctx, db.CreateEmailVerificationTokenParams{
 		ID:        toUUID(token.ID),
 		UserID:    toUUID(token.UserID),
-		Token:     token.Token,
+		TokenHash: hashToken(token.Token),
 		ExpiresAt: toTimestamptz(token.ExpiresAt),
 	})
 	if err != nil {
 		return entity.EmailVerificationToken{}, repoError(err)
 	}
-	return toEmailVerificationToken(row), nil
+	return toEmailVerificationToken(row, token.Token), nil
 }
 
 func (r *EmailVerificationTokenRepository) GetByToken(
 	ctx context.Context,
 	token string,
 ) (entity.EmailVerificationToken, error) {
-	row, err := r.q.GetEmailVerificationTokenByToken(ctx, token)
+	row, err := r.q.GetEmailVerificationTokenByTokenHash(ctx, hashToken(token))
 	if err != nil {
 		return entity.EmailVerificationToken{}, repoError(err)
 	}
-	return toEmailVerificationToken(row), nil
+	return toEmailVerificationToken(row, token), nil
 }
 
 func (r *EmailVerificationTokenRepository) Use(ctx context.Context, id uuid.UUID) error {
@@ -80,24 +80,35 @@ func (r *PasswordResetTokenRepository) Create(
 	row, err := r.q.CreatePasswordResetToken(ctx, db.CreatePasswordResetTokenParams{
 		ID:        toUUID(token.ID),
 		UserID:    toUUID(token.UserID),
-		Token:     token.Token,
+		TokenHash: hashToken(token.Token),
 		ExpiresAt: toTimestamptz(token.ExpiresAt),
 	})
 	if err != nil {
 		return entity.PasswordResetToken{}, repoError(err)
 	}
-	return toPasswordResetToken(row), nil
+	return toPasswordResetToken(row, token.Token), nil
 }
 
 func (r *PasswordResetTokenRepository) GetByToken(
 	ctx context.Context,
 	token string,
 ) (entity.PasswordResetToken, error) {
-	row, err := r.q.GetPasswordResetTokenByToken(ctx, token)
+	row, err := r.q.GetPasswordResetTokenByTokenHash(ctx, hashToken(token))
 	if err != nil {
 		return entity.PasswordResetToken{}, repoError(err)
 	}
-	return toPasswordResetToken(row), nil
+	return toPasswordResetToken(row, token), nil
+}
+
+func (r *PasswordResetTokenRepository) GetLatestByUser(
+	ctx context.Context,
+	userID uuid.UUID,
+) (entity.PasswordResetToken, error) {
+	row, err := r.q.GetLatestPasswordResetTokenByUser(ctx, toUUID(userID))
+	if err != nil {
+		return entity.PasswordResetToken{}, repoError(err)
+	}
+	return toPasswordResetToken(row, ""), nil
 }
 
 func (r *PasswordResetTokenRepository) Use(ctx context.Context, id uuid.UUID) error {
@@ -112,20 +123,24 @@ func (r *PasswordResetTokenRepository) DeleteByUser(ctx context.Context, userID 
 	return r.q.DeletePasswordResetTokensByUser(ctx, toUUID(userID))
 }
 
-func toEmailVerificationToken(row db.EmailVerificationToken) entity.EmailVerificationToken {
+func toEmailVerificationToken(
+	row db.EmailVerificationToken,
+	token string,
+) entity.EmailVerificationToken {
 	return entity.EmailVerificationToken{
 		ID:        fromUUID(row.ID),
 		UserID:    fromUUID(row.UserID),
-		Token:     row.Token,
+		Token:     token,
 		ExpiresAt: fromTimestamptz(row.ExpiresAt),
 	}
 }
 
-func toPasswordResetToken(row db.PasswordResetToken) entity.PasswordResetToken {
+func toPasswordResetToken(row db.PasswordResetToken, token string) entity.PasswordResetToken {
 	return entity.PasswordResetToken{
 		ID:        fromUUID(row.ID),
 		UserID:    fromUUID(row.UserID),
-		Token:     row.Token,
+		Token:     token,
 		ExpiresAt: fromTimestamptz(row.ExpiresAt),
+		CreatedAt: fromTimestamptz(row.CreatedAt),
 	}
 }

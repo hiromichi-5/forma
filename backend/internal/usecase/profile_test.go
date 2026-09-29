@@ -149,10 +149,10 @@ func TestProfileUseCase_ChangePassword(t *testing.T) {
 		require.NoError(t, err)
 
 		sessionRepo := newSessionRepo()
-		_, err = sessionRepo.GetByID(ctx, current.ID)
+		_, err = sessionRepo.GetByToken(ctx, current.Token)
 		assert.NoError(t, err)
 
-		_, err = sessionRepo.GetByID(ctx, other.ID)
+		_, err = sessionRepo.GetByToken(ctx, other.Token)
 		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 

@@ -52,10 +52,17 @@ func newNotificationRepo() repository.NotificationRepository {
 func newAuthorizer() *usecase.Authorizer { return usecase.NewAuthorizer(newMemberRepo()) }
 
 func newAuthUseCase() *usecase.AuthUseCase {
+	return newAuthUseCaseWith(&mockEmailSender{}, allowAllLimiter{})
+}
+
+func newAuthUseCaseWith(
+	sender repository.EmailSender,
+	limiter usecase.RateLimiter,
+) *usecase.AuthUseCase {
 	return usecase.NewAuthUseCase(
 		newUserRepo(), newSessionRepo(), newEmailTokenRepo(), newResetTokenRepo(),
 		postgres.NewAuthUoW(testPool),
-		&mockEmailSender{}, "http://localhost:5173",
+		sender, limiter, "http://localhost:5173",
 	)
 }
 
@@ -137,15 +144,29 @@ func newSyncUseCase(fetcher repository.FormFetcher) *usecase.SyncUseCase {
 	)
 }
 
+type allowAllLimiter struct{}
+
+func (allowAllLimiter) Allow(string) bool { return true }
+
 type mockEmailSender struct {
 	sendEmailFunc func(ctx context.Context, input repository.SendEmailInput) error
+	sent          []repository.SendEmailInput
 }
 
 func (m *mockEmailSender) SendEmail(ctx context.Context, input repository.SendEmailInput) error {
+	m.sent = append(m.sent, input)
 	if m.sendEmailFunc != nil {
 		return m.sendEmailFunc(ctx, input)
 	}
 	return nil
+}
+
+func (m *mockEmailSender) lastToken(t *testing.T) string {
+	t.Helper()
+	if len(m.sent) == 0 {
+		t.Fatal("no email sent")
+	}
+	return testutil.TokenFromEmail(t, m.sent[len(m.sent)-1])
 }
 
 type mockFormFetcher struct {

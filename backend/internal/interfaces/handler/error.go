@@ -42,6 +42,10 @@ var errorDefs = map[entity.Code]errorDef{
 		http.StatusTooManyRequests,
 		"メールの送信間隔には制限があります。しばらく時間を置いてから再度実行してください",
 	},
+	entity.CodeRateLimited: {
+		http.StatusTooManyRequests,
+		"試行回数が上限に達しました。しばらく時間を置いてから再度実行してください",
+	},
 	entity.CodeValidation: {http.StatusBadRequest, "入力内容に誤りがあります"},
 }
 

@@ -16,9 +16,14 @@ import (
 )
 
 const (
-	tokenTTL   = 24 * time.Hour
-	sessionTTL = 14 * 24 * time.Hour
+	tokenTTL              = 24 * time.Hour
+	sessionTTL            = 14 * 24 * time.Hour
+	passwordResetCooldown = 5 * time.Minute
 )
+
+type RateLimiter interface {
+	Allow(key string) bool
+}
 
 type AuthUseCase struct {
 	userRepo        repository.UserRepository
@@ -27,6 +32,7 @@ type AuthUseCase struct {
 	resetTokenRepo  repository.PasswordResetTokenRepository
 	uow             repository.UnitOfWork[repository.AuthRepos]
 	emailSender     repository.EmailSender
+	loginLimiter    RateLimiter
 	frontendBaseURL string
 	now             func() time.Time
 	generateToken   func() (string, error)
@@ -39,6 +45,7 @@ func NewAuthUseCase(
 	resetTokenRepo repository.PasswordResetTokenRepository,
 	uow repository.UnitOfWork[repository.AuthRepos],
 	emailSender repository.EmailSender,
+	loginLimiter RateLimiter,
 	frontendBaseURL string,
 ) *AuthUseCase {
 	return &AuthUseCase{
@@ -48,10 +55,15 @@ func NewAuthUseCase(
 		resetTokenRepo:  resetTokenRepo,
 		uow:             uow,
 		emailSender:     emailSender,
+		loginLimiter:    loginLimiter,
 		frontendBaseURL: frontendBaseURL,
 		now:             time.Now,
 		generateToken:   defaultToken,
 	}
+}
+
+func rateLimitKey(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 func defaultToken() (string, error) {
@@ -70,6 +82,9 @@ func (uc *AuthUseCase) Authenticate(
 	if email == "" || password == "" {
 		return entity.Session{}, entity.NewError(entity.CodeValidation)
 	}
+	if !uc.loginLimiter.Allow(rateLimitKey(email)) {
+		return entity.Session{}, entity.NewError(entity.CodeRateLimited)
+	}
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
@@ -87,9 +102,14 @@ func (uc *AuthUseCase) Authenticate(
 		return entity.Session{}, entity.NewError(entity.CodeEmailNotVerified)
 	}
 
+	token, err := uc.generateToken()
+	if err != nil {
+		return entity.Session{}, err
+	}
 	session, err := uc.sessionRepo.Create(ctx, entity.Session{
 		ID:        uuid.New(),
 		UserID:    user.ID,
+		Token:     token,
 		ExpiresAt: uc.now().Add(sessionTTL),
 	})
 	if err != nil {
@@ -191,8 +211,8 @@ func (uc *AuthUseCase) Signup(
 	return createdUserID, nil
 }
 
-func (uc *AuthUseCase) Logout(ctx context.Context, sessionID uuid.UUID) error {
-	err := uc.sessionRepo.Delete(ctx, sessionID)
+func (uc *AuthUseCase) Logout(ctx context.Context, sessionToken string) error {
+	err := uc.sessionRepo.DeleteByToken(ctx, sessionToken)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeInvalidSession)
@@ -285,6 +305,17 @@ func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) e
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil
 		}
+		return err
+	}
+
+	// 直前に発行したトークンがあれば送信しない。
+	// エラーにするとユーザーの存在が応答から分かってしまうため、存在しない場合と同じく成功として扱う。
+	latest, err := uc.resetTokenRepo.GetLatestByUser(ctx, user.ID)
+	if err == nil && uc.now().Sub(latest.CreatedAt) < passwordResetCooldown {
+		logger.From(ctx).Info("password reset skipped (cooldown)", "user_id", user.ID.String())
+		return nil
+	}
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return err
 	}
 

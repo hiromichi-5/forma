@@ -12,36 +12,43 @@ import (
 )
 
 const createSession = `-- name: CreateSession :one
-INSERT INTO sessions (id, user_id, expires_at)
-VALUES ($1, $2, $3)
-RETURNING id, user_id, created_at, expires_at
+INSERT INTO sessions (id, user_id, token_hash, expires_at)
+VALUES ($1, $2, $3, $4)
+RETURNING id, user_id, created_at, expires_at, token_hash
 `
 
 type CreateSessionParams struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`
+	TokenHash []byte             `json:"token_hash"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
-	row := q.db.QueryRow(ctx, createSession, arg.ID, arg.UserID, arg.ExpiresAt)
+	row := q.db.QueryRow(ctx, createSession,
+		arg.ID,
+		arg.UserID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
 	var i Session
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.TokenHash,
 	)
 	return i, err
 }
 
-const deleteSession = `-- name: DeleteSession :execrows
+const deleteSessionByTokenHash = `-- name: DeleteSessionByTokenHash :execrows
 DELETE FROM sessions
-WHERE id = $1
+WHERE token_hash = $1
 `
 
-func (q *Queries) DeleteSession(ctx context.Context, id pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteSession, id)
+func (q *Queries) DeleteSessionByTokenHash(ctx context.Context, tokenHash []byte) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSessionByTokenHash, tokenHash)
 	if err != nil {
 		return 0, err
 	}
@@ -74,21 +81,22 @@ func (q *Queries) DeleteSessionsByUserExcept(ctx context.Context, arg DeleteSess
 	return err
 }
 
-const getSessionByID = `-- name: GetSessionByID :one
-SELECT id, user_id, created_at, expires_at
+const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
+SELECT id, user_id, created_at, expires_at, token_hash
 FROM sessions
-WHERE id = $1
+WHERE token_hash = $1
   AND expires_at > NOW()
 `
 
-func (q *Queries) GetSessionByID(ctx context.Context, id pgtype.UUID) (Session, error) {
-	row := q.db.QueryRow(ctx, getSessionByID, id)
+func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (Session, error) {
+	row := q.db.QueryRow(ctx, getSessionByTokenHash, tokenHash)
 	var i Session
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.TokenHash,
 	)
 	return i, err
 }

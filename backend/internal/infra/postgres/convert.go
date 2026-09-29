@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"crypto/sha256"
 	"time"
 
 	"github.com/google/uuid"
@@ -69,4 +70,10 @@ func fromTextPtr(t pgtype.Text) *string {
 	}
 	v := t.String
 	return &v
+}
+
+// トークンは十分なエントロピーを持つため、ソルトなしの SHA-256 で保存する。
+func hashToken(token string) []byte {
+	sum := sha256.Sum256([]byte(token))
+	return sum[:]
 }

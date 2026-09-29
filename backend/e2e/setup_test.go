@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -55,13 +56,27 @@ func TestMain(m *testing.M) {
 
 type MockEmailSender struct {
 	SendEmailFunc func(ctx context.Context, input repository.SendEmailInput) error
+
+	mu   sync.Mutex
+	last *repository.SendEmailInput
 }
 
 func (m *MockEmailSender) SendEmail(ctx context.Context, input repository.SendEmailInput) error {
+	m.mu.Lock()
+	m.last = &input
+	m.mu.Unlock()
 	if m.SendEmailFunc != nil {
 		return m.SendEmailFunc(ctx, input)
 	}
 	return nil
+}
+
+func (m *MockEmailSender) LastToken(t *testing.T) string {
+	t.Helper()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	require.NotNil(t, m.last, "メールが送信されていない")
+	return testutil.TokenFromEmail(t, *m.last)
 }
 
 type MockFormFetcher struct {

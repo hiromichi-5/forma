@@ -166,6 +166,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Too many requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Internal server error */
                 500: {
                     headers: {
@@ -2204,7 +2213,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @enum {string} */
-        ErrorCode: "INVALID_CREDENTIALS" | "INVALID_SESSION" | "EMAIL_NOT_VERIFIED" | "FORBIDDEN" | "RESOURCE_HIDDEN" | "USER_NOT_FOUND" | "FORM_NOT_FOUND" | "FORM_NOT_SHARED" | "TOKEN_NOT_FOUND" | "INVITE_NOT_FOUND" | "INVITE_EXPIRED" | "ALREADY_MEMBER" | "INCORRECT_PASSWORD" | "LAST_ADMIN" | "CONFLICT" | "FORM_ALREADY_REGISTERED" | "ACTIVE_INVITE_ALREADY_EXISTS" | "STATUS_CONFLICT" | "NOTIFICATION_DISABLED" | "RESPONDENT_EMAIL_MISSING" | "NOTIFICATION_RATE_LIMITED" | "VALIDATION_ERROR" | "INTERNAL";
+        ErrorCode: "INVALID_CREDENTIALS" | "INVALID_SESSION" | "EMAIL_NOT_VERIFIED" | "FORBIDDEN" | "RESOURCE_HIDDEN" | "USER_NOT_FOUND" | "FORM_NOT_FOUND" | "FORM_NOT_SHARED" | "TOKEN_NOT_FOUND" | "INVITE_NOT_FOUND" | "INVITE_EXPIRED" | "ALREADY_MEMBER" | "INCORRECT_PASSWORD" | "LAST_ADMIN" | "CONFLICT" | "FORM_ALREADY_REGISTERED" | "ACTIVE_INVITE_ALREADY_EXISTS" | "STATUS_CONFLICT" | "NOTIFICATION_DISABLED" | "RESPONDENT_EMAIL_MISSING" | "NOTIFICATION_RATE_LIMITED" | "RATE_LIMITED" | "VALIDATION_ERROR" | "INTERNAL";
         /** @enum {string} */
         FieldErrorCode: "REQUIRED" | "TOO_SHORT" | "INVALID_FORMAT" | "INVALID_VALUE";
         Error: {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"html"
 	"strings"
 
 	"github.com/hiromichi-5/forma/backend/internal/repository"
@@ -67,9 +68,17 @@ func renderTemplate(name string, data map[string]string) (subject, html, text st
 	}
 
 	subject = strings.TrimSpace(replaceVars(string(subjectBytes), data))
-	html = replaceVars(string(htmlBytes), data)
+	html = replaceVars(string(htmlBytes), escapeHTML(data))
 	text = replaceVars(string(textBytes), data)
 	return subject, html, text, nil
+}
+
+func escapeHTML(data map[string]string) map[string]string {
+	escaped := make(map[string]string, len(data))
+	for k, v := range data {
+		escaped[k] = html.EscapeString(v)
+	}
+	return escaped
 }
 
 func replaceVars(tmpl string, data map[string]string) string {

@@ -34,6 +34,7 @@ const (
 	CodeNotificationDisabled      Code = "NOTIFICATION_DISABLED"
 	CodeRespondentEmailMissing    Code = "RESPONDENT_EMAIL_MISSING"
 	CodeNotificationRateLimited   Code = "NOTIFICATION_RATE_LIMITED"
+	CodeRateLimited               Code = "RATE_LIMITED"
 
 	CodeValidation Code = "VALIDATION_ERROR"
 )

@@ -2,16 +2,24 @@ package app
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/hiromichi-5/forma/backend/internal/infra/postgres"
 	"github.com/hiromichi-5/forma/backend/internal/infra/pubsub"
+	"github.com/hiromichi-5/forma/backend/internal/infra/ratelimit"
 	"github.com/hiromichi-5/forma/backend/internal/interfaces/handler"
 	"github.com/hiromichi-5/forma/backend/internal/interfaces/middleware"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/usecase"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// ログインの総当たりを防ぐための、メールアドレス単位の上限。
+const (
+	loginRateLimit       = 10
+	loginRateLimitWindow = 15 * time.Minute
 )
 
 type Deps struct {
@@ -64,6 +72,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 		resetTokenRepo,
 		postgres.NewAuthUoW(deps.Pool),
 		deps.EmailSender,
+		ratelimit.NewFixedWindow(loginRateLimit, loginRateLimitWindow),
 		deps.FrontendBaseURL,
 	)
 	profileUC := usecase.NewProfileUseCase(userRepo, postgres.NewProfileUoW(deps.Pool))

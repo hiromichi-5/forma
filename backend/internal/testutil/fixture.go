@@ -2,11 +2,13 @@ package testutil
 
 import (
 	"context"
+	"net/url"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -40,24 +42,21 @@ func CreateVerifiedUser(
 	return userID
 }
 
-func GetEmailVerificationToken(
-	t *testing.T,
-	ctx context.Context,
-	pool *pgxpool.Pool,
-	userID uuid.UUID,
-) string {
+// DB にはトークンのハッシュしか残らないため、送信されたメールの URL から取り出す。
+func TokenFromEmail(t *testing.T, input repository.SendEmailInput) string {
 	t.Helper()
 
-	var token string
-	err := pool.QueryRow(ctx, `
-		SELECT token FROM email_verification_tokens
-		WHERE user_id = $1 AND used_at IS NULL
-		ORDER BY created_at DESC LIMIT 1
-	`, userID).Scan(&token)
-	if err != nil {
-		t.Fatalf("get email verification token: %v", err)
+	for _, v := range input.TemplateData {
+		u, err := url.Parse(v)
+		if err != nil {
+			continue
+		}
+		if token := u.Query().Get("token"); token != "" {
+			return token
+		}
 	}
-	return token
+	t.Fatalf("token not found in email: %s", input.TemplateName)
+	return ""
 }
 
 func ExpireSessions(t *testing.T, ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) {
@@ -72,24 +71,22 @@ func ExpireSessions(t *testing.T, ctx context.Context, pool *pgxpool.Pool, userI
 	}
 }
 
-func GetPasswordResetToken(
+func BackdatePasswordResetTokens(
 	t *testing.T,
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	userID uuid.UUID,
-) string {
+	d time.Duration,
+) {
 	t.Helper()
 
-	var token string
-	err := pool.QueryRow(ctx, `
-		SELECT token FROM password_reset_tokens
-		WHERE user_id = $1 AND used_at IS NULL
-		ORDER BY created_at DESC LIMIT 1
-	`, userID).Scan(&token)
+	_, err := pool.Exec(ctx, `
+		UPDATE password_reset_tokens SET created_at = created_at - $2::interval
+		WHERE user_id = $1
+	`, userID, d)
 	if err != nil {
-		t.Fatalf("get password reset token: %v", err)
+		t.Fatalf("backdate password reset tokens: %v", err)
 	}
-	return token
 }
 
 func CreateForm(

@@ -18,4 +18,5 @@ type PasswordResetToken struct {
 	UserID    uuid.UUID
 	Token     string
 	ExpiresAt time.Time
+	CreatedAt time.Time
 }
