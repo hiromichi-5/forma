@@ -52,14 +52,17 @@ func newNotificationRepo() repository.NotificationRepository {
 func newAuthorizer() *usecase.Authorizer { return usecase.NewAuthorizer(newMemberRepo()) }
 
 func newAuthUseCase() *usecase.AuthUseCase {
-	return newAuthUseCaseWith(&mockEmailSender{})
+	return newAuthUseCaseWith(&mockEmailSender{}, allowAllLimiter{})
 }
 
-func newAuthUseCaseWith(sender repository.EmailSender) *usecase.AuthUseCase {
+func newAuthUseCaseWith(
+	sender repository.EmailSender,
+	limiter usecase.RateLimiter,
+) *usecase.AuthUseCase {
 	return usecase.NewAuthUseCase(
 		newUserRepo(), newSessionRepo(), newEmailTokenRepo(), newResetTokenRepo(),
 		postgres.NewAuthUoW(testPool),
-		sender, "http://localhost:5173",
+		sender, limiter, "http://localhost:5173",
 	)
 }
 
@@ -140,6 +143,10 @@ func newSyncUseCase(fetcher repository.FormFetcher) *usecase.SyncUseCase {
 		newFormRepo(), newTicketRepo(), newStatusRepo(), newAuthorizer(), fetcher,
 	)
 }
+
+type allowAllLimiter struct{}
+
+func (allowAllLimiter) Allow(string) bool { return true }
 
 type mockEmailSender struct {
 	sendEmailFunc func(ctx context.Context, input repository.SendEmailInput) error

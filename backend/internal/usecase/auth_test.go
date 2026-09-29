@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/infra/ratelimit"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +28,7 @@ func TestAuthUseCase_Signup(t *testing.T) {
 	t.Run("正常系: 未認証ユーザーが再度signupするとトークンが再発行されること", func(t *testing.T) {
 		truncate(t)
 		sender := &mockEmailSender{}
-		uc := newAuthUseCaseWith(sender)
+		uc := newAuthUseCaseWith(sender, allowAllLimiter{})
 		ctx := context.Background()
 
 		userID, err := uc.Signup(ctx, "dup@example.com", "password123", "User1")
@@ -46,7 +47,7 @@ func TestAuthUseCase_Signup(t *testing.T) {
 	t.Run("正常系: 未認証ユーザーが再度signupするとパスワード・表示名が更新されること", func(t *testing.T) {
 		truncate(t)
 		sender := &mockEmailSender{}
-		uc := newAuthUseCaseWith(sender)
+		uc := newAuthUseCaseWith(sender, allowAllLimiter{})
 		ctx := context.Background()
 
 		userID, err := uc.Signup(ctx, "resignup@example.com", "password123", "User1")
@@ -155,6 +156,22 @@ func TestAuthUseCase_Authenticate(t *testing.T) {
 		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 
+	t.Run("準正常系: 同じメールアドレスで上限を超えると RATE_LIMITED エラーになること", func(t *testing.T) {
+		truncate(t)
+		uc := newAuthUseCaseWith(&mockEmailSender{}, ratelimit.NewFixedWindow(1, time.Minute))
+		ctx := context.Background()
+
+		testutil.CreateVerifiedUser(t, ctx, testPool, "limit@example.com", "password123", "User")
+
+		_, err := uc.Authenticate(ctx, "limit@example.com", "wrongpass")
+		require.Error(t, err)
+
+		_, err = uc.Authenticate(ctx, " Limit@Example.com ", "password123")
+		var appErr *entity.Error
+		require.True(t, errors.As(err, &appErr))
+		assert.Equal(t, entity.CodeRateLimited, appErr.Code)
+	})
+
 	t.Run("準正常系: パスワードが間違っている場合 INVALID_CREDENTIALS エラーになること", func(t *testing.T) {
 		truncate(t)
 		uc := newAuthUseCase()
@@ -235,7 +252,7 @@ func TestAuthUseCase_VerifyEmail(t *testing.T) {
 	t.Run("正常系: メール認証トークンで認証できること", func(t *testing.T) {
 		truncate(t)
 		sender := &mockEmailSender{}
-		uc := newAuthUseCaseWith(sender)
+		uc := newAuthUseCaseWith(sender, allowAllLimiter{})
 		ctx := context.Background()
 
 		_, err := uc.Signup(ctx, "verify@example.com", "password123", "Verify")
@@ -268,7 +285,7 @@ func TestAuthUseCase_ConfirmPasswordReset(t *testing.T) {
 	t.Run("正常系: パスワードリセットが完了すること", func(t *testing.T) {
 		truncate(t)
 		sender := &mockEmailSender{}
-		uc := newAuthUseCaseWith(sender)
+		uc := newAuthUseCaseWith(sender, allowAllLimiter{})
 		ctx := context.Background()
 
 		testutil.CreateVerifiedUser(
@@ -296,7 +313,7 @@ func TestAuthUseCase_ConfirmPasswordReset(t *testing.T) {
 	t.Run("正常系: パスワードリセットで既存セッションが破棄されること", func(t *testing.T) {
 		truncate(t)
 		sender := &mockEmailSender{}
-		uc := newAuthUseCaseWith(sender)
+		uc := newAuthUseCaseWith(sender, allowAllLimiter{})
 		ctx := context.Background()
 
 		testutil.CreateVerifiedUser(
@@ -347,7 +364,7 @@ func TestAuthUseCase_ResendEmailVerification(t *testing.T) {
 	t.Run("正常系: 未認証ユーザーに再送できること", func(t *testing.T) {
 		truncate(t)
 		sender := &mockEmailSender{}
-		uc := newAuthUseCaseWith(sender)
+		uc := newAuthUseCaseWith(sender, allowAllLimiter{})
 		ctx := context.Background()
 
 		_, err := uc.Signup(ctx, "resend@example.com", "password123", "Resend")

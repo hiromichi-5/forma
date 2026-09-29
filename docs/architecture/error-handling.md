@@ -144,6 +144,7 @@ HTTP レスポンス {code, message, fields?}
 | `NOTIFICATION_DISABLED` | 409 | 該当種別の通知設定が `off` である |
 | `RESPONDENT_EMAIL_MISSING` | 409 | チケットに回答者のメールアドレスがない |
 | `NOTIFICATION_RATE_LIMITED` | 429 | 通知の手動送信が短時間に繰り返された |
+| `RATE_LIMITED` | 429 | ログインの試行が短時間に繰り返された |
 
 ### バリデーション
 

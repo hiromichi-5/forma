@@ -90,10 +90,11 @@
 | `VALIDATION_ERROR` | 400 | 入力値が不正 |
 | `INVALID_CREDENTIALS` | 401 | メールアドレスまたはパスワードが正しくない |
 | `EMAIL_NOT_VERIFIED` | 403 | メール認証が完了していない |
+| `RATE_LIMITED` | 429 | 同じメールアドレスでの試行が上限を超えた |
 
 ### 補足
 
-- Cookie 設定: `HttpOnly=true`, `SameSite=Lax`, `Secure`（環境設定に従う）, `Max-Age`（セッションの残り有効期間）
+- 試行回数はメールアドレス単位で 15 分間に 10 回まで（成否を問わず数える）。IP アドレスは `X-Forwarded-For` で偽装できるため単位にしない。
 - セッションの有効期限はログインから 14 日。延長はされず、期限切れのセッションでのアクセスは `INVALID_SESSION`（401）になる
 
 ## POST /v1/auth/logout

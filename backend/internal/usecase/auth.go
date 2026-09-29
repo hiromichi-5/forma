@@ -20,6 +20,10 @@ const (
 	sessionTTL = 14 * 24 * time.Hour
 )
 
+type RateLimiter interface {
+	Allow(key string) bool
+}
+
 type AuthUseCase struct {
 	userRepo        repository.UserRepository
 	sessionRepo     repository.SessionRepository
@@ -27,6 +31,7 @@ type AuthUseCase struct {
 	resetTokenRepo  repository.PasswordResetTokenRepository
 	uow             repository.UnitOfWork[repository.AuthRepos]
 	emailSender     repository.EmailSender
+	loginLimiter    RateLimiter
 	frontendBaseURL string
 	now             func() time.Time
 	generateToken   func() (string, error)
@@ -39,6 +44,7 @@ func NewAuthUseCase(
 	resetTokenRepo repository.PasswordResetTokenRepository,
 	uow repository.UnitOfWork[repository.AuthRepos],
 	emailSender repository.EmailSender,
+	loginLimiter RateLimiter,
 	frontendBaseURL string,
 ) *AuthUseCase {
 	return &AuthUseCase{
@@ -48,10 +54,15 @@ func NewAuthUseCase(
 		resetTokenRepo:  resetTokenRepo,
 		uow:             uow,
 		emailSender:     emailSender,
+		loginLimiter:    loginLimiter,
 		frontendBaseURL: frontendBaseURL,
 		now:             time.Now,
 		generateToken:   defaultToken,
 	}
+}
+
+func rateLimitKey(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 func defaultToken() (string, error) {
@@ -69,6 +80,9 @@ func (uc *AuthUseCase) Authenticate(
 ) (entity.Session, error) {
 	if email == "" || password == "" {
 		return entity.Session{}, entity.NewError(entity.CodeValidation)
+	}
+	if !uc.loginLimiter.Allow(rateLimitKey(email)) {
+		return entity.Session{}, entity.NewError(entity.CodeRateLimited)
 	}
 
 	user, err := uc.userRepo.GetByEmail(ctx, email)
