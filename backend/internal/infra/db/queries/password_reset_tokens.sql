@@ -10,6 +10,13 @@ WHERE token_hash = $1
   AND used_at IS NULL
   AND expires_at > NOW();
 
+-- name: GetLatestPasswordResetTokenByUser :one
+SELECT id, user_id, expires_at, used_at, created_at, token_hash
+FROM password_reset_tokens
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT 1;
+
 -- name: UsePasswordResetToken :execrows
 UPDATE password_reset_tokens
 SET used_at = NOW()

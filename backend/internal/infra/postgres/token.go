@@ -100,6 +100,17 @@ func (r *PasswordResetTokenRepository) GetByToken(
 	return toPasswordResetToken(row, token), nil
 }
 
+func (r *PasswordResetTokenRepository) GetLatestByUser(
+	ctx context.Context,
+	userID uuid.UUID,
+) (entity.PasswordResetToken, error) {
+	row, err := r.q.GetLatestPasswordResetTokenByUser(ctx, toUUID(userID))
+	if err != nil {
+		return entity.PasswordResetToken{}, repoError(err)
+	}
+	return toPasswordResetToken(row, ""), nil
+}
+
 func (r *PasswordResetTokenRepository) Use(ctx context.Context, id uuid.UUID) error {
 	n, err := r.q.UsePasswordResetToken(ctx, toUUID(id))
 	if err != nil {
@@ -130,5 +141,6 @@ func toPasswordResetToken(row db.PasswordResetToken, token string) entity.Passwo
 		UserID:    fromUUID(row.UserID),
 		Token:     token,
 		ExpiresAt: fromTimestamptz(row.ExpiresAt),
+		CreatedAt: fromTimestamptz(row.CreatedAt),
 	}
 }

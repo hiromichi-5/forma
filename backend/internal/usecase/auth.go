@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	tokenTTL   = 24 * time.Hour
-	sessionTTL = 14 * 24 * time.Hour
+	tokenTTL              = 24 * time.Hour
+	sessionTTL            = 14 * 24 * time.Hour
+	passwordResetCooldown = 5 * time.Minute
 )
 
 type RateLimiter interface {
@@ -304,6 +305,17 @@ func (uc *AuthUseCase) RequestPasswordReset(ctx context.Context, email string) e
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil
 		}
+		return err
+	}
+
+	// 直前に発行したトークンがあれば送信しない。
+	// エラーにするとユーザーの存在が応答から分かってしまうため、存在しない場合と同じく成功として扱う。
+	latest, err := uc.resetTokenRepo.GetLatestByUser(ctx, user.ID)
+	if err == nil && uc.now().Sub(latest.CreatedAt) < passwordResetCooldown {
+		logger.From(ctx).Info("password reset skipped (cooldown)", "user_id", user.ID.String())
+		return nil
+	}
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return err
 	}
 

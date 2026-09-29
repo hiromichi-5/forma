@@ -25,6 +25,8 @@ type PasswordResetTokenRepository interface {
 	) (entity.PasswordResetToken, error)
 	// GetByToken は未使用かつ有効期限内のトークンのみを返す。
 	GetByToken(ctx context.Context, token string) (entity.PasswordResetToken, error)
+	// GetLatestByUser は平文のトークンを保持していないため、Token は空で返す。
+	GetLatestByUser(ctx context.Context, userID uuid.UUID) (entity.PasswordResetToken, error)
 	Use(ctx context.Context, id uuid.UUID) error
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 }

@@ -71,6 +71,24 @@ func ExpireSessions(t *testing.T, ctx context.Context, pool *pgxpool.Pool, userI
 	}
 }
 
+func BackdatePasswordResetTokens(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	userID uuid.UUID,
+	d time.Duration,
+) {
+	t.Helper()
+
+	_, err := pool.Exec(ctx, `
+		UPDATE password_reset_tokens SET created_at = created_at - $2::interval
+		WHERE user_id = $1
+	`, userID, d)
+	if err != nil {
+		t.Fatalf("backdate password reset tokens: %v", err)
+	}
+}
+
 func CreateForm(
 	t *testing.T,
 	ctx context.Context,

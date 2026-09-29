@@ -358,6 +358,45 @@ func TestAuthUseCase_RequestPasswordReset(t *testing.T) {
 		err := uc.RequestPasswordReset(ctx, "nobody@example.com")
 		require.NoError(t, err)
 	})
+
+	t.Run("準正常系: 直前に発行済みの場合はメールを送らず、発行済みのトークンが使えること", func(t *testing.T) {
+		truncate(t)
+		sender := &mockEmailSender{}
+		uc := newAuthUseCaseWith(sender, allowAllLimiter{})
+		ctx := context.Background()
+
+		testutil.CreateVerifiedUser(t, ctx, testPool, "cooldown@example.com", "oldpass123", "User")
+
+		require.NoError(t, uc.RequestPasswordReset(ctx, "cooldown@example.com"))
+		token := sender.lastToken(t)
+
+		require.NoError(t, uc.RequestPasswordReset(ctx, "cooldown@example.com"))
+		assert.Len(t, sender.sent, 1)
+
+		require.NoError(t, uc.ConfirmPasswordReset(ctx, token, "newpass123"))
+	})
+
+	t.Run("正常系: 前回の発行から5分経過していれば再送されること", func(t *testing.T) {
+		truncate(t)
+		sender := &mockEmailSender{}
+		uc := newAuthUseCaseWith(sender, allowAllLimiter{})
+		ctx := context.Background()
+
+		userID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"cooldown@example.com",
+			"oldpass123",
+			"User",
+		)
+
+		require.NoError(t, uc.RequestPasswordReset(ctx, "cooldown@example.com"))
+		testutil.BackdatePasswordResetTokens(t, ctx, testPool, userID, 5*time.Minute)
+
+		require.NoError(t, uc.RequestPasswordReset(ctx, "cooldown@example.com"))
+		assert.Len(t, sender.sent, 2)
+	})
 }
 
 func TestAuthUseCase_ResendEmailVerification(t *testing.T) {
