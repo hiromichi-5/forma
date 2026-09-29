@@ -42,6 +42,7 @@ export default function LoginPage() {
             err,
             {
               INVALID_CREDENTIALS: "メールアドレスまたはパスワードが間違っています",
+              RATE_LIMITED: "ログインの試行回数が上限に達しました。しばらくしてから再度お試しください",
               VALIDATION_ERROR: "入力内容を確認してください",
               NETWORK_ERROR: "ネットワークエラーが発生しました",
             },
