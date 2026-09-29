@@ -18,7 +18,11 @@ type ProfileUseCase interface {
 		displayName string,
 	) (entity.User, error)
 	DeleteProfile(ctx context.Context, userID uuid.UUID) error
-	ChangePassword(ctx context.Context, userID uuid.UUID, currentPassword, newPassword string) error
+	ChangePassword(
+		ctx context.Context,
+		userID, sessionID uuid.UUID,
+		currentPassword, newPassword string,
+	) error
 }
 
 type ProfileHandler struct {
@@ -94,6 +98,11 @@ func (h *ProfileHandler) PatchV1MePassword(c *gin.Context) {
 		handleError(c, entity.NewError(entity.CodeInvalidSession))
 		return
 	}
+	sessionID, ok := middleware.SessionID(c)
+	if !ok {
+		handleError(c, entity.NewError(entity.CodeInvalidSession))
+		return
+	}
 
 	var req changePasswordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -101,7 +110,8 @@ func (h *ProfileHandler) PatchV1MePassword(c *gin.Context) {
 		return
 	}
 
-	if err := h.uc.ChangePassword(c, userID, req.CurrentPassword, req.NewPassword); err != nil {
+	err := h.uc.ChangePassword(c, userID, sessionID, req.CurrentPassword, req.NewPassword)
+	if err != nil {
 		handleError(c, err)
 		return
 	}

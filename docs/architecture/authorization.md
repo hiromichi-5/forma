@@ -46,6 +46,19 @@ func (r Role) CanAdmin() bool // 管理権限があるか
 
 フロントエンドは `INVALID_SESSION` を受け取ると `AuthProvider` の認証状態を破棄し、ログイン画面へ遷移させる（`frontend/src/lib/api.ts` の `setSessionExpiredHandler`）。ログイン失敗は `INVALID_CREDENTIALS` なので、この経路とは区別される。
 
+### パスワード変更時のセッション破棄
+
+パスワードが変わったセッションを残さないため、いずれもパスワードの更新と同一トランザクションで破棄する。
+
+| 操作 | 破棄範囲 |
+| --- | --- |
+| パスワードリセット（`/v1/auth/password-reset/confirm`） | 対象ユーザーの全セッション |
+| パスワード変更（`/v1/me/password`） | 操作中のセッションを除く全セッション |
+
+リセットは未認証の経路であり、第三者による乗っ取りの可能性があるため操作中のセッションも残さない。変更は本人が現在のパスワードを提示しているため、操作中のセッションだけ残す。
+
+操作中のセッション ID は `SessionMiddleware` が `gin.Context` に格納し（`"sessionID"` キー）、`middleware.SessionID()` で取り出す。
+
 ## 権限チェックパターン
 
 `usecase/authorization.go` の `Authorizer` が担当する。`MemberRepository` を保持し、各 UseCase に注入される。

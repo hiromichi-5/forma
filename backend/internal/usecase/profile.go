@@ -12,10 +12,14 @@ import (
 
 type ProfileUseCase struct {
 	userRepo repository.UserRepository
+	uow      repository.UnitOfWork[repository.ProfileRepos]
 }
 
-func NewProfileUseCase(userRepo repository.UserRepository) *ProfileUseCase {
-	return &ProfileUseCase{userRepo: userRepo}
+func NewProfileUseCase(
+	userRepo repository.UserRepository,
+	uow repository.UnitOfWork[repository.ProfileRepos],
+) *ProfileUseCase {
+	return &ProfileUseCase{userRepo: userRepo, uow: uow}
 }
 
 func (uc *ProfileUseCase) GetProfile(ctx context.Context, userID uuid.UUID) (entity.User, error) {
@@ -61,7 +65,7 @@ func (uc *ProfileUseCase) DeleteProfile(ctx context.Context, userID uuid.UUID) e
 
 func (uc *ProfileUseCase) ChangePassword(
 	ctx context.Context,
-	userID uuid.UUID,
+	userID, sessionID uuid.UUID,
 	currentPassword, newPassword string,
 ) error {
 	if currentPassword == "" || newPassword == "" {
@@ -88,11 +92,13 @@ func (uc *ProfileUseCase) ChangePassword(
 		return err
 	}
 
-	if err := uc.userRepo.UpdatePasswordHash(ctx, userID, string(hashed)); err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return entity.NewError(entity.CodeUserNotFound)
+	return uc.uow.Do(ctx, func(repos repository.ProfileRepos) error {
+		if err := repos.User.UpdatePasswordHash(ctx, userID, string(hashed)); err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return entity.NewError(entity.CodeUserNotFound)
+			}
+			return err
 		}
-		return err
-	}
-	return nil
+		return repos.Session.DeleteByUserExcept(ctx, userID, sessionID)
+	})
 }

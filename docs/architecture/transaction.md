@@ -18,7 +18,15 @@ type UnitOfWork[T any] interface {
 
 ```go
 type AuthRepos struct {
-    User UserRepository
+    User                   UserRepository
+    Session                SessionRepository
+    EmailVerificationToken EmailVerificationTokenRepository
+    PasswordResetToken     PasswordResetTokenRepository
+}
+
+type ProfileRepos struct {
+    User    UserRepository
+    Session SessionRepository
 }
 
 type FormRepos struct {
@@ -41,6 +49,10 @@ type TicketRepos struct {
     Ticket TicketRepository
     Status StatusRepository
     User   UserRepository
+}
+
+type NotificationRepos struct {
+    Notification NotificationRepository
 }
 ```
 
@@ -71,9 +83,11 @@ func (u *unitOfWork[T]) Do(ctx context.Context, fn func(repos T) error) error {
 
 ```go
 func NewAuthUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.AuthRepos]
+func NewProfileUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.ProfileRepos]
 func NewFormUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.FormRepos]
 func NewInviteUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.InviteRepos]
 func NewStatusUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.StatusRepos]
+func NewNotificationUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.NotificationRepos]
 func NewTicketUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.TicketRepos]
 ```
 

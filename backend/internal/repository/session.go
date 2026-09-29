@@ -11,4 +11,6 @@ type SessionRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (entity.Session, error)
 	Create(ctx context.Context, session entity.Session) (entity.Session, error)
 	Delete(ctx context.Context, id uuid.UUID) error
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+	DeleteByUserExcept(ctx context.Context, userID, sessionID uuid.UUID) error
 }

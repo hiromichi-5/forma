@@ -289,6 +289,31 @@ func TestAuthUseCase_ConfirmPasswordReset(t *testing.T) {
 		assert.NotEmpty(t, session.ID)
 	})
 
+	t.Run("正常系: パスワードリセットで既存セッションが破棄されること", func(t *testing.T) {
+		truncate(t)
+		uc := newAuthUseCase()
+		ctx := context.Background()
+
+		userID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"resetsession@example.com",
+			"oldpass123",
+			"User",
+		)
+
+		session, err := uc.Authenticate(ctx, "resetsession@example.com", "oldpass123")
+		require.NoError(t, err)
+
+		require.NoError(t, uc.RequestPasswordReset(ctx, "resetsession@example.com"))
+		token := testutil.GetPasswordResetToken(t, ctx, testPool, userID)
+		require.NoError(t, uc.ConfirmPasswordReset(ctx, token, "newpass123"))
+
+		_, err = newSessionRepo().GetByID(ctx, session.ID)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
+	})
+
 	t.Run("準正常系: 無効なトークンで TOKEN_NOT_FOUND エラーになること", func(t *testing.T) {
 		truncate(t)
 		uc := newAuthUseCase()

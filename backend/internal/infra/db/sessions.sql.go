@@ -48,6 +48,32 @@ func (q *Queries) DeleteSession(ctx context.Context, id pgtype.UUID) (int64, err
 	return result.RowsAffected(), nil
 }
 
+const deleteSessionsByUser = `-- name: DeleteSessionsByUser :exec
+DELETE FROM sessions
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteSessionsByUser(ctx context.Context, userID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSessionsByUser, userID)
+	return err
+}
+
+const deleteSessionsByUserExcept = `-- name: DeleteSessionsByUserExcept :exec
+DELETE FROM sessions
+WHERE user_id = $1
+  AND id <> $2
+`
+
+type DeleteSessionsByUserExceptParams struct {
+	UserID pgtype.UUID `json:"user_id"`
+	ID     pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) DeleteSessionsByUserExcept(ctx context.Context, arg DeleteSessionsByUserExceptParams) error {
+	_, err := q.db.Exec(ctx, deleteSessionsByUserExcept, arg.UserID, arg.ID)
+	return err
+}
+
 const getSessionByID = `-- name: GetSessionByID :one
 SELECT id, user_id, created_at, expires_at
 FROM sessions

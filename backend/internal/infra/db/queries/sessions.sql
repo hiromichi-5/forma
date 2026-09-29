@@ -7,6 +7,15 @@ RETURNING id, user_id, created_at, expires_at;
 DELETE FROM sessions
 WHERE id = $1;
 
+-- name: DeleteSessionsByUser :exec
+DELETE FROM sessions
+WHERE user_id = $1;
+
+-- name: DeleteSessionsByUserExcept :exec
+DELETE FROM sessions
+WHERE user_id = $1
+  AND id <> $2;
+
 -- name: GetSessionByID :one
 SELECT id, user_id, created_at, expires_at
 FROM sessions

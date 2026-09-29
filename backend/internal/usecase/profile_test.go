@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,13 +104,56 @@ func TestProfileUseCase_ChangePassword(t *testing.T) {
 			"User",
 		)
 
-		err := profileUC.ChangePassword(ctx, userID, "oldpass123", "newpass123")
+		err := profileUC.ChangePassword(
+			ctx,
+			userID,
+			testutil.RandomUUID(),
+			"oldpass123",
+			"newpass123",
+		)
 		require.NoError(t, err)
 
 		// 新パスワードでログインできることを確認
 		session, err := authUC.Authenticate(ctx, "chpw@example.com", "newpass123")
 		require.NoError(t, err)
 		assert.NotEmpty(t, session.ID)
+	})
+
+	t.Run("正常系: 操作中のセッションは残り、他のセッションが破棄されること", func(t *testing.T) {
+		truncate(t)
+		profileUC := newProfileUseCase()
+		authUC := newAuthUseCase()
+		ctx := context.Background()
+
+		testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"chpw@example.com",
+			"oldpass123",
+			"User",
+		)
+
+		current, err := authUC.Authenticate(ctx, "chpw@example.com", "oldpass123")
+		require.NoError(t, err)
+		other, err := authUC.Authenticate(ctx, "chpw@example.com", "oldpass123")
+		require.NoError(t, err)
+
+		err = profileUC.ChangePassword(
+			ctx,
+			current.UserID,
+			current.ID,
+			"oldpass123",
+			"newpass123",
+		)
+		require.NoError(t, err)
+
+		sessionRepo := newSessionRepo()
+		_, err = sessionRepo.GetByID(ctx, current.ID)
+		assert.NoError(t, err)
+
+		_, err = sessionRepo.GetByID(ctx, other.ID)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 
 	t.Run("準正常系: 現在のパスワードが間違っている場合 INCORRECT_PASSWORD エラーになること", func(t *testing.T) {
@@ -126,7 +170,13 @@ func TestProfileUseCase_ChangePassword(t *testing.T) {
 			"User",
 		)
 
-		err := uc.ChangePassword(ctx, userID, "wrongpass", "newpass123")
+		err := uc.ChangePassword(
+			ctx,
+			userID,
+			testutil.RandomUUID(),
+			"wrongpass",
+			"newpass123",
+		)
 		require.Error(t, err)
 		var appErr *entity.Error
 		require.True(t, errors.As(err, &appErr))
@@ -147,7 +197,13 @@ func TestProfileUseCase_ChangePassword(t *testing.T) {
 			"User",
 		)
 
-		err := uc.ChangePassword(ctx, userID, "password123", "short")
+		err := uc.ChangePassword(
+			ctx,
+			userID,
+			testutil.RandomUUID(),
+			"password123",
+			"short",
+		)
 		require.Error(t, err)
 		var appErr *entity.Error
 		require.True(t, errors.As(err, &appErr))

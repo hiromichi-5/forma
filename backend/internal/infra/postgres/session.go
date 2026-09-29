@@ -51,6 +51,27 @@ func (r *SessionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return rowsError(n)
 }
 
+func (r *SessionRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	if err := r.q.DeleteSessionsByUser(ctx, toUUID(userID)); err != nil {
+		return repoError(err)
+	}
+	return nil
+}
+
+func (r *SessionRepository) DeleteByUserExcept(
+	ctx context.Context,
+	userID, sessionID uuid.UUID,
+) error {
+	err := r.q.DeleteSessionsByUserExcept(ctx, db.DeleteSessionsByUserExceptParams{
+		UserID: toUUID(userID),
+		ID:     toUUID(sessionID),
+	})
+	if err != nil {
+		return repoError(err)
+	}
+	return nil
+}
+
 func toSession(row db.Session) entity.Session {
 	return entity.Session{
 		ID:        fromUUID(row.ID),

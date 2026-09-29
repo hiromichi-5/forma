@@ -60,7 +60,7 @@ func newAuthUseCase() *usecase.AuthUseCase {
 }
 
 func newProfileUseCase() *usecase.ProfileUseCase {
-	return usecase.NewProfileUseCase(newUserRepo())
+	return usecase.NewProfileUseCase(newUserRepo(), postgres.NewProfileUoW(testPool))
 }
 
 func newFormUseCase(fetcher repository.FormFetcher) *usecase.FormUseCase {

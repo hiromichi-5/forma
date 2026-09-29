@@ -347,6 +347,9 @@ func (uc *AuthUseCase) ConfirmPasswordReset(ctx context.Context, token, newPassw
 			}
 			return err
 		}
+		if err := repos.Session.DeleteByUser(ctx, t.UserID); err != nil {
+			return err
+		}
 		return repos.PasswordResetToken.DeleteByUser(ctx, t.UserID)
 	}); err != nil {
 		return err
