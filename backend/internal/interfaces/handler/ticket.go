@@ -3,8 +3,13 @@ package handler
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,8 +22,13 @@ type TicketUseCase interface {
 	ListTickets(
 		ctx context.Context,
 		formID, userID uuid.UUID,
-		statusID *uuid.UUID,
-	) ([]usecase.TicketSummary, error)
+		in usecase.ListTicketsInput,
+	) (usecase.TicketPage, error)
+	CountTicketsByStatus(
+		ctx context.Context,
+		formID, userID uuid.UUID,
+		emailQuery *string,
+	) ([]usecase.TicketStatusCount, error)
 	GetTicket(ctx context.Context, ticketID, userID uuid.UUID) (usecase.TicketDetail, error)
 	UpdateTicket(
 		ctx context.Context,
@@ -42,29 +52,106 @@ func (h *TicketHandler) GetV1Tickets(c *gin.Context) {
 		return
 	}
 
-	formIDStr := c.Query("form_id")
-	formID, err := uuid.Parse(formIDStr)
+	formID, err := uuid.Parse(c.Query("form_id"))
 	if err != nil {
 		handleError(c, entity.NewError(entity.CodeValidation))
 		return
 	}
 
-	var statusID *uuid.UUID
-	if s := c.Query("status_id"); s != "" {
+	in := usecase.ListTicketsInput{EmailQuery: emailQuery(c)}
+	for _, s := range c.QueryArray("status_id") {
 		sid, err := uuid.Parse(s)
 		if err != nil {
 			handleError(c, entity.NewError(entity.CodeValidation))
 			return
 		}
-		statusID = &sid
+		in.StatusIDs = append(in.StatusIDs, sid)
+	}
+	if s := c.Query("limit"); s != "" {
+		limit, err := strconv.Atoi(s)
+		if err != nil {
+			handleError(c, entity.NewError(entity.CodeValidation))
+			return
+		}
+		in.Limit = limit
+	}
+	if s := c.Query("cursor"); s != "" {
+		cursor, err := decodeTicketCursor(s)
+		if err != nil {
+			handleError(c, entity.NewError(entity.CodeValidation))
+			return
+		}
+		in.After = &cursor
 	}
 
-	tickets, err := h.uc.ListTickets(c, formID, userID, statusID)
+	page, err := h.uc.ListTickets(c, formID, userID, in)
 	if err != nil {
 		handleError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"tickets": toTicketSummaryListResp(tickets)})
+	var next *string
+	if page.NextCursor != nil {
+		v := encodeTicketCursor(*page.NextCursor)
+		next = &v
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"tickets":     toTicketSummaryListResp(page.Tickets),
+		"next_cursor": next,
+	})
+}
+
+func (h *TicketHandler) GetV1TicketsCounts(c *gin.Context) {
+	userID, ok := middleware.UserID(c)
+	if !ok {
+		handleError(c, entity.NewError(entity.CodeInvalidSession))
+		return
+	}
+
+	formID, err := uuid.Parse(c.Query("form_id"))
+	if err != nil {
+		handleError(c, entity.NewError(entity.CodeValidation))
+		return
+	}
+
+	counts, err := h.uc.CountTicketsByStatus(c, formID, userID, emailQuery(c))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"counts": toTicketStatusCountListResp(counts)})
+}
+
+func emailQuery(c *gin.Context) *string {
+	q := strings.TrimSpace(c.Query("q"))
+	if q == "" {
+		return nil
+	}
+	return &q
+}
+
+type ticketCursorPayload struct {
+	SubmittedAt time.Time `json:"submitted_at"`
+	ID          uuid.UUID `json:"id"`
+}
+
+func encodeTicketCursor(cursor usecase.TicketCursor) string {
+	b, _ := json.Marshal(ticketCursorPayload(cursor))
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+func decodeTicketCursor(s string) (usecase.TicketCursor, error) {
+	b, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return usecase.TicketCursor{}, err
+	}
+	var p ticketCursorPayload
+	if err := json.Unmarshal(b, &p); err != nil {
+		return usecase.TicketCursor{}, err
+	}
+	if p.SubmittedAt.IsZero() || p.ID == uuid.Nil {
+		return usecase.TicketCursor{}, errors.New("incomplete ticket cursor")
+	}
+	return usecase.TicketCursor(p), nil
 }
 
 func (h *TicketHandler) GetV1TicketsTicketId(c *gin.Context) {

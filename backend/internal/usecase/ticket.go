@@ -43,6 +43,30 @@ type TicketDetail struct {
 	Notifications []TicketNotificationInfo
 }
 
+const (
+	DefaultTicketPageSize = 50
+	MaxTicketPageSize     = 200
+)
+
+type TicketCursor = repository.TicketCursor
+
+type ListTicketsInput struct {
+	StatusIDs  []uuid.UUID
+	EmailQuery *string
+	After      *TicketCursor
+	Limit      int
+}
+
+type TicketPage struct {
+	Tickets    []TicketSummary
+	NextCursor *TicketCursor
+}
+
+type TicketStatusCount struct {
+	StatusID uuid.UUID
+	Count    int64
+}
+
 type UpdateTicketInput struct {
 	StatusID *uuid.UUID
 	Assignee entity.AssigneeChange
@@ -151,40 +175,107 @@ func (uc *TicketUseCase) loadFormContext(
 func (uc *TicketUseCase) ListTickets(
 	ctx context.Context,
 	formID, userID uuid.UUID,
-	statusID *uuid.UUID,
-) ([]TicketSummary, error) {
+	in ListTicketsInput,
+) (TicketPage, error) {
 	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
-		return nil, err
+		return TicketPage{}, err
 	}
 
-	if statusID != nil {
-		if _, err := uc.getVisibleStatus(ctx, formID, *statusID); err != nil {
-			return nil, err
-		}
+	limit := in.Limit
+	if limit == 0 {
+		limit = DefaultTicketPageSize
+	}
+	if limit < 1 || limit > MaxTicketPageSize {
+		return TicketPage{}, entity.NewError(entity.CodeValidation)
 	}
 
-	tickets, err := uc.ticketRepo.List(ctx, formID, statusID)
+	if err := uc.requireFormStatuses(ctx, formID, in.StatusIDs); err != nil {
+		return TicketPage{}, err
+	}
+
+	tickets, err := uc.ticketRepo.List(ctx, repository.TicketFilter{
+		FormID:     formID,
+		StatusIDs:  in.StatusIDs,
+		EmailQuery: in.EmailQuery,
+	}, in.After, limit+1)
 	if err != nil {
-		return nil, err
+		return TicketPage{}, err
 	}
+
+	var next *TicketCursor
+	if len(tickets) > limit {
+		tickets = tickets[:limit]
+		last := tickets[limit-1]
+		next = &TicketCursor{SubmittedAt: last.SubmittedAt, ID: last.ID}
+	}
+
 	if len(tickets) == 0 {
-		return []TicketSummary{}, nil
+		return TicketPage{Tickets: []TicketSummary{}}, nil
 	}
 
 	fctx, err := uc.loadFormContext(ctx, formID)
 	if err != nil {
-		return nil, err
+		return TicketPage{}, err
 	}
 
 	summaries := make([]TicketSummary, 0, len(tickets))
 	for _, t := range tickets {
 		answers, err := parseResponseAnswers(t.Answers)
 		if err != nil {
-			return nil, err
+			return TicketPage{}, err
 		}
 		summaries = append(summaries, buildSummary(t, fctx, answers))
 	}
-	return summaries, nil
+	return TicketPage{Tickets: summaries, NextCursor: next}, nil
+}
+
+func (uc *TicketUseCase) CountTicketsByStatus(
+	ctx context.Context,
+	formID, userID uuid.UUID,
+	emailQuery *string,
+) ([]TicketStatusCount, error) {
+	if err := uc.authz.RequireEditor(ctx, formID, userID); err != nil {
+		return nil, err
+	}
+
+	statuses, err := uc.statusRepo.List(ctx, formID)
+	if err != nil {
+		return nil, err
+	}
+	counts, err := uc.ticketRepo.CountGroupByStatus(ctx, formID, emailQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]TicketStatusCount, len(statuses))
+	for i, s := range statuses {
+		result[i] = TicketStatusCount{StatusID: s.ID, Count: counts[s.ID]}
+	}
+	return result, nil
+}
+
+func (uc *TicketUseCase) requireFormStatuses(
+	ctx context.Context,
+	formID uuid.UUID,
+	statusIDs []uuid.UUID,
+) error {
+	if len(statusIDs) == 0 {
+		return nil
+	}
+	statuses, err := uc.statusRepo.List(ctx, formID)
+	if err != nil {
+		return err
+	}
+	owned := make(map[uuid.UUID]bool, len(statuses))
+	for _, s := range statuses {
+		owned[s.ID] = true
+	}
+	for _, id := range statusIDs {
+		if !owned[id] {
+			return entity.NewError(entity.CodeResourceHidden)
+		}
+	}
+	return nil
 }
 
 func (uc *TicketUseCase) GetTicket(

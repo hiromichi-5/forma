@@ -80,6 +80,10 @@ var routePermissions = map[string]routeSpec{
 		level: levelEditor,
 		query: "?form_id=:form_id",
 	},
+	"GET /v1/tickets/counts": {
+		level: levelEditor,
+		query: "?form_id=:form_id",
+	},
 	"GET /v1/tickets/:ticket_id":           {level: levelEditor},
 	"PATCH /v1/tickets/:ticket_id":         {level: levelEditor, body: map[string]any{}},
 	"GET /v1/tickets/:ticket_id/histories": {level: levelEditor},

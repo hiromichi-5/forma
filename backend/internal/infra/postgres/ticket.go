@@ -2,11 +2,13 @@ package postgres
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
 	db "github.com/hiromichi-5/forma/backend/internal/infra/db"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -48,13 +50,26 @@ func (r *TicketRepository) GetByID(ctx context.Context, id uuid.UUID) (entity.Ti
 
 func (r *TicketRepository) List(
 	ctx context.Context,
-	formID uuid.UUID,
-	statusID *uuid.UUID,
+	filter repository.TicketFilter,
+	after *repository.TicketCursor,
+	limit int,
 ) ([]entity.Ticket, error) {
-	rows, err := r.q.ListTickets(ctx, db.ListTicketsParams{
-		FormID:  toUUID(formID),
-		Column2: toNullUUID(statusID),
-	})
+	statusIDs := make([]pgtype.UUID, len(filter.StatusIDs))
+	for i, id := range filter.StatusIDs {
+		statusIDs[i] = toUUID(id)
+	}
+	params := db.ListTicketsParams{
+		FormID:       toUUID(filter.FormID),
+		StatusIds:    statusIDs,
+		EmailPattern: toContainsPattern(filter.EmailQuery),
+		RowLimit:     int32(limit), //nolint:gosec // usecase が上限を検証済み
+	}
+	if after != nil {
+		params.CursorSubmittedAt = toTimestamptz(after.SubmittedAt)
+		params.CursorID = toUUID(after.ID)
+	}
+
+	rows, err := r.q.ListTickets(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +78,57 @@ func (r *TicketRepository) List(
 		result[i] = toTicket(row)
 	}
 	return result, nil
+}
+
+func (r *TicketRepository) CountGroupByStatus(
+	ctx context.Context,
+	formID uuid.UUID,
+	emailQuery *string,
+) (map[uuid.UUID]int64, error) {
+	rows, err := r.q.CountTicketsGroupByStatus(ctx, db.CountTicketsGroupByStatusParams{
+		FormID:       toUUID(formID),
+		EmailPattern: toContainsPattern(emailQuery),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[uuid.UUID]int64, len(rows))
+	for _, row := range rows {
+		result[fromUUID(row.StatusID)] = row.Count
+	}
+	return result, nil
+}
+
+func (r *TicketRepository) SummarizeByForms(
+	ctx context.Context,
+	formIDs []uuid.UUID,
+) (map[uuid.UUID]repository.TicketStats, error) {
+	ids := make([]pgtype.UUID, len(formIDs))
+	for i, id := range formIDs {
+		ids[i] = toUUID(id)
+	}
+	rows, err := r.q.SummarizeTicketsByForms(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[uuid.UUID]repository.TicketStats, len(rows))
+	for _, row := range rows {
+		result[fromUUID(row.FormID)] = repository.TicketStats{
+			Count:             row.TicketCount,
+			LatestSubmittedAt: fromTimestamptz(row.LatestSubmittedAt),
+		}
+	}
+	return result, nil
+}
+
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+// toContainsPattern は部分一致の ILIKE パターンを作る。入力中の % と _ はワイルドカードとして扱わない。
+func toContainsPattern(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: "%" + likeEscaper.Replace(*s) + "%", Valid: true}
 }
 
 func (r *TicketRepository) Save(ctx context.Context, ticket entity.Ticket) error {

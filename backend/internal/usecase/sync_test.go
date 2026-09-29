@@ -10,6 +10,7 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/entity"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
+	"github.com/hiromichi-5/forma/backend/internal/usecase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,9 +81,9 @@ func TestSyncUseCase_SyncFormOnce(t *testing.T) {
 
 		// チケットが作成されたことを確認
 		ticketUC := newTicketUseCase()
-		tickets, err := ticketUC.ListTickets(ctx, formID, adminID, nil)
+		page, err := ticketUC.ListTickets(ctx, formID, adminID, usecase.ListTicketsInput{})
 		require.NoError(t, err)
-		assert.Len(t, tickets, 2)
+		assert.Len(t, page.Tickets, 2)
 	})
 
 	t.Run("正常系: 重複レスポンスは新規チケットとしてカウントされないこと", func(t *testing.T) {

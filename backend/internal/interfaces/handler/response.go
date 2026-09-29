@@ -42,9 +42,11 @@ type formResp struct {
 }
 
 type formSummaryResp struct {
-	ID     string `json:"id"`
-	FormID string `json:"form_id"`
-	Title  string `json:"title"`
+	ID                string  `json:"id"`
+	FormID            string  `json:"form_id"`
+	Title             string  `json:"title"`
+	TicketCount       int64   `json:"ticket_count"`
+	LatestSubmittedAt *string `json:"latest_submitted_at"`
 }
 
 func toFormResp(f entity.Form) formResp {
@@ -58,13 +60,18 @@ func toFormResp(f entity.Form) formResp {
 	}
 }
 
-func toFormSummaryListResp(forms []entity.Form) []formSummaryResp {
+func toFormSummaryListResp(forms []usecase.FormSummary) []formSummaryResp {
 	out := make([]formSummaryResp, len(forms))
 	for i, f := range forms {
 		out[i] = formSummaryResp{
-			ID:     f.ID.String(),
-			FormID: f.GoogleFormID,
-			Title:  f.Title,
+			ID:          f.ID.String(),
+			FormID:      f.GoogleFormID,
+			Title:       f.Title,
+			TicketCount: f.TicketCount,
+		}
+		if f.LatestSubmittedAt != nil {
+			formatted := f.LatestSubmittedAt.UTC().Format(time.RFC3339)
+			out[i].LatestSubmittedAt = &formatted
 		}
 	}
 	return out
@@ -253,6 +260,19 @@ func toTicketSummaryResp(t usecase.TicketSummary) ticketSummaryResp {
 		}
 	}
 	return resp
+}
+
+type ticketStatusCountResp struct {
+	StatusID string `json:"status_id"`
+	Count    int64  `json:"count"`
+}
+
+func toTicketStatusCountListResp(counts []usecase.TicketStatusCount) []ticketStatusCountResp {
+	out := make([]ticketStatusCountResp, len(counts))
+	for i, c := range counts {
+		out[i] = ticketStatusCountResp{StatusID: c.StatusID.String(), Count: c.Count}
+	}
+	return out
 }
 
 func toTicketSummaryListResp(tickets []usecase.TicketSummary) []ticketSummaryResp {

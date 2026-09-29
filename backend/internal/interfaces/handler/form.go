@@ -10,11 +10,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/hiromichi-5/forma/backend/internal/entity"
 	"github.com/hiromichi-5/forma/backend/internal/interfaces/middleware"
+	"github.com/hiromichi-5/forma/backend/internal/usecase"
 )
 
 type FormUseCase interface {
 	RegisterForm(ctx context.Context, formURL string, userID uuid.UUID) (entity.Form, error)
-	ListForms(ctx context.Context, userID uuid.UUID) ([]entity.Form, error)
+	ListForms(ctx context.Context, userID uuid.UUID) ([]usecase.FormSummary, error)
 	GetForm(ctx context.Context, formID, userID uuid.UUID) (entity.Form, error)
 	UpdateTitleQuestion(ctx context.Context, formID, userID uuid.UUID, questionID *string) error
 	DeleteForm(ctx context.Context, formID, userID uuid.UUID) error

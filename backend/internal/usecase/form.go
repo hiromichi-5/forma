@@ -23,10 +23,17 @@ type FormSyncer interface {
 	) (newTickets int, lastSync time.Time, err error)
 }
 
+type FormSummary struct {
+	entity.Form
+	TicketCount       int64
+	LatestSubmittedAt *time.Time
+}
+
 type FormUseCase struct {
 	formRepo   repository.FormRepository
 	memberRepo repository.MemberRepository
 	statusRepo repository.StatusRepository
+	ticketRepo repository.TicketRepository
 	authz      *Authorizer
 	fetcher    repository.FormFetcher
 	uow        repository.UnitOfWork[repository.FormRepos]
@@ -37,6 +44,7 @@ func NewFormUseCase(
 	formRepo repository.FormRepository,
 	memberRepo repository.MemberRepository,
 	statusRepo repository.StatusRepository,
+	ticketRepo repository.TicketRepository,
 	authz *Authorizer,
 	fetcher repository.FormFetcher,
 	uow repository.UnitOfWork[repository.FormRepos],
@@ -46,6 +54,7 @@ func NewFormUseCase(
 		formRepo:   formRepo,
 		memberRepo: memberRepo,
 		statusRepo: statusRepo,
+		ticketRepo: ticketRepo,
 		authz:      authz,
 		fetcher:    fetcher,
 		uow:        uow,
@@ -154,8 +163,31 @@ func (uc *FormUseCase) initFormStatuses(
 	return nil
 }
 
-func (uc *FormUseCase) ListForms(ctx context.Context, userID uuid.UUID) ([]entity.Form, error) {
-	return uc.memberRepo.ListAccessibleForms(ctx, userID)
+func (uc *FormUseCase) ListForms(ctx context.Context, userID uuid.UUID) ([]FormSummary, error) {
+	forms, err := uc.memberRepo.ListAccessibleForms(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	formIDs := make([]uuid.UUID, len(forms))
+	for i, f := range forms {
+		formIDs[i] = f.ID
+	}
+	stats, err := uc.ticketRepo.SummarizeByForms(ctx, formIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]FormSummary, len(forms))
+	for i, f := range forms {
+		summaries[i] = FormSummary{Form: f}
+		if s, ok := stats[f.ID]; ok {
+			summaries[i].TicketCount = s.Count
+			latest := s.LatestSubmittedAt
+			summaries[i].LatestSubmittedAt = &latest
+		}
+	}
+	return summaries, nil
 }
 
 func (uc *FormUseCase) GetForm(ctx context.Context, formID, userID uuid.UUID) (entity.Form, error) {

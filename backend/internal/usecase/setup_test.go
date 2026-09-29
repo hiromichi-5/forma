@@ -79,7 +79,7 @@ func newFormUseCaseWithSyncer(
 	syncer usecase.FormSyncer,
 ) *usecase.FormUseCase {
 	return usecase.NewFormUseCase(
-		newFormRepo(), newMemberRepo(), newStatusRepo(), newAuthorizer(), fetcher,
+		newFormRepo(), newMemberRepo(), newStatusRepo(), newTicketRepo(), newAuthorizer(), fetcher,
 		postgres.NewFormUoW(testPool),
 		syncer,
 	)
