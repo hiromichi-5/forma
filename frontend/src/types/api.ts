@@ -1904,8 +1904,14 @@ export interface paths {
                 query: {
                     /** @description フィルタリング用のフォームID */
                     form_id: string;
-                    /** @description フィルタリング用のステータスID */
-                    status_id?: string;
+                    /** @description フィルタリング用のステータスID。複数指定した場合はいずれかに一致するチケットを返す */
+                    status_id?: string[];
+                    /** @description 回答者のメールアドレスの部分一致検索（大文字小文字を区別しない） */
+                    q?: string;
+                    /** @description 取得件数 */
+                    limit?: number;
+                    /** @description 前回のレスポンスの next_cursor */
+                    cursor?: string;
                 };
                 header?: never;
                 path?: never;
@@ -1920,6 +1926,83 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ListTicketsResponse"];
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tickets/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ステータスごとのチケット件数取得 */
+        get: {
+            parameters: {
+                query: {
+                    /** @description フォームID */
+                    form_id: string;
+                    /** @description 回答者のメールアドレスの部分一致検索（大文字小文字を区別しない） */
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListTicketCountsResponse"];
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
                 /** @description Unauthorized */
@@ -2296,6 +2379,13 @@ export interface components {
             id: string;
             form_id: string;
             title: string;
+            /** Format: int64 */
+            ticket_count: number;
+            /**
+             * Format: date-time
+             * @description 最新の回答日時。回答がなければ null
+             */
+            latest_submitted_at: string | null;
         };
         ListFormsResponse: {
             forms: components["schemas"]["FormSummary"][];
@@ -2480,6 +2570,17 @@ export interface components {
         };
         ListTicketsResponse: {
             tickets: components["schemas"]["TicketSummary"][];
+            /** @description 次のページを取得するためのカーソル。最後のページなら null */
+            next_cursor: string | null;
+        };
+        TicketStatusCount: {
+            /** Format: uuid */
+            status_id: string;
+            /** Format: int64 */
+            count: number;
+        };
+        ListTicketCountsResponse: {
+            counts: components["schemas"]["TicketStatusCount"][];
         };
         UpdateTicketRequest: {
             /** Format: uuid */
@@ -2569,6 +2670,8 @@ export type TicketDetail = components['schemas']['TicketDetail'];
 export type TicketUpdateResponse = components['schemas']['TicketUpdateResponse'];
 export type TicketUpdatedEvent = components['schemas']['TicketUpdatedEvent'];
 export type ListTicketsResponse = components['schemas']['ListTicketsResponse'];
+export type TicketStatusCount = components['schemas']['TicketStatusCount'];
+export type ListTicketCountsResponse = components['schemas']['ListTicketCountsResponse'];
 export type UpdateTicketRequest = components['schemas']['UpdateTicketRequest'];
 export type TicketHistory = components['schemas']['TicketHistory'];
 export type ListTicketHistoriesResponse = components['schemas']['ListTicketHistoriesResponse'];

@@ -38,6 +38,7 @@ POST /v1/invites/:id/accept                  招待承諾
 
 ```text
 GET   /v1/tickets?form_id=xxx          フォーム指定でチケット一覧
+GET   /v1/tickets/counts?form_id=xxx   フォーム指定でステータスごとの件数
 GET   /v1/tickets/:id                  チケット詳細
 PATCH /v1/tickets/:id                  チケット更新
 GET   /v1/tickets/:id/histories        変更履歴

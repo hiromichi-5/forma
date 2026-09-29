@@ -3,6 +3,7 @@ package usecase_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/entity"
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
+	"github.com/hiromichi-5/forma/backend/internal/usecase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -158,9 +160,9 @@ func TestFormUseCase_RegisterForm(t *testing.T) {
 		require.NoError(t, err)
 
 		ticketUC := newTicketUseCase()
-		tickets, err := ticketUC.ListTickets(ctx, form.ID, userID, nil)
+		page, err := ticketUC.ListTickets(ctx, form.ID, userID, usecase.ListTicketsInput{})
 		require.NoError(t, err)
-		assert.Len(t, tickets, 1)
+		assert.Len(t, page.Tickets, 1)
 	})
 
 	t.Run("準正常系: 初回同期に失敗してもフォーム登録自体は成功すること", func(t *testing.T) {
@@ -355,6 +357,47 @@ func TestFormUseCase_ListForms(t *testing.T) {
 		forms, err := uc.ListForms(ctx, userID)
 		require.NoError(t, err)
 		assert.Len(t, forms, 2)
+	})
+
+	t.Run("正常系: フォームごとの回答数と最新の回答日時を返すこと", func(t *testing.T) {
+		truncate(t)
+		ctx := context.Background()
+		userID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"admin@example.com",
+			"password123",
+			"Admin",
+		)
+		formID, statusID := testutil.CreateForm(t, ctx, testPool, "gform1", "Form 1", userID)
+		testutil.CreateForm(t, ctx, testPool, "gform2", "Form 2", userID)
+		latest := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+		for i, submittedAt := range []time.Time{latest.Add(-time.Hour), latest} {
+			ticketID := testutil.CreateTicket(
+				t,
+				ctx,
+				testPool,
+				formID,
+				statusID,
+				fmt.Sprintf("resp-%d", i),
+			)
+			testutil.SetTicketSubmittedAt(t, ctx, testPool, ticketID, submittedAt)
+		}
+
+		uc := newFormUseCase(&mockFormFetcher{})
+		forms, err := uc.ListForms(ctx, userID)
+		require.NoError(t, err)
+		require.Len(t, forms, 2)
+
+		assert.Equal(t, "Form 1", forms[0].Title)
+		assert.Equal(t, int64(2), forms[0].TicketCount)
+		require.NotNil(t, forms[0].LatestSubmittedAt)
+		assert.True(t, latest.Equal(*forms[0].LatestSubmittedAt))
+
+		assert.Equal(t, "Form 2", forms[1].Title)
+		assert.Equal(t, int64(0), forms[1].TicketCount)
+		assert.Nil(t, forms[1].LatestSubmittedAt)
 	})
 }
 

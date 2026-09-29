@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -111,6 +112,57 @@ func TestTicketScenario(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Len(t, body.Tickets, 2)
 		ticketID = body.Tickets[0]["id"].(string)
+	})
+
+	t.Run("チケット一覧: next_cursor で次のページを取得できる", func(t *testing.T) {
+		type listBody struct {
+			Tickets    []map[string]any `json:"tickets"`
+			NextCursor *string          `json:"next_cursor"`
+		}
+
+		resp := get(t, client, fmt.Sprintf("/v1/tickets?form_id=%s&limit=1", formID))
+		var first listBody
+		readJSON(t, resp, &first)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Len(t, first.Tickets, 1)
+		require.NotNil(t, first.NextCursor)
+
+		resp = get(t, client, fmt.Sprintf(
+			"/v1/tickets?form_id=%s&limit=1&cursor=%s", formID, url.QueryEscape(*first.NextCursor),
+		))
+		var second listBody
+		readJSON(t, resp, &second)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Len(t, second.Tickets, 1)
+		assert.NotEqual(t, first.Tickets[0]["id"], second.Tickets[0]["id"])
+		assert.Nil(t, second.NextCursor)
+	})
+
+	t.Run("チケット一覧: 不正なカーソルは VALIDATION_ERROR になる", func(t *testing.T) {
+		resp := get(t, client, fmt.Sprintf("/v1/tickets?form_id=%s&cursor=invalid", formID))
+		var body map[string]any
+		readJSON(t, resp, &body)
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		assert.Equal(t, "VALIDATION_ERROR", body["code"])
+	})
+
+	t.Run("チケット件数: ステータスごとの件数を取得できる", func(t *testing.T) {
+		resp := get(t, client, fmt.Sprintf("/v1/tickets/counts?form_id=%s", formID))
+		var body struct {
+			Counts []struct {
+				StatusID string `json:"status_id"`
+				Count    int64  `json:"count"`
+			} `json:"counts"`
+		}
+		readJSON(t, resp, &body)
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		var total int64
+		for _, c := range body.Counts {
+			total += c.Count
+		}
+		assert.Equal(t, int64(2), total)
 	})
 
 	t.Run("チケット詳細: チケットの詳細と回答を取得できる", func(t *testing.T) {

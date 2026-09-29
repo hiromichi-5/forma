@@ -22,7 +22,10 @@
 | パラメータ | 型 | 必須 | 説明 |
 | --- | --- | --- | --- |
 | `form_id` | string (UUID) | Yes | フォーム ID |
-| `status_id` | string (UUID) | No | ステータスで絞り込み |
+| `status_id` | string (UUID) | No | ステータスで絞り込み。複数指定（`status_id=a&status_id=b`）した場合はいずれかに一致するチケットを返す |
+| `q` | string | No | 回答者のメールアドレスの部分一致検索（大文字小文字を区別しない）。前後の空白は無視する |
+| `limit` | integer | No | 取得件数（1〜200）。省略時は 50 |
+| `cursor` | string | No | 前回のレスポンスの `next_cursor`。省略時は先頭から返す |
 
 ### レスポンス
 
@@ -53,21 +56,71 @@
       "submitted_at": "2026-03-30T08:00:00Z",
       "created_at": "2026-03-30T12:00:00Z"
     }
+  ],
+  "next_cursor": "eyJzdWJtaXR0ZWRfYXQiOi..."
+}
+```
+
+| フィールド | 型 | 説明 |
+| --- | --- | --- |
+| `next_cursor` | string? | 次のページを取得するためのカーソル。最後のページなら `null` |
+
+### エラー
+
+| コード | HTTP | 条件 |
+| --- | --- | --- |
+| `VALIDATION_ERROR` | 400 | form_id・status_id が不正な UUID、limit が範囲外、cursor が不正 |
+| `RESOURCE_HIDDEN` | 404 | メンバーでない、status_id が他フォームのステータス |
+
+### 補足
+
+- 回答日時（`submitted_at`）の新しい順に返す。回答日時が同じ場合は `id` の降順
+- ページングはカーソル方式。`next_cursor` は並び順上の位置（回答日時と ID）を表す。
+- `cursor` は同じ絞り込み条件（`status_id`, `q`）で使う。条件を変えた場合は先頭から取得し直す
+- `formContext` を利用することで、フォーム・ステータス・メンバー・質問の参照データを1回のクエリで取得し、N+1 問題を回避している
+- チケットのタイトルは `deriveTitle` で、設定された質問 → デフォルト質問 → 他の質問 → フォームタイトル → レスポンス ID の順にフォールバックする
+
+---
+
+## GET /v1/tickets/counts
+
+ステータスごとのチケット件数を取得する。カンバンの列の件数表示に使う。
+
+| 項目 | 値 |
+| --- | --- |
+| メソッド | `GET` |
+| パス | `/v1/tickets/counts` |
+| 認証 | 必要（SessionMiddleware） |
+| 権限 | Editor 以上 |
+
+### クエリパラメータ
+
+| パラメータ | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `form_id` | string (UUID) | Yes | フォーム ID |
+| `q` | string | No | 回答者のメールアドレスの部分一致検索。`GET /v1/tickets` の `q` と同じ |
+
+### レスポンス
+
+#### 200 OK
+
+```json
+{
+  "counts": [
+    { "status_id": "770e8400-...", "count": 12 },
+    { "status_id": "771e8400-...", "count": 0 }
   ]
 }
 ```
+
+フォームのすべてのステータスを表示順（`display_order`）で返す。チケットが0件のステータスも含む。
 
 ### エラー
 
 | コード | HTTP | 条件 |
 | --- | --- | --- |
 | `VALIDATION_ERROR` | 400 | form_id パラメータが不正な UUID |
-| `RESOURCE_HIDDEN` | 404 | メンバーでない、status_id が不正 |
-
-### 補足
-
-- `formContext` を利用することで、フォーム・ステータス・メンバー・質問の参照データを1回のクエリで取得し、N+1 問題を回避している
-- チケットのタイトルは `deriveTitle` で、設定された質問 → デフォルト質問 → 他の質問 → フォームタイトル → レスポンス ID の順にフォールバックする
+| `RESOURCE_HIDDEN` | 404 | メンバーでない |
 
 ---
 

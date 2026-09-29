@@ -72,11 +72,18 @@ Google Forms をシステムに登録する。登録者は Admin メンバーと
     {
       "id": "...",
       "form_id": "1FAIpQL...",
-      "title": "お問い合わせフォーム"
+      "title": "お問い合わせフォーム",
+      "ticket_count": 42,
+      "latest_submitted_at": "2026-03-30T08:00:00Z"
     }
   ]
 }
 ```
+
+| フィールド | 型 | 説明 |
+| --- | --- | --- |
+| `ticket_count` | integer | フォームのチケット（回答）数 |
+| `latest_submitted_at` | string? | 最新の回答日時（RFC3339）。回答がなければ `null` |
 
 ---
 

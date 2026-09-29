@@ -89,6 +89,26 @@ func BackdatePasswordResetTokens(
 	}
 }
 
+func SetTicketSubmittedAt(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	ticketID uuid.UUID,
+	submittedAt time.Time,
+) {
+	t.Helper()
+
+	_, err := pool.Exec(
+		ctx,
+		`UPDATE tickets SET submitted_at = $2 WHERE id = $1`,
+		ticketID,
+		submittedAt,
+	)
+	if err != nil {
+		t.Fatalf("set ticket submitted_at: %v", err)
+	}
+}
+
 func CreateForm(
 	t *testing.T,
 	ctx context.Context,

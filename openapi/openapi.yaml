@@ -152,11 +152,17 @@ components:
         created_at: { type: string, format: date-time }
     FormSummary:
       type: object
-      required: [id, form_id, title]
+      required: [id, form_id, title, ticket_count, latest_submitted_at]
       properties:
         id: { type: string, format: uuid }
         form_id: { type: string }
         title: { type: string }
+        ticket_count: { type: integer, format: int64 }
+        latest_submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 最新の回答日時。回答がなければ null
     ListFormsResponse:
       type: object
       required: [forms]
@@ -442,11 +448,30 @@ components:
 
     ListTicketsResponse:
       type: object
-      required: [tickets]
+      required: [tickets, next_cursor]
       properties:
         tickets:
           type: array
           items: { $ref: "#/components/schemas/TicketSummary" }
+        next_cursor:
+          type: string
+          nullable: true
+          description: 次のページを取得するためのカーソル。最後のページなら null
+
+    TicketStatusCount:
+      type: object
+      required: [status_id, count]
+      properties:
+        status_id: { type: string, format: uuid }
+        count: { type: integer, format: int64 }
+
+    ListTicketCountsResponse:
+      type: object
+      required: [counts]
+      properties:
+        counts:
+          type: array
+          items: { $ref: "#/components/schemas/TicketStatusCount" }
 
     UpdateTicketRequest:
       type: object
@@ -1346,14 +1371,68 @@ paths:
           description: "フィルタリング用のフォームID"
         - in: query
           name: status_id
-          schema: { type: string, format: uuid }
-          description: "フィルタリング用のステータスID"
+          schema:
+            type: array
+            items: { type: string, format: uuid }
+          description: "フィルタリング用のステータスID。複数指定した場合はいずれかに一致するチケットを返す"
+        - in: query
+          name: q
+          schema: { type: string }
+          description: "回答者のメールアドレスの部分一致検索（大文字小文字を区別しない）"
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+          description: "取得件数"
+        - in: query
+          name: cursor
+          schema: { type: string }
+          description: "前回のレスポンスの next_cursor"
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ListTicketsResponse" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/tickets/counts:
+    get:
+      summary: ステータスごとのチケット件数取得
+      parameters:
+        - in: query
+          name: form_id
+          required: true
+          schema: { type: string, format: uuid }
+          description: "フォームID"
+        - in: query
+          name: q
+          schema: { type: string }
+          description: "回答者のメールアドレスの部分一致検索（大文字小文字を区別しない）"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListTicketCountsResponse" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: Unauthorized
           content:

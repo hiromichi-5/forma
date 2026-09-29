@@ -24,6 +24,44 @@ func (q *Queries) CountTicketsByStatus(ctx context.Context, statusID pgtype.UUID
 	return count, err
 }
 
+const countTicketsGroupByStatus = `-- name: CountTicketsGroupByStatus :many
+SELECT status_id, COUNT(1) AS count
+FROM tickets
+WHERE form_id = $1
+  AND ($2::text IS NULL OR respondent_email ILIKE $2)
+GROUP BY status_id
+`
+
+type CountTicketsGroupByStatusParams struct {
+	FormID       pgtype.UUID `json:"form_id"`
+	EmailPattern pgtype.Text `json:"email_pattern"`
+}
+
+type CountTicketsGroupByStatusRow struct {
+	StatusID pgtype.UUID `json:"status_id"`
+	Count    int64       `json:"count"`
+}
+
+func (q *Queries) CountTicketsGroupByStatus(ctx context.Context, arg CountTicketsGroupByStatusParams) ([]CountTicketsGroupByStatusRow, error) {
+	rows, err := q.db.Query(ctx, countTicketsGroupByStatus, arg.FormID, arg.EmailPattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountTicketsGroupByStatusRow
+	for rows.Next() {
+		var i CountTicketsGroupByStatusRow
+		if err := rows.Scan(&i.StatusID, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createTicket = `-- name: CreateTicket :execrows
 INSERT INTO tickets (id, form_id, response_id, respondent_email, answers, status_id, assignee_id, priority, submitted_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -90,18 +128,32 @@ SELECT id, form_id, response_id, respondent_email, answers,
        status_id, assignee_id, priority, submitted_at, created_at
 FROM tickets
 WHERE form_id = $1
-  AND ($2::uuid IS NULL OR status_id = $2)
-ORDER BY created_at DESC
-LIMIT 200
+  AND (COALESCE(cardinality($2::uuid[]), 0) = 0 OR status_id = ANY($2::uuid[]))
+  AND ($3::text IS NULL OR respondent_email ILIKE $3)
+  AND ($4::timestamptz IS NULL
+       OR (submitted_at, id) < ($4::timestamptz, $5::uuid))
+ORDER BY submitted_at DESC, id DESC
+LIMIT $6
 `
 
 type ListTicketsParams struct {
-	FormID  pgtype.UUID `json:"form_id"`
-	Column2 pgtype.UUID `json:"column_2"`
+	FormID            pgtype.UUID        `json:"form_id"`
+	StatusIds         []pgtype.UUID      `json:"status_ids"`
+	EmailPattern      pgtype.Text        `json:"email_pattern"`
+	CursorSubmittedAt pgtype.Timestamptz `json:"cursor_submitted_at"`
+	CursorID          pgtype.UUID        `json:"cursor_id"`
+	RowLimit          int32              `json:"row_limit"`
 }
 
 func (q *Queries) ListTickets(ctx context.Context, arg ListTicketsParams) ([]Ticket, error) {
-	rows, err := q.db.Query(ctx, listTickets, arg.FormID, arg.Column2)
+	rows, err := q.db.Query(ctx, listTickets,
+		arg.FormID,
+		arg.StatusIds,
+		arg.EmailPattern,
+		arg.CursorSubmittedAt,
+		arg.CursorID,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -121,6 +173,39 @@ func (q *Queries) ListTickets(ctx context.Context, arg ListTicketsParams) ([]Tic
 			&i.SubmittedAt,
 			&i.CreatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const summarizeTicketsByForms = `-- name: SummarizeTicketsByForms :many
+SELECT form_id, COUNT(1) AS ticket_count, MAX(submitted_at)::timestamptz AS latest_submitted_at
+FROM tickets
+WHERE form_id = ANY($1::uuid[])
+GROUP BY form_id
+`
+
+type SummarizeTicketsByFormsRow struct {
+	FormID            pgtype.UUID        `json:"form_id"`
+	TicketCount       int64              `json:"ticket_count"`
+	LatestSubmittedAt pgtype.Timestamptz `json:"latest_submitted_at"`
+}
+
+func (q *Queries) SummarizeTicketsByForms(ctx context.Context, formIds []pgtype.UUID) ([]SummarizeTicketsByFormsRow, error) {
+	rows, err := q.db.Query(ctx, summarizeTicketsByForms, formIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SummarizeTicketsByFormsRow
+	for rows.Next() {
+		var i SummarizeTicketsByFormsRow
+		if err := rows.Scan(&i.FormID, &i.TicketCount, &i.LatestSubmittedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

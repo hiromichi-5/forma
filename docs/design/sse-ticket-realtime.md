@@ -173,29 +173,14 @@ func (h *MemoryHub) PublishTicketUpdated(_ context.Context, event TicketEvent) e
 
 ### フロントエンド
 
-```typescript
-// frontend/src/hooks/use-ticket-stream.ts
+`frontend/src/hooks/use-ticket-stream.ts` の `useTicketStream(formId, onTicketUpdated)` が `EventSource` で `/v1/forms/:form_id/stream` を購読し、`ticket_updated` イベントの `ticket` をコールバックに渡す。
 
-export function useTicketStream(formId: string) {
-    const queryClient = useQueryClient()
+`use-form-responses.ts` はこのコールバックで、PATCH のレスポンスを反映するときと同じ処理（`cacheDetail`）を呼ぶ。チケット一覧はカーソルページングで読み込んだ分だけを保持しているため、受信したチケットは次のように反映する。
 
-    useEffect(() => {
-        const es = new EventSource(
-            `/v1/forms/${formId}/stream`,
-            { withCredentials: true }
-        )
-        es.addEventListener('ticket_updated', (e: MessageEvent) => {
-            const { ticket } = JSON.parse(e.data)
-            queryClient.setQueryData(['tickets', formId], (prev) =>
-                prev?.map((t) => t.id === ticket.id ? ticket : t)
-            )
-        })
-        return () => es.close()
-    }, [formId, queryClient])
-}
-```
-
-`use-form-responses.ts` でこのフックを呼び出すことで、SSE 受信時に既存のキャッシュをパッチ更新する。
+- 読み込み済みのチケットは、その場で値を置き換える
+- 表示中の絞り込み条件（ステータス・メールアドレス検索）に合わなくなったチケットは一覧から外す。カンバンではステータスの変更により列を移動する
+- 条件に合うが未読み込みのチケットは、読み込み済みの範囲内に並ぶ場合のみ、並び順（回答日時の新しい順）の位置に挿入する。範囲より後ろに並ぶものは続きのページで取得される
+- カンバンの列の件数は、変更前の状態が分かる場合は増減させ、分からない場合は `GET /v1/tickets/counts` で取り直す
 
 ---
 

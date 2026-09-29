@@ -78,7 +78,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	profileUC := usecase.NewProfileUseCase(userRepo, postgres.NewProfileUoW(deps.Pool))
 	syncUC := usecase.NewSyncUseCase(formRepo, ticketRepo, statusRepo, authz, deps.Fetcher)
 	formUC := usecase.NewFormUseCase(
-		formRepo, memberRepo, statusRepo, authz, deps.Fetcher,
+		formRepo, memberRepo, statusRepo, ticketRepo, authz, deps.Fetcher,
 		postgres.NewFormUoW(deps.Pool),
 		syncUC,
 	)
@@ -170,6 +170,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 	authed.POST("/invites/:invite_id/accept", ih.PostV1InvitesInviteIdAccept)
 
 	authed.GET("/tickets", tkh.GetV1Tickets)
+	authed.GET("/tickets/counts", tkh.GetV1TicketsCounts)
 	authed.GET("/tickets/:ticket_id", tkh.GetV1TicketsTicketId)
 	authed.PATCH("/tickets/:ticket_id", tkh.PatchV1TicketsTicketId)
 	authed.GET("/tickets/:ticket_id/histories", thh.GetV1TicketsTicketIdHistories)
