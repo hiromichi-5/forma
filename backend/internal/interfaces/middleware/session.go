@@ -12,7 +12,10 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
-const ctxUserID = "userID"
+const (
+	ctxUserID    = "userID"
+	ctxSessionID = "sessionID"
+)
 
 func SessionMiddleware(
 	sessionRepo repository.SessionRepository,
@@ -54,6 +57,7 @@ func SessionMiddleware(
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Set(ctxUserID, session.UserID)
+		c.Set(ctxSessionID, session.ID)
 		c.Next()
 	}
 }
@@ -66,7 +70,15 @@ func abortInvalidSession(c *gin.Context) {
 }
 
 func UserID(c *gin.Context) (uuid.UUID, bool) {
-	v, ok := c.Get(ctxUserID)
+	return contextUUID(c, ctxUserID)
+}
+
+func SessionID(c *gin.Context) (uuid.UUID, bool) {
+	return contextUUID(c, ctxSessionID)
+}
+
+func contextUUID(c *gin.Context, key string) (uuid.UUID, bool) {
+	v, ok := c.Get(key)
 	if !ok {
 		return uuid.UUID{}, false
 	}

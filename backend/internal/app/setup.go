@@ -66,7 +66,7 @@ func NewRouter(deps Deps, opt Option) *gin.Engine {
 		deps.EmailSender,
 		deps.FrontendBaseURL,
 	)
-	profileUC := usecase.NewProfileUseCase(userRepo)
+	profileUC := usecase.NewProfileUseCase(userRepo, postgres.NewProfileUoW(deps.Pool))
 	syncUC := usecase.NewSyncUseCase(formRepo, ticketRepo, statusRepo, authz, deps.Fetcher)
 	formUC := usecase.NewFormUseCase(
 		formRepo, memberRepo, statusRepo, authz, deps.Fetcher,

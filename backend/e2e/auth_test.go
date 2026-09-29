@@ -123,7 +123,7 @@ func TestAuthScenario(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "test-user@example.com", body["email"])
-		assert.Equal(t, "Test User", body["display_name"])
+		assert.Equal(t, "Test User 2", body["display_name"])
 		assert.NotNil(t, body["verified_at"])
 	})
 
@@ -209,5 +209,40 @@ func TestAuthScenario(t *testing.T) {
 		var body map[string]any
 		readJSON(t, resp3, &body)
 		assert.Equal(t, http.StatusUnauthorized, resp3.StatusCode)
+	})
+
+	t.Run("login: セッションCookieに有効期限が設定される", func(t *testing.T) {
+		require.NotNil(t, sessionClient)
+
+		resp := postJSON(t, sessionClient, "/v1/auth/login", map[string]string{
+			"email":    "test-user@example.com",
+			"password": "resetpassword789",
+		})
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var authCookie *http.Cookie
+		for _, cookie := range resp.Cookies() {
+			if cookie.Name == "forma_token" {
+				authCookie = cookie
+			}
+		}
+		require.NotNil(t, authCookie, "認証Cookieが設定されていない")
+		assert.Positive(t, authCookie.MaxAge)
+	})
+
+	t.Run("me: 期限切れのセッションは401でアクセスできない", func(t *testing.T) {
+		require.NotNil(t, sessionClient, "ログインが完了していない")
+
+		uid, err := uuid.Parse(userID)
+		require.NoError(t, err)
+		testutil.ExpireSessions(t, ctx, testPool, uid)
+
+		resp := get(t, sessionClient, "/v1/me")
+		var body map[string]any
+		readJSON(t, resp, &body)
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		assert.Equal(t, "INVALID_SESSION", body["code"])
 	})
 }

@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/hiromichi-5/forma/backend/internal/entity"
+	"github.com/hiromichi-5/forma/backend/internal/repository"
 	"github.com/hiromichi-5/forma/backend/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,6 +40,28 @@ func TestAuthUseCase_Signup(t *testing.T) {
 
 		after := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
 		assert.NotEqual(t, before, after)
+	})
+
+	t.Run("正常系: 未認証ユーザーが再度signupするとパスワード・表示名が更新されること", func(t *testing.T) {
+		truncate(t)
+		uc := newAuthUseCase()
+		ctx := context.Background()
+
+		userID, err := uc.Signup(ctx, "resignup@example.com", "password123", "User1")
+		require.NoError(t, err)
+
+		_, err = uc.Signup(ctx, "resignup@example.com", "newpassword456", "User2")
+		require.NoError(t, err)
+
+		token := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
+		require.NoError(t, uc.VerifyEmail(ctx, token))
+
+		_, err = uc.Authenticate(ctx, "resignup@example.com", "newpassword456")
+		require.NoError(t, err)
+
+		user, err := newUserRepo().GetByID(ctx, userID)
+		require.NoError(t, err)
+		assert.Equal(t, "User2", user.DisplayName)
 	})
 
 	t.Run("準正常系: 認証済みユーザーの重複メールアドレスで CONFLICT エラーになること", func(t *testing.T) {
@@ -80,6 +104,53 @@ func TestAuthUseCase_Authenticate(t *testing.T) {
 		session, err := uc.Authenticate(ctx, "auth@example.com", "password123")
 		require.NoError(t, err)
 		assert.NotEmpty(t, session.ID)
+	})
+
+	t.Run("正常系: セッションに14日後の有効期限が設定されること", func(t *testing.T) {
+		truncate(t)
+		uc := newAuthUseCase()
+		ctx := context.Background()
+
+		testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"expiry@example.com",
+			"password123",
+			"Expiry User",
+		)
+
+		session, err := uc.Authenticate(ctx, "expiry@example.com", "password123")
+		require.NoError(t, err)
+		assert.WithinDuration(
+			t,
+			time.Now().Add(14*24*time.Hour),
+			session.ExpiresAt,
+			time.Minute,
+		)
+	})
+
+	t.Run("準正常系: 期限切れのセッションが取得できないこと", func(t *testing.T) {
+		truncate(t)
+		uc := newAuthUseCase()
+		ctx := context.Background()
+
+		userID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"expired@example.com",
+			"password123",
+			"Expired User",
+		)
+
+		session, err := uc.Authenticate(ctx, "expired@example.com", "password123")
+		require.NoError(t, err)
+
+		testutil.ExpireSessions(t, ctx, testPool, userID)
+
+		_, err = newSessionRepo().GetByID(ctx, session.ID)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 
 	t.Run("準正常系: パスワードが間違っている場合 INVALID_CREDENTIALS エラーになること", func(t *testing.T) {
@@ -216,6 +287,31 @@ func TestAuthUseCase_ConfirmPasswordReset(t *testing.T) {
 		session, err := uc.Authenticate(ctx, "reset@example.com", "newpass123")
 		require.NoError(t, err)
 		assert.NotEmpty(t, session.ID)
+	})
+
+	t.Run("正常系: パスワードリセットで既存セッションが破棄されること", func(t *testing.T) {
+		truncate(t)
+		uc := newAuthUseCase()
+		ctx := context.Background()
+
+		userID := testutil.CreateVerifiedUser(
+			t,
+			ctx,
+			testPool,
+			"resetsession@example.com",
+			"oldpass123",
+			"User",
+		)
+
+		session, err := uc.Authenticate(ctx, "resetsession@example.com", "oldpass123")
+		require.NoError(t, err)
+
+		require.NoError(t, uc.RequestPasswordReset(ctx, "resetsession@example.com"))
+		token := testutil.GetPasswordResetToken(t, ctx, testPool, userID)
+		require.NoError(t, uc.ConfirmPasswordReset(ctx, token, "newpass123"))
+
+		_, err = newSessionRepo().GetByID(ctx, session.ID)
+		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 
 	t.Run("準正常系: 無効なトークンで TOKEN_NOT_FOUND エラーになること", func(t *testing.T) {

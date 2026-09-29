@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -52,7 +53,7 @@ func (h *AuthHandler) PostV1AuthLogin(c *gin.Context) {
 		handleError(c, err)
 		return
 	}
-	h.setAuthCookie(c, session.ID.String())
+	h.setAuthCookie(c, session.ID.String(), session.ExpiresAt)
 	c.JSON(http.StatusOK, loginResp{SessionID: session.ID.String()})
 }
 
@@ -175,7 +176,7 @@ func (h *AuthHandler) cookieDefaults() (string, string, http.SameSite) {
 	return name, path, sameSite
 }
 
-func (h *AuthHandler) setAuthCookie(c *gin.Context, sessionID string) {
+func (h *AuthHandler) setAuthCookie(c *gin.Context, sessionID string, expiresAt time.Time) {
 	name, path, sameSite := h.cookieDefaults()
 	http.SetCookie(c.Writer, &http.Cookie{ //nolint:gosec
 		Name:     name,
@@ -185,6 +186,7 @@ func (h *AuthHandler) setAuthCookie(c *gin.Context, sessionID string) {
 		Secure:   h.cookie.Secure,
 		HttpOnly: true,
 		SameSite: sameSite,
+		MaxAge:   int(time.Until(expiresAt).Seconds()),
 	})
 }
 
