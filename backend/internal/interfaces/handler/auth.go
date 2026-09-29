@@ -13,7 +13,7 @@ import (
 type AuthUseCase interface {
 	Authenticate(ctx context.Context, email, password string) (entity.Session, error)
 	Signup(ctx context.Context, email, password, displayName string) (uuid.UUID, error)
-	Logout(ctx context.Context, sessionID uuid.UUID) error
+	Logout(ctx context.Context, sessionToken string) error
 	VerifyEmail(ctx context.Context, token string) error
 	ResendEmailVerification(ctx context.Context, email string) error
 	RequestPasswordReset(ctx context.Context, email string) error
@@ -53,7 +53,7 @@ func (h *AuthHandler) PostV1AuthLogin(c *gin.Context) {
 		handleError(c, err)
 		return
 	}
-	h.setAuthCookie(c, session.ID.String(), session.ExpiresAt)
+	h.setAuthCookie(c, session.Token, session.ExpiresAt)
 	c.JSON(http.StatusOK, loginResp{SessionID: session.ID.String()})
 }
 
@@ -78,12 +78,12 @@ func (h *AuthHandler) PostV1AuthSignup(c *gin.Context) {
 }
 
 func (h *AuthHandler) PostV1AuthLogout(c *gin.Context) {
-	sid, ok := h.sessionIDFromCookie(c)
+	token, ok := h.sessionTokenFromCookie(c)
 	if !ok {
 		handleError(c, entity.NewError(entity.CodeInvalidSession))
 		return
 	}
-	if err := h.uc.Logout(c, sid); err != nil {
+	if err := h.uc.Logout(c, token); err != nil {
 		handleError(c, err)
 		return
 	}
@@ -176,11 +176,11 @@ func (h *AuthHandler) cookieDefaults() (string, string, http.SameSite) {
 	return name, path, sameSite
 }
 
-func (h *AuthHandler) setAuthCookie(c *gin.Context, sessionID string, expiresAt time.Time) {
+func (h *AuthHandler) setAuthCookie(c *gin.Context, sessionToken string, expiresAt time.Time) {
 	name, path, sameSite := h.cookieDefaults()
 	http.SetCookie(c.Writer, &http.Cookie{ //nolint:gosec
 		Name:     name,
-		Value:    sessionID,
+		Value:    sessionToken,
 		Path:     path,
 		Domain:   h.cookie.Domain,
 		Secure:   h.cookie.Secure,
@@ -204,15 +204,11 @@ func (h *AuthHandler) clearAuthCookie(c *gin.Context) {
 	})
 }
 
-func (h *AuthHandler) sessionIDFromCookie(c *gin.Context) (uuid.UUID, bool) {
+func (h *AuthHandler) sessionTokenFromCookie(c *gin.Context) (string, bool) {
 	name, _, _ := h.cookieDefaults()
 	cookie, err := c.Request.Cookie(name)
 	if err != nil || cookie.Value == "" {
-		return uuid.UUID{}, false
+		return "", false
 	}
-	sid, err := uuid.Parse(cookie.Value)
-	if err != nil {
-		return uuid.UUID{}, false
-	}
-	return sid, true
+	return cookie.Value, true
 }

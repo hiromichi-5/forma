@@ -12,15 +12,15 @@ import (
 )
 
 const createEmailVerificationToken = `-- name: CreateEmailVerificationToken :one
-INSERT INTO email_verification_tokens (id, user_id, token, expires_at)
+INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at)
 VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, token, expires_at, used_at, created_at
+RETURNING id, user_id, expires_at, used_at, created_at, token_hash
 `
 
 type CreateEmailVerificationTokenParams struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`
-	Token     string             `json:"token"`
+	TokenHash []byte             `json:"token_hash"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 }
 
@@ -28,17 +28,17 @@ func (q *Queries) CreateEmailVerificationToken(ctx context.Context, arg CreateEm
 	row := q.db.QueryRow(ctx, createEmailVerificationToken,
 		arg.ID,
 		arg.UserID,
-		arg.Token,
+		arg.TokenHash,
 		arg.ExpiresAt,
 	)
 	var i EmailVerificationToken
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.Token,
 		&i.ExpiresAt,
 		&i.UsedAt,
 		&i.CreatedAt,
+		&i.TokenHash,
 	)
 	return i, err
 }
@@ -53,24 +53,24 @@ func (q *Queries) DeleteEmailVerificationTokensByUser(ctx context.Context, userI
 	return err
 }
 
-const getEmailVerificationTokenByToken = `-- name: GetEmailVerificationTokenByToken :one
-SELECT id, user_id, token, expires_at, used_at, created_at
+const getEmailVerificationTokenByTokenHash = `-- name: GetEmailVerificationTokenByTokenHash :one
+SELECT id, user_id, expires_at, used_at, created_at, token_hash
 FROM email_verification_tokens
-WHERE token = $1
+WHERE token_hash = $1
   AND used_at IS NULL
   AND expires_at > NOW()
 `
 
-func (q *Queries) GetEmailVerificationTokenByToken(ctx context.Context, token string) (EmailVerificationToken, error) {
-	row := q.db.QueryRow(ctx, getEmailVerificationTokenByToken, token)
+func (q *Queries) GetEmailVerificationTokenByTokenHash(ctx context.Context, tokenHash []byte) (EmailVerificationToken, error) {
+	row := q.db.QueryRow(ctx, getEmailVerificationTokenByTokenHash, tokenHash)
 	var i EmailVerificationToken
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.Token,
 		&i.ExpiresAt,
 		&i.UsedAt,
 		&i.CreatedAt,
+		&i.TokenHash,
 	)
 	return i, err
 }

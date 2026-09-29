@@ -26,25 +26,27 @@ func TestAuthUseCase_Signup(t *testing.T) {
 
 	t.Run("正常系: 未認証ユーザーが再度signupするとトークンが再発行されること", func(t *testing.T) {
 		truncate(t)
-		uc := newAuthUseCase()
+		sender := &mockEmailSender{}
+		uc := newAuthUseCaseWith(sender)
 		ctx := context.Background()
 
 		userID, err := uc.Signup(ctx, "dup@example.com", "password123", "User1")
 		require.NoError(t, err)
 
-		before := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
+		before := sender.lastToken(t)
 
 		userID2, err := uc.Signup(ctx, "dup@example.com", "password123", "User2")
 		require.NoError(t, err)
 		assert.Equal(t, userID, userID2)
 
-		after := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
+		after := sender.lastToken(t)
 		assert.NotEqual(t, before, after)
 	})
 
 	t.Run("正常系: 未認証ユーザーが再度signupするとパスワード・表示名が更新されること", func(t *testing.T) {
 		truncate(t)
-		uc := newAuthUseCase()
+		sender := &mockEmailSender{}
+		uc := newAuthUseCaseWith(sender)
 		ctx := context.Background()
 
 		userID, err := uc.Signup(ctx, "resignup@example.com", "password123", "User1")
@@ -53,7 +55,7 @@ func TestAuthUseCase_Signup(t *testing.T) {
 		_, err = uc.Signup(ctx, "resignup@example.com", "newpassword456", "User2")
 		require.NoError(t, err)
 
-		token := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
+		token := sender.lastToken(t)
 		require.NoError(t, uc.VerifyEmail(ctx, token))
 
 		_, err = uc.Authenticate(ctx, "resignup@example.com", "newpassword456")
@@ -149,7 +151,7 @@ func TestAuthUseCase_Authenticate(t *testing.T) {
 
 		testutil.ExpireSessions(t, ctx, testPool, userID)
 
-		_, err = newSessionRepo().GetByID(ctx, session.ID)
+		_, err = newSessionRepo().GetByToken(ctx, session.Token)
 		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 
@@ -212,7 +214,7 @@ func TestAuthUseCase_Logout(t *testing.T) {
 		session, err := uc.Authenticate(ctx, "logout@example.com", "password123")
 		require.NoError(t, err)
 
-		err = uc.Logout(ctx, session.ID)
+		err = uc.Logout(ctx, session.Token)
 		require.NoError(t, err)
 	})
 
@@ -221,7 +223,7 @@ func TestAuthUseCase_Logout(t *testing.T) {
 		uc := newAuthUseCase()
 		ctx := context.Background()
 
-		err := uc.Logout(ctx, testutil.RandomUUID())
+		err := uc.Logout(ctx, "invalid-token")
 		require.Error(t, err)
 		var appErr *entity.Error
 		require.True(t, errors.As(err, &appErr))
@@ -232,13 +234,14 @@ func TestAuthUseCase_Logout(t *testing.T) {
 func TestAuthUseCase_VerifyEmail(t *testing.T) {
 	t.Run("正常系: メール認証トークンで認証できること", func(t *testing.T) {
 		truncate(t)
-		uc := newAuthUseCase()
+		sender := &mockEmailSender{}
+		uc := newAuthUseCaseWith(sender)
 		ctx := context.Background()
 
-		userID, err := uc.Signup(ctx, "verify@example.com", "password123", "Verify")
+		_, err := uc.Signup(ctx, "verify@example.com", "password123", "Verify")
 		require.NoError(t, err)
 
-		token := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
+		token := sender.lastToken(t)
 		err = uc.VerifyEmail(ctx, token)
 		require.NoError(t, err)
 
@@ -264,10 +267,11 @@ func TestAuthUseCase_VerifyEmail(t *testing.T) {
 func TestAuthUseCase_ConfirmPasswordReset(t *testing.T) {
 	t.Run("正常系: パスワードリセットが完了すること", func(t *testing.T) {
 		truncate(t)
-		uc := newAuthUseCase()
+		sender := &mockEmailSender{}
+		uc := newAuthUseCaseWith(sender)
 		ctx := context.Background()
 
-		userID := testutil.CreateVerifiedUser(
+		testutil.CreateVerifiedUser(
 			t,
 			ctx,
 			testPool,
@@ -279,7 +283,7 @@ func TestAuthUseCase_ConfirmPasswordReset(t *testing.T) {
 		err := uc.RequestPasswordReset(ctx, "reset@example.com")
 		require.NoError(t, err)
 
-		token := testutil.GetPasswordResetToken(t, ctx, testPool, userID)
+		token := sender.lastToken(t)
 		err = uc.ConfirmPasswordReset(ctx, token, "newpass123")
 		require.NoError(t, err)
 
@@ -291,10 +295,11 @@ func TestAuthUseCase_ConfirmPasswordReset(t *testing.T) {
 
 	t.Run("正常系: パスワードリセットで既存セッションが破棄されること", func(t *testing.T) {
 		truncate(t)
-		uc := newAuthUseCase()
+		sender := &mockEmailSender{}
+		uc := newAuthUseCaseWith(sender)
 		ctx := context.Background()
 
-		userID := testutil.CreateVerifiedUser(
+		testutil.CreateVerifiedUser(
 			t,
 			ctx,
 			testPool,
@@ -307,10 +312,10 @@ func TestAuthUseCase_ConfirmPasswordReset(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NoError(t, uc.RequestPasswordReset(ctx, "resetsession@example.com"))
-		token := testutil.GetPasswordResetToken(t, ctx, testPool, userID)
+		token := sender.lastToken(t)
 		require.NoError(t, uc.ConfirmPasswordReset(ctx, token, "newpass123"))
 
-		_, err = newSessionRepo().GetByID(ctx, session.ID)
+		_, err = newSessionRepo().GetByToken(ctx, session.Token)
 		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 
@@ -341,17 +346,18 @@ func TestAuthUseCase_RequestPasswordReset(t *testing.T) {
 func TestAuthUseCase_ResendEmailVerification(t *testing.T) {
 	t.Run("正常系: 未認証ユーザーに再送できること", func(t *testing.T) {
 		truncate(t)
-		uc := newAuthUseCase()
+		sender := &mockEmailSender{}
+		uc := newAuthUseCaseWith(sender)
 		ctx := context.Background()
 
-		userID, err := uc.Signup(ctx, "resend@example.com", "password123", "Resend")
+		_, err := uc.Signup(ctx, "resend@example.com", "password123", "Resend")
 		require.NoError(t, err)
 
-		before := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
+		before := sender.lastToken(t)
 		err = uc.ResendEmailVerification(ctx, "resend@example.com")
 		require.NoError(t, err)
 
-		after := testutil.GetEmailVerificationToken(t, ctx, testPool, userID)
+		after := sender.lastToken(t)
 		assert.NotEmpty(t, after)
 		assert.NotEqual(t, before, after)
 	})

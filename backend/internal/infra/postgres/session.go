@@ -20,12 +20,12 @@ func NewSessionRepository(pool *pgxpool.Pool) *SessionRepository {
 	return &SessionRepository{q: db.New(pool)}
 }
 
-func (r *SessionRepository) GetByID(ctx context.Context, id uuid.UUID) (entity.Session, error) {
-	row, err := r.q.GetSessionByID(ctx, toUUID(id))
+func (r *SessionRepository) GetByToken(ctx context.Context, token string) (entity.Session, error) {
+	row, err := r.q.GetSessionByTokenHash(ctx, hashToken(token))
 	if err != nil {
 		return entity.Session{}, repoError(err)
 	}
-	return toSession(row), nil
+	return toSession(row, token), nil
 }
 
 func (r *SessionRepository) Create(
@@ -35,16 +35,17 @@ func (r *SessionRepository) Create(
 	row, err := r.q.CreateSession(ctx, db.CreateSessionParams{
 		ID:        toUUID(session.ID),
 		UserID:    toUUID(session.UserID),
+		TokenHash: hashToken(session.Token),
 		ExpiresAt: toTimestamptz(session.ExpiresAt),
 	})
 	if err != nil {
 		return entity.Session{}, repoError(err)
 	}
-	return toSession(row), nil
+	return toSession(row, session.Token), nil
 }
 
-func (r *SessionRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	n, err := r.q.DeleteSession(ctx, toUUID(id))
+func (r *SessionRepository) DeleteByToken(ctx context.Context, token string) error {
+	n, err := r.q.DeleteSessionByTokenHash(ctx, hashToken(token))
 	if err != nil {
 		return repoError(err)
 	}
@@ -72,10 +73,11 @@ func (r *SessionRepository) DeleteByUserExcept(
 	return nil
 }
 
-func toSession(row db.Session) entity.Session {
+func toSession(row db.Session, token string) entity.Session {
 	return entity.Session{
 		ID:        fromUUID(row.ID),
 		UserID:    fromUUID(row.UserID),
+		Token:     token,
 		ExpiresAt: fromTimestamptz(row.ExpiresAt),
 		CreatedAt: fromTimestamptz(row.CreatedAt),
 	}

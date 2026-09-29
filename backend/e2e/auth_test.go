@@ -61,9 +61,7 @@ func TestAuthScenario(t *testing.T) {
 	t.Run("verify-email: トークンでメール認証できる", func(t *testing.T) {
 		require.NotEmpty(t, userID, "前のテストでuserIDが取得できていない")
 
-		uid, err := uuid.Parse(userID)
-		require.NoError(t, err)
-		token := testutil.GetEmailVerificationToken(t, ctx, testPool, uid)
+		token := mockEmailSender.LastToken(t)
 
 		resp := postJSON(t, http.DefaultClient, "/v1/auth/verify-email", map[string]string{
 			"token": token,
@@ -164,9 +162,7 @@ func TestAuthScenario(t *testing.T) {
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
-		uid, err := uuid.Parse(userID)
-		require.NoError(t, err)
-		token := testutil.GetPasswordResetToken(t, ctx, testPool, uid)
+		token := mockEmailSender.LastToken(t)
 
 		resp2 := postJSON(
 			t,

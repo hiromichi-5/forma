@@ -1,12 +1,12 @@
 -- name: CreatePasswordResetToken :one
-INSERT INTO password_reset_tokens (id, user_id, token, expires_at)
+INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at)
 VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, token, expires_at, used_at, created_at;
+RETURNING id, user_id, expires_at, used_at, created_at, token_hash;
 
--- name: GetPasswordResetTokenByToken :one
-SELECT id, user_id, token, expires_at, used_at, created_at
+-- name: GetPasswordResetTokenByTokenHash :one
+SELECT id, user_id, expires_at, used_at, created_at, token_hash
 FROM password_reset_tokens
-WHERE token = $1
+WHERE token_hash = $1
   AND used_at IS NULL
   AND expires_at > NOW();
 

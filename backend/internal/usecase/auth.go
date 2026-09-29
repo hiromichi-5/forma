@@ -87,9 +87,14 @@ func (uc *AuthUseCase) Authenticate(
 		return entity.Session{}, entity.NewError(entity.CodeEmailNotVerified)
 	}
 
+	token, err := uc.generateToken()
+	if err != nil {
+		return entity.Session{}, err
+	}
 	session, err := uc.sessionRepo.Create(ctx, entity.Session{
 		ID:        uuid.New(),
 		UserID:    user.ID,
+		Token:     token,
 		ExpiresAt: uc.now().Add(sessionTTL),
 	})
 	if err != nil {
@@ -191,8 +196,8 @@ func (uc *AuthUseCase) Signup(
 	return createdUserID, nil
 }
 
-func (uc *AuthUseCase) Logout(ctx context.Context, sessionID uuid.UUID) error {
-	err := uc.sessionRepo.Delete(ctx, sessionID)
+func (uc *AuthUseCase) Logout(ctx context.Context, sessionToken string) error {
+	err := uc.sessionRepo.DeleteByToken(ctx, sessionToken)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return entity.NewError(entity.CodeInvalidSession)

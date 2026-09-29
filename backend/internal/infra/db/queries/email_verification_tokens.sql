@@ -1,12 +1,12 @@
 -- name: CreateEmailVerificationToken :one
-INSERT INTO email_verification_tokens (id, user_id, token, expires_at)
+INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at)
 VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, token, expires_at, used_at, created_at;
+RETURNING id, user_id, expires_at, used_at, created_at, token_hash;
 
--- name: GetEmailVerificationTokenByToken :one
-SELECT id, user_id, token, expires_at, used_at, created_at
+-- name: GetEmailVerificationTokenByTokenHash :one
+SELECT id, user_id, expires_at, used_at, created_at, token_hash
 FROM email_verification_tokens
-WHERE token = $1
+WHERE token_hash = $1
   AND used_at IS NULL
   AND expires_at > NOW();
 

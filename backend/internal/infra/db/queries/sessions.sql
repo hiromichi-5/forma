@@ -1,11 +1,11 @@
 -- name: CreateSession :one
-INSERT INTO sessions (id, user_id, expires_at)
-VALUES ($1, $2, $3)
-RETURNING id, user_id, created_at, expires_at;
+INSERT INTO sessions (id, user_id, token_hash, expires_at)
+VALUES ($1, $2, $3, $4)
+RETURNING id, user_id, created_at, expires_at, token_hash;
 
--- name: DeleteSession :execrows
+-- name: DeleteSessionByTokenHash :execrows
 DELETE FROM sessions
-WHERE id = $1;
+WHERE token_hash = $1;
 
 -- name: DeleteSessionsByUser :exec
 DELETE FROM sessions
@@ -16,8 +16,8 @@ DELETE FROM sessions
 WHERE user_id = $1
   AND id <> $2;
 
--- name: GetSessionByID :one
-SELECT id, user_id, created_at, expires_at
+-- name: GetSessionByTokenHash :one
+SELECT id, user_id, created_at, expires_at, token_hash
 FROM sessions
-WHERE id = $1
+WHERE token_hash = $1
   AND expires_at > NOW();

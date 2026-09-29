@@ -29,18 +29,22 @@ func (r Role) CanAdmin() bool // 管理権限があるか
 `middleware/session.go` の `SessionMiddleware` が認証を担当する。
 
 1. リクエストから Cookie（`forma_token`）を取得
-2. Cookie 値を UUID としてパースし、セッション ID として扱う
-3. `SessionRepository.GetByID()` でセッションの有効性を検証
-4. 有効であればユーザー ID を `gin.Context` に格納（`"userID"` キー）
-5. 無効であれば `CodeInvalidSession`（HTTP 401）を返して中断
+2. Cookie 値をセッショントークンとして `SessionRepository.GetByToken()` でセッションの有効性を検証
+3. 有効であればユーザー ID を `gin.Context` に格納（`"userID"` キー）
+4. 無効であれば `CodeInvalidSession`（HTTP 401）を返して中断
 
 認証不要のエンドポイント（`/v1/auth/*`）はこのミドルウェアを経由しない。
+
+### トークンの保存形式
+
+セッショントークン・メール認証トークン・パスワードリセットトークンは、DB には SHA-256 のハッシュ（`token_hash`）だけを保存する。
+トークンは `crypto/rand` による 24 バイトの乱数で十分なエントロピーを持つため、パスワードと違いソルトやストレッチングは行わない。
 
 ### セッションの有効期限
 
 セッションはログインから 14 日で失効する（`usecase/auth.go` の `sessionTTL`）。延長はせず、期限を過ぎたら再ログインが必要になる。
 
-期限切れの判定は `GetSessionByID` の SQL（`expires_at > NOW()`）で行うため、ミドルウェアからは存在しないセッションと同じ `ErrNotFound` として扱われる。メール認証・パスワードリセットのトークンと同じ方式。
+期限切れの判定は `GetSessionByTokenHash` の SQL（`expires_at > NOW()`）で行うため、ミドルウェアからは存在しないセッションと同じ `ErrNotFound` として扱われる。メール認証・パスワードリセットのトークンと同じ方式。
 
 同じ有効期限を Cookie の `Max-Age` にも設定するため、期限切れの Cookie はブラウザから送信されなくなる。
 

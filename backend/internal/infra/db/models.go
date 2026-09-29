@@ -184,10 +184,10 @@ func (ns NullTicketPriority) Value() (driver.Value, error) {
 type EmailVerificationToken struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`
-	Token     string             `json:"token"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	UsedAt    pgtype.Timestamptz `json:"used_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	TokenHash []byte             `json:"token_hash"`
 }
 
 type Form struct {
@@ -249,10 +249,10 @@ type FormStatus struct {
 type PasswordResetToken struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`
-	Token     string             `json:"token"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	UsedAt    pgtype.Timestamptz `json:"used_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	TokenHash []byte             `json:"token_hash"`
 }
 
 type Session struct {
@@ -260,6 +260,7 @@ type Session struct {
 	UserID    pgtype.UUID        `json:"user_id"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	TokenHash []byte             `json:"token_hash"`
 }
 
 type Ticket struct {

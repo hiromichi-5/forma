@@ -31,14 +31,9 @@ func SessionMiddleware(
 			abortInvalidSession(c)
 			return
 		}
-		sid, err := uuid.Parse(cookie.Value)
-		if err != nil {
-			abortInvalidSession(c)
-			return
-		}
 		log := logger.From(c.Request.Context())
 
-		session, err := sessionRepo.GetByID(c, sid)
+		session, err := sessionRepo.GetByToken(c, cookie.Value)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				log.Debug("session not found")
