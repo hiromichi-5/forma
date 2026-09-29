@@ -5,6 +5,7 @@ import { FormManagementHeader } from "@/components/form-management-header"
 import { ResponseTableView } from "@/components/response-table-view"
 import { ResponseKanbanView } from "@/components/response-kanban-view"
 import { ResponseDetail } from "@/components/response-detail"
+import { InfiniteScrollTrigger } from "@/components/infinite-scroll-trigger"
 import { MembersDialog } from "@/components/members-dialog"
 import { NotificationsDialog } from "@/components/notifications-dialog"
 import { StatusesDialog } from "@/components/statuses-dialog"
@@ -18,7 +19,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { notificationLabel, useFormResponses } from "@/hooks/use-form-responses"
+import {
+  notificationLabel,
+  useFormResponses,
+  type TicketSegment,
+} from "@/hooks/use-form-responses"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useAuth } from "@/hooks/useAuth"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
@@ -26,16 +32,37 @@ import {
   FALLBACK_ASSIGNEE_NAME,
   FALLBACK_STATUS_NAME,
 } from "@/lib/notification-email-preview"
-import { respondentEmailLabel } from "@/lib/ticket-display"
+import { sortStatuses } from "@/lib/ticket-display"
 import type { Member, FormStatus, Form, FormQuestion, TicketSummary } from "@/types"
 import { toast } from "sonner"
+
+const LIST_SEGMENT_KEY = "list"
 
 export default function FormManagementPage() {
   const params = useParams()
   const navigate = useNavigate()
   const formId = params.id
+  const [formStatuses, setFormStatuses] = useState<FormStatus[]>([])
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
+  const [searchQuery, setSearchQuery] = useState("")
+  const debouncedQuery = useDebouncedValue(searchQuery.trim(), 300)
+  // 空配列は絞り込みなし（全てのステータス）を表す。
+  const [statusFilters, setStatusFilters] = useState<string[]>([])
+
+  const segments = useMemo<TicketSegment[]>(() => {
+    if (viewMode === "list") {
+      return [{ key: LIST_SEGMENT_KEY, statusIds: statusFilters }]
+    }
+    return sortStatuses(formStatuses)
+      .filter((status) => statusFilters.length === 0 || statusFilters.includes(status.id))
+      .map((status) => ({ key: status.id, statusIds: [status.id] }))
+  }, [viewMode, statusFilters, formStatuses])
+
   const {
-    responses,
+    pages,
+    ticketsById,
+    counts,
+    loadMore,
     details,
     loadDetail,
     updateResponseStatus,
@@ -46,16 +73,15 @@ export default function FormManagementPage() {
     resolvePendingNotification,
     cancelPendingNotification,
     sendNotification,
-  } = useFormResponses(formId ?? null)
+  } = useFormResponses(formId ?? null, {
+    segments,
+    query: debouncedQuery,
+    withCounts: viewMode === "kanban",
+  })
   const { user } = useAuth()
   const [form, setForm] = useState<Form | null>(null)
   const [questions, setQuestions] = useState<FormQuestion[]>([])
   const [members, setMembers] = useState<Member[]>([])
-  const [formStatuses, setFormStatuses] = useState<FormStatus[]>([])
-  const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
-  const [searchQuery, setSearchQuery] = useState("")
-  // 空配列は絞り込みなし（全てのステータス）を表す。
-  const [statusFilters, setStatusFilters] = useState<string[]>([])
   const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
@@ -81,25 +107,12 @@ export default function FormManagementPage() {
     [members]
   )
 
-  const filteredResponses = useMemo(
-    () =>
-      responses.filter((response) => {
-        const email = respondentEmailLabel(response.respondent_email)
-        const matchesSearch = email.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesStatus =
-          statusFilters.length === 0 || statusFilters.includes(response.status.id)
-        return matchesSearch && matchesStatus
-      }),
-    [responses, searchQuery, statusFilters]
-  )
+  const listPage = pages[LIST_SEGMENT_KEY]
 
   // 更新後の値をダイアログに反映するため、開いた時点のスナップショットではなく最新の一覧から引く。
-  const selectedResponse = useMemo(
-    () => responses.find((response) => response.id === selectedResponseId) ?? null,
-    [responses, selectedResponseId]
-  )
+  const selectedResponse = selectedResponseId ? (ticketsById[selectedResponseId] ?? null) : null
 
-  const formTitle = responses[0]?.form_title || "フォーム管理"
+  const formTitle = form?.title || "フォーム管理"
 
   const notificationEmailSample = useMemo(
     () => ({
@@ -260,20 +273,31 @@ export default function FormManagementPage() {
         />
 
         {viewMode === "list" ? (
-          <ResponseTableView
-            responses={filteredResponses}
-            details={details}
-            users={memberUsers}
-            statuses={formStatuses}
-            onExpandRow={loadDetail}
-            onStatusChange={updateResponseStatus}
-            onAssignChange={assignResponse}
-            onPriorityChange={updatePriority}
-            onOpenDetail={handleOpenDetail}
-          />
+          <div>
+            <ResponseTableView
+              responses={listPage?.tickets ?? []}
+              details={details}
+              users={memberUsers}
+              statuses={formStatuses}
+              onExpandRow={loadDetail}
+              onStatusChange={updateResponseStatus}
+              onAssignChange={assignResponse}
+              onPriorityChange={updatePriority}
+              onOpenDetail={handleOpenDetail}
+            />
+            {listPage && (
+              <InfiniteScrollTrigger
+                hasMore={listPage.hasMore}
+                loading={listPage.loading}
+                onLoadMore={() => loadMore(LIST_SEGMENT_KEY)}
+              />
+            )}
+          </div>
         ) : (
           <ResponseKanbanView
-            responses={filteredResponses}
+            pages={pages}
+            counts={counts}
+            onLoadMore={loadMore}
             users={memberUsers}
             statuses={formStatuses}
             onStatusChange={updateResponseStatus}

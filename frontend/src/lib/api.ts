@@ -18,6 +18,7 @@ import type {
   CreateInviteResponse,
   SyncResponse,
   ListTicketsResponse,
+  ListTicketCountsResponse,
   ListFormQuestionsResponse,
   ListFormStatusesResponse,
   FormStatus,
@@ -357,13 +358,29 @@ class ApiClient {
 
   async getTickets(
     formId: string,
-    statusId?: string
+    options: {
+      statusIds?: string[];
+      query?: string;
+      limit?: number;
+      cursor?: string | null;
+    } = {}
   ): Promise<ListTicketsResponse> {
     const params = new URLSearchParams();
     params.append("form_id", formId);
-    if (statusId) params.append("status_id", statusId);
+    options.statusIds?.forEach((id) => params.append("status_id", id));
+    if (options.query) params.append("q", options.query);
+    if (options.limit) params.append("limit", String(options.limit));
+    if (options.cursor) params.append("cursor", options.cursor);
 
     return this.request<ListTicketsResponse>(`/v1/tickets?${params.toString()}`);
+  }
+
+  async getTicketCounts(formId: string, query?: string): Promise<ListTicketCountsResponse> {
+    const params = new URLSearchParams();
+    params.append("form_id", formId);
+    if (query) params.append("q", query);
+
+    return this.request<ListTicketCountsResponse>(`/v1/tickets/counts?${params.toString()}`);
   }
 
   async getTicket(ticketId: string): Promise<TicketDetail> {

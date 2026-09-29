@@ -36,9 +36,13 @@ import {
 } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { useState } from "react";
+import { InfiniteScrollTrigger } from "@/components/infinite-scroll-trigger";
+import type { SegmentPage } from "@/hooks/use-form-responses";
 
 type ResponseKanbanViewProps = {
-  responses: TicketSummary[];
+  pages: Record<string, SegmentPage>;
+  counts: Record<string, number>;
+  onLoadMore: (statusId: string) => void;
   users: User[];
   statuses: FormStatus[];
   onStatusChange: (id: string, statusId: string) => void;
@@ -246,7 +250,9 @@ function DroppableColumn({
 }
 
 export function ResponseKanbanView({
-  responses,
+  pages,
+  counts,
+  onLoadMore,
   users,
   statuses,
   onStatusChange,
@@ -257,6 +263,7 @@ export function ResponseKanbanView({
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sortedStatuses = sortStatuses(statuses);
+  const responses = Object.values(pages).flatMap((page) => page.tickets);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -301,17 +308,17 @@ export function ResponseKanbanView({
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {sortedStatuses.map((status) => (
-          <DroppableColumn
-            key={status.id}
-            statusId={status.id}
-            statusName={status.name}
-            statusColor={status.color}
-            count={responses.filter((r) => r.status.id === status.id).length}
-          >
-            {responses
-              .filter((r) => r.status.id === status.id)
-              .map((response) => (
+        {sortedStatuses.map((status) => {
+          const page = pages[status.id];
+          return (
+            <DroppableColumn
+              key={status.id}
+              statusId={status.id}
+              statusName={status.name}
+              statusColor={status.color}
+              count={page ? (counts[status.id] ?? 0) : 0}
+            >
+              {page?.tickets.map((response) => (
                 <DraggableCard
                   key={response.id}
                   response={response}
@@ -321,8 +328,16 @@ export function ResponseKanbanView({
                   onOpenDetail={onOpenDetail}
                 />
               ))}
-          </DroppableColumn>
-        ))}
+              {page && (
+                <InfiniteScrollTrigger
+                  hasMore={page.hasMore}
+                  loading={page.loading}
+                  onLoadMore={() => onLoadMore(status.id)}
+                />
+              )}
+            </DroppableColumn>
+          );
+        })}
       </div>
 
       <DragOverlay>
