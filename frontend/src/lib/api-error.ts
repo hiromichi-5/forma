@@ -1,5 +1,4 @@
-import type { ErrorCode } from "@/types";
-import { ApiError } from "@/lib/api";
+import { ApiError, type ErrorCode } from "@/lib/api";
 
 export type ApiErrorMessageMap = Partial<Record<ErrorCode, string>>;
 

@@ -13,7 +13,11 @@ type FormRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (entity.Form, error)
 	UpdateTitleQuestion(ctx context.Context, id uuid.UUID, titleQuestionID *string) error
 	UpdateSyncedAt(ctx context.Context, id uuid.UUID, syncedAt time.Time) error
-	UpdateEmailCollectionType(ctx context.Context, id uuid.UUID, emailCollectionType *string) error
+	UpdateEmailCollectionType(
+		ctx context.Context,
+		id uuid.UUID,
+		emailCollectionType *entity.EmailCollectionType,
+	) error
 	Delete(ctx context.Context, id uuid.UUID) error
 
 	ListQuestions(ctx context.Context, formID uuid.UUID) ([]entity.FormQuestion, error)

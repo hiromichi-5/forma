@@ -2,13 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
-import type { FormResponse } from "@/types/form-response"
 import type {
   NotificationResult,
   NotificationType,
-  TicketAnswer,
   TicketDetail,
-  TicketNotification,
+  TicketPriority,
   TicketSummary,
   TicketUpdateResponse,
   UpdateTicketRequest,
@@ -33,91 +31,40 @@ const NOTIFICATION_LABELS: Record<NotificationType, string> = {
 export const notificationLabel = (type: NotificationType): string =>
   NOTIFICATION_LABELS[type]
 
-const buildResponsesMap = (answers: TicketAnswer[]): Record<string, string> =>
-  answers.reduce<Record<string, string>>((acc, answer) => {
-    acc[answer.question_id] = answer.display_value
-    return acc
-  }, {})
-
-const buildQuestions = (answers: TicketAnswer[]): FormResponse["questions"] =>
-  answers.map((answer) => ({
-    questionId: answer.question_id,
-    question: answer.question_title,
-    answer: answer.display_value,
-  }))
-
-const normalizeRespondentEmail = (email: string | null | undefined): string =>
-  email ?? "メールアドレス未登録"
-
-const buildNotifications = (notifications: TicketNotification[]): FormResponse["notifications"] =>
-  notifications.map((n) => ({
-    notificationType: n.notification_type,
-    lastSentAt: n.last_sent_at ? new Date(n.last_sent_at) : null,
-  }))
-
-const mapTicketDetailToFormResponse = (ticket: TicketDetail): FormResponse => {
-  return {
-    id: ticket.id,
-    formId: ticket.form_id,
-    formTitle: ticket.form_title,
-    respondentEmail: normalizeRespondentEmail(ticket.respondent_email),
-    hasRespondentEmail: Boolean(ticket.respondent_email),
-    submittedAt: new Date(ticket.submitted_at),
-    status: ticket.status.id,
-    statusName: ticket.status.name,
-    statusColor: ticket.status.color,
-    assignedTo: ticket.assignee?.id ?? null,
-    responses: buildResponsesMap(ticket.answers),
-    questions: buildQuestions(ticket.answers),
-    priority: ticket.priority,
-    notifications: buildNotifications(ticket.notifications),
-  }
-}
-
-const mapSummaryToFormResponse = (ticket: TicketSummary): FormResponse => {
-  return {
-    id: ticket.id,
-    formId: ticket.form_id,
-    formTitle: ticket.form_title,
-    respondentEmail: normalizeRespondentEmail(ticket.respondent_email),
-    hasRespondentEmail: Boolean(ticket.respondent_email),
-    submittedAt: new Date(ticket.submitted_at),
-    status: ticket.status.id,
-    statusName: ticket.status.name,
-    statusColor: ticket.status.color,
-    assignedTo: ticket.assignee?.id ?? null,
-    responses: {},
-    questions: [],
-    priority: ticket.priority,
-    notifications: [],
-  }
-}
-
 export function useFormResponses(formId: string | null) {
-  const [responses, setResponses] = useState<FormResponse[]>([])
+  const [responses, setResponses] = useState<TicketSummary[]>([])
+  const [details, setDetails] = useState<Record<string, TicketDetail>>({})
   const [loading, setLoading] = useState(false)
   const [pendingNotification, setPendingNotification] = useState<PendingNotification | null>(null)
   const { modeOf } = useNotificationSettings(formId)
 
-  const handleTicketUpdated = useCallback((ticket: TicketDetail) => {
-    setResponses((prev) => prev.map((r) => (r.id === ticket.id ? mapTicketDetailToFormResponse(ticket) : r)))
+  // 詳細は一覧の要約も含むため、両方に反映して表示のずれを防ぐ。
+  const cacheDetail = useCallback((detail: TicketDetail) => {
+    setResponses((prev) => prev.map((r) => (r.id === detail.id ? detail : r)))
+    setDetails((prev) => ({ ...prev, [detail.id]: detail }))
   }, [])
 
-  useTicketStream(formId, handleTicketUpdated)
+  useTicketStream(formId, cacheDetail)
+
+  // 回答本文と通知履歴は一覧に含まれないため、チケットを開いた時点で取得する。
+  const loadDetail = useCallback(
+    async (id: string) => {
+      try {
+        cacheDetail(await apiClient.getTicket(id))
+      } catch (error) {
+        console.error("Failed to load ticket detail:", error)
+      }
+    },
+    [cacheDetail]
+  )
 
   const refetch = useCallback(async () => {
     if (!formId) return
     setLoading(true)
+    setDetails({})
     try {
-      // 外部API(バックエンド)との同期のための処理
       const ticketList = await apiClient.getTickets(formId)
-      const baseResponses = ticketList.tickets.map(mapSummaryToFormResponse)
-      setResponses(baseResponses)
-
-      const details = await Promise.all(
-        ticketList.tickets.map((ticket) => apiClient.getTicket(ticket.id))
-      )
-      setResponses(details.map(mapTicketDetailToFormResponse))
+      setResponses(ticketList.tickets)
     } catch (error) {
       console.error("Failed to load responses:", error)
       setResponses([])
@@ -141,8 +88,8 @@ export function useFormResponses(formId: string | null) {
       })
   }
 
-  const applyUpdate = (id: string, updated: TicketUpdateResponse) => {
-    setResponses((prev) => prev.map((r) => (r.id === id ? mapTicketDetailToFormResponse(updated) : r)))
+  const applyUpdate = (updated: TicketUpdateResponse) => {
+    cacheDetail(updated)
     warnFailedNotifications(updated.notification_results)
   }
 
@@ -152,7 +99,7 @@ export function useFormResponses(formId: string | null) {
     failureMessage: string
   ): Promise<boolean> => {
     try {
-      applyUpdate(id, await apiClient.updateTicket(id, request))
+      applyUpdate(await apiClient.updateTicket(id, request))
       return true
     } catch (error) {
       console.error(failureMessage, error)
@@ -164,7 +111,7 @@ export function useFormResponses(formId: string | null) {
   // confirm モードかつ回答者のメールアドレスがある場合のみ、変更前に確認する。
   const needsConfirmation = (id: string, notificationType: NotificationType): boolean => {
     if (modeOf(notificationType) !== "confirm") return false
-    return responses.find((r) => r.id === id)?.hasRespondentEmail ?? false
+    return Boolean(responses.find((r) => r.id === id)?.respondent_email)
   }
 
   const updateResponseStatus = async (id: string, statusId: string) => {
@@ -194,7 +141,7 @@ export function useFormResponses(formId: string | null) {
     await updateTicket(id, request, "担当者の変更に失敗しました")
   }
 
-  const updatePriority = async (id: string, priority: FormResponse["priority"]) => {
+  const updatePriority = async (id: string, priority: TicketPriority) => {
     await updateTicket(id, { priority }, "優先度の変更に失敗しました")
   }
 
@@ -241,7 +188,9 @@ export function useFormResponses(formId: string | null) {
 
   return {
     responses,
+    details,
     loading,
+    loadDetail,
     updateResponseStatus,
     assignResponse,
     updatePriority,

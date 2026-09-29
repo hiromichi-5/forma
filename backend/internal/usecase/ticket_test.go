@@ -150,7 +150,12 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 
 		publisher := &recordingEventPublisher{}
 		uc := newTicketUseCaseWithPublisher(publisher)
-		_, _, err = uc.UpdateTicket(ctx, ticketID, adminID, &newStatusID, nil, false, nil)
+		_, _, err = uc.UpdateTicket(
+			ctx,
+			ticketID,
+			adminID,
+			usecase.UpdateTicketInput{StatusID: &newStatusID},
+		)
 		require.NoError(t, err)
 
 		events := publisher.events()
@@ -175,8 +180,13 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 
 		publisher := &recordingEventPublisher{}
 		uc := newTicketUseCaseWithPublisher(publisher)
-		invalid := "invalid"
-		_, _, err := uc.UpdateTicket(ctx, ticketID, adminID, nil, nil, false, &invalid)
+		invalid := entity.Priority("invalid")
+		_, _, err := uc.UpdateTicket(
+			ctx,
+			ticketID,
+			adminID,
+			usecase.UpdateTicketInput{Priority: &invalid},
+		)
 		require.Error(t, err)
 		assert.Empty(t, publisher.events())
 	})
@@ -201,7 +211,12 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 		newStatusID := statuses[1].ID // 対応中
 
 		uc := newTicketUseCase()
-		detail, _, err := uc.UpdateTicket(ctx, ticketID, adminID, &newStatusID, nil, false, nil)
+		detail, _, err := uc.UpdateTicket(
+			ctx,
+			ticketID,
+			adminID,
+			usecase.UpdateTicketInput{StatusID: &newStatusID},
+		)
 		require.NoError(t, err)
 		assert.Equal(t, newStatusID, detail.Status.ID)
 
@@ -209,7 +224,7 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 		histories, err := uc.ListTicketHistories(ctx, ticketID, adminID)
 		require.NoError(t, err)
 		assert.Len(t, histories, 1)
-		assert.Equal(t, "status", histories[0].FieldName)
+		assert.Equal(t, entity.FieldStatus, histories[0].FieldName)
 	})
 
 	t.Run("正常系: 担当者を変更できること", func(t *testing.T) {
@@ -227,7 +242,12 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 		ticketID := testutil.CreateTicket(t, ctx, testPool, formID, defaultStatusID, "resp-1")
 
 		uc := newTicketUseCase()
-		detail, _, err := uc.UpdateTicket(ctx, ticketID, adminID, nil, &adminID, false, nil)
+		detail, _, err := uc.UpdateTicket(
+			ctx,
+			ticketID,
+			adminID,
+			usecase.UpdateTicketInput{Assignee: entity.SetAssignee(adminID)},
+		)
 		require.NoError(t, err)
 		require.NotNil(t, detail.Assignee)
 		assert.Equal(t, adminID, detail.Assignee.ID)
@@ -249,7 +269,12 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 
 		uc := newTicketUseCase()
 		priority := entity.PriorityHigh
-		detail, _, err := uc.UpdateTicket(ctx, ticketID, adminID, nil, nil, false, &priority)
+		detail, _, err := uc.UpdateTicket(
+			ctx,
+			ticketID,
+			adminID,
+			usecase.UpdateTicketInput{Priority: &priority},
+		)
 		require.NoError(t, err)
 		assert.Equal(t, entity.PriorityHigh, detail.Priority)
 	})
@@ -278,7 +303,12 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 
 		uc := newTicketUseCase()
 		priority := entity.PriorityHigh
-		_, _, err := uc.UpdateTicket(ctx, ticketID, outsiderID, nil, nil, false, &priority)
+		_, _, err := uc.UpdateTicket(
+			ctx,
+			ticketID,
+			outsiderID,
+			usecase.UpdateTicketInput{Priority: &priority},
+		)
 		require.Error(t, err)
 		var appErr *entity.Error
 		require.True(t, errors.As(err, &appErr))
@@ -300,8 +330,13 @@ func TestTicketUseCase_UpdateTicket(t *testing.T) {
 		ticketID := testutil.CreateTicket(t, ctx, testPool, formID, defaultStatusID, "resp-1")
 
 		uc := newTicketUseCase()
-		invalid := "invalid"
-		_, _, err := uc.UpdateTicket(ctx, ticketID, adminID, nil, nil, false, &invalid)
+		invalid := entity.Priority("invalid")
+		_, _, err := uc.UpdateTicket(
+			ctx,
+			ticketID,
+			adminID,
+			usecase.UpdateTicketInput{Priority: &invalid},
+		)
 		require.Error(t, err)
 		var appErr *entity.Error
 		require.True(t, errors.As(err, &appErr))

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import type { TicketDetail } from "@/types"
+import type { TicketDetail, TicketUpdatedEvent } from "@/types"
 
 export function useTicketStream(
   formId: string | null,
@@ -19,7 +19,7 @@ export function useTicketStream(
     const es = new EventSource(`${baseUrl}/v1/forms/${formId}/stream`, { withCredentials: true })
 
     es.addEventListener("ticket_updated", (e: MessageEvent) => {
-      const { ticket } = JSON.parse(e.data) as { ticket: TicketDetail }
+      const { ticket } = JSON.parse(e.data) as TicketUpdatedEvent
       callbackRef.current(ticket)
     })
 

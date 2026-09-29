@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/http/cookiejar"
 	"testing"
 
 	"github.com/hiromichi-5/forma/backend/internal/repository"
@@ -172,20 +171,4 @@ func TestMemberInviteScenario(t *testing.T) {
 		assert.Equal(t, http.StatusConflict, resp2.StatusCode)
 		assert.Equal(t, "LAST_ADMIN", body["code"])
 	})
-}
-
-func loginUserExisting(t *testing.T, email, password string) *http.Client {
-	t.Helper()
-	jar, err := cookiejar.New(nil)
-	require.NoError(t, err)
-	client := &http.Client{Jar: jar}
-
-	resp := postJSON(t, client, "/v1/auth/login", map[string]string{
-		"email":    email,
-		"password": password,
-	})
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	resp.Body.Close()
-
-	return client
 }

@@ -12,9 +12,15 @@ import (
 	"github.com/hiromichi-5/forma/backend/internal/repository"
 )
 
-const ctxUserID = "userID"
+const (
+	ctxUserID    = "userID"
+	ctxSessionID = "sessionID"
+)
 
-func SessionMiddleware(userRepo repository.UserRepository, cookieName string) gin.HandlerFunc {
+func SessionMiddleware(
+	sessionRepo repository.SessionRepository,
+	cookieName string,
+) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if cookieName == "" {
 			abortInvalidSession(c)
@@ -32,7 +38,7 @@ func SessionMiddleware(userRepo repository.UserRepository, cookieName string) gi
 		}
 		log := logger.From(c.Request.Context())
 
-		session, err := userRepo.GetSessionByID(c, sid)
+		session, err := sessionRepo.GetByID(c, sid)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				log.Debug("session not found")
@@ -51,6 +57,7 @@ func SessionMiddleware(userRepo repository.UserRepository, cookieName string) gi
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Set(ctxUserID, session.UserID)
+		c.Set(ctxSessionID, session.ID)
 		c.Next()
 	}
 }
@@ -63,7 +70,15 @@ func abortInvalidSession(c *gin.Context) {
 }
 
 func UserID(c *gin.Context) (uuid.UUID, bool) {
-	v, ok := c.Get(ctxUserID)
+	return contextUUID(c, ctxUserID)
+}
+
+func SessionID(c *gin.Context) (uuid.UUID, bool) {
+	return contextUUID(c, ctxSessionID)
+}
+
+func contextUUID(c *gin.Context, key string) (uuid.UUID, bool) {
+	v, ok := c.Get(key)
 	if !ok {
 		return uuid.UUID{}, false
 	}

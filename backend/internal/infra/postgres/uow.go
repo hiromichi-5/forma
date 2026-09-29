@@ -31,7 +31,24 @@ func NewAuthUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.AuthRepos] 
 	return &unitOfWork[repository.AuthRepos]{
 		pool: pool,
 		factory: func(q *db.Queries) repository.AuthRepos {
-			return repository.AuthRepos{User: &UserRepository{q: q}}
+			return repository.AuthRepos{
+				User:                   &UserRepository{q: q},
+				Session:                &SessionRepository{q: q},
+				EmailVerificationToken: &EmailVerificationTokenRepository{q: q},
+				PasswordResetToken:     &PasswordResetTokenRepository{q: q},
+			}
+		},
+	}
+}
+
+func NewProfileUoW(pool *pgxpool.Pool) repository.UnitOfWork[repository.ProfileRepos] {
+	return &unitOfWork[repository.ProfileRepos]{
+		pool: pool,
+		factory: func(q *db.Queries) repository.ProfileRepos {
+			return repository.ProfileRepos{
+				User:    &UserRepository{q: q},
+				Session: &SessionRepository{q: q},
+			}
 		},
 	}
 }

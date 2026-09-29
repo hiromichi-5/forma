@@ -82,7 +82,7 @@ func toInvite(row db.FormInvite) entity.Invite {
 		ID:         fromUUID(row.ID),
 		FormID:     fromUUID(row.FormID),
 		Email:      row.Email,
-		Role:       string(row.Role),
+		Role:       entity.Role(row.Role),
 		InvitedBy:  fromUUID(row.InvitedBy),
 		AcceptedAt: fromTimestamptzPtr(row.AcceptedAt),
 		ExpiresAt:  fromTimestamptz(row.ExpiresAt),

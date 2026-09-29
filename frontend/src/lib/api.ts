@@ -33,9 +33,15 @@ import type {
   SentNotificationResponse,
   UserProfile,
   UpdateUserProfileRequest,
-  ErrorResponse,
   ChangePasswordRequest,
+  Error as ApiErrorBody,
+  ErrorCode as ServerErrorCode,
 } from "../types";
+
+/** ネットワークに到達できない場合はレスポンス自体が無いため、クライアント側でコードを補う。 */
+export type ErrorCode = ServerErrorCode | "NETWORK_ERROR";
+
+export type ErrorResponse = Omit<ApiErrorBody, "code"> & { code: ErrorCode };
 
 export class ApiError extends Error {
   status: number;
@@ -63,6 +69,11 @@ export class ApiError extends Error {
 
 class ApiClient {
   private baseUrl: string = import.meta.env.VITE_API_URL || "http://localhost:8080";
+  private sessionExpiredHandler: (() => void) | null = null;
+
+  setSessionExpiredHandler(handler: (() => void) | null) {
+    this.sessionExpiredHandler = handler;
+  }
 
   private async request<T>(
     endpoint: string,
@@ -89,6 +100,10 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData: ErrorResponse = await response.json();
+        // ログインの失敗は INVALID_CREDENTIALS なので、セッション失効とは区別できる
+        if (errorData.code === "INVALID_SESSION") {
+          this.sessionExpiredHandler?.();
+        }
         throw new ApiError(response.status, errorData);
       }
 
@@ -169,10 +184,6 @@ class ApiClient {
   }
 
   // User
-
-  async whoami(): Promise<{ user_id: string }> {
-    return this.request<{ user_id: string }>("/v1/whoami");
-  }
 
   async getProfile(): Promise<UserProfile> {
     return this.request<UserProfile>("/v1/me");

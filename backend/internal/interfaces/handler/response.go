@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"strings"
 	"time"
 
 	"github.com/hiromichi-5/forma/backend/internal/entity"
@@ -49,7 +50,7 @@ type formSummaryResp struct {
 func toFormResp(f entity.Form) formResp {
 	return formResp{
 		ID:              f.ID.String(),
-		FormID:          f.FormID,
+		FormID:          f.GoogleFormID,
 		Title:           f.Title,
 		Description:     f.Description,
 		TitleQuestionID: f.TitleQuestionID,
@@ -62,7 +63,7 @@ func toFormSummaryListResp(forms []entity.Form) []formSummaryResp {
 	for i, f := range forms {
 		out[i] = formSummaryResp{
 			ID:     f.ID.String(),
-			FormID: f.FormID,
+			FormID: f.GoogleFormID,
 			Title:  f.Title,
 		}
 	}
@@ -107,7 +108,7 @@ func toMemberListResp(members []entity.Member) []memberResp {
 			ID:          m.ID.String(),
 			Email:       m.Email,
 			DisplayName: m.DisplayName,
-			Role:        m.Role,
+			Role:        string(m.Role),
 		}
 	}
 	return out
@@ -133,7 +134,7 @@ func toInviteListResp(invites []entity.Invite) []inviteResp {
 		out[i] = inviteResp{
 			ID:        inv.ID.String(),
 			Email:     inv.Email,
-			Role:      inv.Role,
+			Role:      string(inv.Role),
 			InvitedBy: inv.InvitedBy.String(),
 			ExpiresAt: inv.ExpiresAt.UTC().Format(time.RFC3339),
 			CreatedAt: inv.CreatedAt.UTC().Format(time.RFC3339),
@@ -238,7 +239,7 @@ func toTicketSummaryResp(t usecase.TicketSummary) ticketSummaryResp {
 			Name:  t.Status.Name,
 			Color: t.Status.Color,
 		},
-		Priority:        t.Priority,
+		Priority:        string(t.Priority),
 		TitleQuestionID: t.TitleQuestionID,
 		Title:           t.Title,
 		SubmittedAt:     t.SubmittedAt.UTC().Format(time.RFC3339),
@@ -270,7 +271,7 @@ func toTicketDetailResp(d usecase.TicketDetail) ticketDetailResp {
 			QuestionTitle: a.QuestionTitle,
 			QuestionType:  a.QuestionType,
 			Values:        a.Values,
-			DisplayValue:  a.DisplayValue,
+			DisplayValue:  strings.Join(a.Values, ", "),
 		}
 	}
 	notifications := make([]ticketNotificationResp, len(d.Notifications))
@@ -324,7 +325,7 @@ func toNotificationSettingsResp(s usecase.NotificationSettings) notificationSett
 		}
 	}
 	return notificationSettingsResp{
-		EmailCollectionType: s.EmailCollectionType,
+		EmailCollectionType: (*string)(s.EmailCollectionType),
 		Settings:            settings,
 	}
 }
@@ -376,7 +377,7 @@ func toTicketHistoryListResp(histories []entity.TicketHistory) []ticketHistoryRe
 			TicketID:      h.TicketID.String(),
 			ChangedBy:     changedBy,
 			ChangedByName: h.ChangedByName,
-			FieldName:     h.FieldName,
+			FieldName:     string(h.FieldName),
 			OldValue:      h.OldValue,
 			NewValue:      h.NewValue,
 			CreatedAt:     h.CreatedAt.UTC().Format(time.RFC3339),

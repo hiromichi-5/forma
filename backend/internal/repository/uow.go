@@ -7,7 +7,15 @@ type UnitOfWork[T any] interface {
 }
 
 type AuthRepos struct {
-	User UserRepository
+	User                   UserRepository
+	Session                SessionRepository
+	EmailVerificationToken EmailVerificationTokenRepository
+	PasswordResetToken     PasswordResetTokenRepository
+}
+
+type ProfileRepos struct {
+	User    UserRepository
+	Session SessionRepository
 }
 
 type FormRepos struct {

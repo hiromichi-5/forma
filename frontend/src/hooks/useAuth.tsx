@@ -1,8 +1,15 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import type {
-  User,
   UserProfile,
   LoginRequest,
   SignupRequest,
@@ -10,8 +17,14 @@ import type {
   ChangePasswordRequest,
 } from "@/types";
 
+/** ログイン中のユーザー。プロフィールから同一性の判定に要る分だけ持つ。 */
+type SessionUser = {
+  id: string;
+  email?: string;
+};
+
 type AuthContextType = {
-  user: User | null;
+  user: SessionUser | null;
   profile: UserProfile | null;
   isLoading: boolean;
   isProfileLoading: boolean;
@@ -28,25 +41,27 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
 
   const isAuthenticated = !!user;
+  const isAuthenticatedRef = useRef(false);
+
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   const hydrateUser = useCallback(async () => {
     try {
-      const response = await apiClient.whoami();
-      const baseUser: User = { id: response.user_id };
-      setUser(baseUser);
-      try {
-        const profileData = await apiClient.getProfile();
-        setProfile(profileData);
-        setUser({ ...baseUser, email: profileData.email });
-      } catch (profileError) {
-        console.error("Failed to fetch profile:", profileError);
-      }
+      const profileData = await apiClient.getProfile();
+      const currentUser: SessionUser = {
+        id: profileData.id,
+        email: profileData.email,
+      };
+      setProfile(profileData);
+      setUser(currentUser);
       return true;
     } catch (error) {
       console.warn("Failed to hydrate user:", error);
@@ -78,6 +93,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
   }, [hydrateUser]);
+
+  // ログイン中にセッションが失効した場合、ログイン画面へ戻すために状態を落とす。
+  // 未ログイン時の 401 は通常の応答なので何もしない。
+  useEffect(() => {
+    apiClient.setSessionExpiredHandler(() => {
+      if (!isAuthenticatedRef.current) return;
+      isAuthenticatedRef.current = false;
+      setUser(null);
+      setProfile(null);
+      toast.error("セッションの有効期限が切れました。再度ログインしてください");
+    });
+
+    return () => apiClient.setSessionExpiredHandler(null);
+  }, []);
 
   const login = async (credentials: LoginRequest) => {
     await apiClient.login(credentials);

@@ -1,8 +1,13 @@
 "use client";
 
-import { Fragment, useState } from "react";
-import type { FormResponse, User } from "@/types/form-response";
-import type { FormStatus } from "@/types";
+import { Fragment, useMemo, useState } from "react";
+import type { User } from "@/types/form-response";
+import type {
+  FormStatus,
+  TicketDetail,
+  TicketPriority,
+  TicketSummary,
+} from "@/types";
 import {
   Table,
   TableBody,
@@ -26,26 +31,30 @@ import {
   fallbackStatusColor,
   hexToRgba,
   priorityConfig,
+  respondentEmailLabel,
   sortStatuses,
+  statusById,
   toPriorityValue,
 } from "@/lib/ticket-display";
 
 type ResponseTableViewProps = {
-  responses: FormResponse[];
+  responses: TicketSummary[];
+  details: Record<string, TicketDetail>;
   users: User[];
   statuses: FormStatus[];
-  titleQuestionId: string | null;
+  onExpandRow: (id: string) => void;
   onStatusChange: (id: string, statusId: string) => void;
   onAssignChange: (id: string, userId: string | null) => void;
-  onPriorityChange: (id: string, priority: FormResponse["priority"]) => void;
-  onOpenDetail: (response: FormResponse) => void;
+  onPriorityChange: (id: string, priority: TicketPriority) => void;
+  onOpenDetail: (response: TicketSummary) => void;
 };
 
 export function ResponseTableView({
   responses,
+  details,
   users,
   statuses,
-  titleQuestionId,
+  onExpandRow,
   onStatusChange,
   onAssignChange,
   onPriorityChange,
@@ -54,13 +63,15 @@ export function ResponseTableView({
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const sortedStatuses = sortStatuses(statuses);
+  const statusMap = useMemo(() => statusById(statuses), [statuses]);
 
-  const getTitleAnswer = (response: FormResponse): string | null => {
-    if (!titleQuestionId) return null;
-    const titleQuestion = response.questions.find(
-      (q) => q.questionId === titleQuestionId
-    );
-    return titleQuestion?.answer || null;
+  const toggleRow = (id: string) => {
+    if (expandedRow === id) {
+      setExpandedRow(null);
+      return;
+    }
+    setExpandedRow(id);
+    onExpandRow(id);
   };
 
   return (
@@ -80,7 +91,8 @@ export function ResponseTableView({
           {responses.map((response) => {
             const isExpanded = expandedRow === response.id;
             const detailId = `response-details-${response.id}`;
-            const titleAnswer = getTitleAnswer(response);
+            const email = respondentEmailLabel(response.respondent_email);
+            const status = statusMap.get(response.status.id) ?? response.status;
 
             return (
               <Fragment key={response.id}>
@@ -89,21 +101,15 @@ export function ResponseTableView({
                     <button
                       type="button"
                       className="flex w-full items-start justify-between gap-3 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      onClick={() =>
-                        setExpandedRow(isExpanded ? null : response.id)
-                      }
+                      onClick={() => toggleRow(response.id)}
                       aria-expanded={isExpanded}
                       aria-controls={detailId}
                     >
                       <div>
-                        <p className="font-medium text-foreground">
-                          {response.respondentEmail}
+                        <p className="font-medium text-foreground">{email}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {response.title}
                         </p>
-                        {titleAnswer && (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {titleAnswer}
-                          </p>
-                        )}
                       </div>
                       {isExpanded ? (
                         <ChevronDown
@@ -120,7 +126,7 @@ export function ResponseTableView({
                   </TableCell>
                   <TableCell>
                     <Select
-                      value={response.status}
+                      value={response.status.id}
                       onValueChange={(value) =>
                         onStatusChange(response.id, value)
                       }
@@ -129,17 +135,16 @@ export function ResponseTableView({
                         <div
                           className="flex items-center gap-2 px-2 py-1 rounded"
                           style={{
-                            backgroundColor: hexToRgba(response.statusColor, 0.1),
+                            backgroundColor: hexToRgba(status.color, 0.1),
                           }}
                         >
                           <div
                             className="w-2 h-2 rounded-full shrink-0"
                             style={{
-                              backgroundColor:
-                                response.statusColor || fallbackStatusColor,
+                              backgroundColor: status.color || fallbackStatusColor,
                             }}
                           />
-                          <span className="text-sm">{response.statusName}</span>
+                          <span className="text-sm">{status.name}</span>
                         </div>
                       </SelectTrigger>
                       <SelectContent>
@@ -153,7 +158,7 @@ export function ResponseTableView({
                   </TableCell>
                   <TableCell>
                     <Select
-                      value={response.assignedTo || "unassigned"}
+                      value={response.assignee?.id ?? "unassigned"}
                       onValueChange={(value) =>
                         onAssignChange(
                           response.id,
@@ -210,7 +215,7 @@ export function ResponseTableView({
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(response.submittedAt, {
+                      {formatDistanceToNow(new Date(response.submitted_at), {
                         addSuffix: true,
                         locale: ja,
                       })}
@@ -222,7 +227,7 @@ export function ResponseTableView({
                       size="sm"
                       onClick={() => onOpenDetail(response)}
                       className="gap-2 h-8"
-                      aria-label={`回答詳細を開く: ${response.respondentEmail}`}
+                      aria-label={`回答詳細を開く: ${email}`}
                     >
                       <MessageSquare className="h-4 w-4" />
                     </Button>
@@ -235,19 +240,25 @@ export function ResponseTableView({
                         <h4 className="font-semibold text-sm text-foreground">
                           回答内容
                         </h4>
-                        {response.questions.map((question, index) => (
-                          <div
-                            key={`${question.questionId}-${index}`}
-                            className="text-sm"
-                          >
-                            <span className="text-muted-foreground">
-                              {question.question}{" "}
-                            </span>
-                            <span className="text-foreground">
-                              {question.answer}
-                            </span>
-                          </div>
-                        ))}
+                        {details[response.id] ? (
+                          details[response.id].answers.map((answer, index) => (
+                            <div
+                              key={`${answer.question_id}-${index}`}
+                              className="text-sm"
+                            >
+                              <span className="text-muted-foreground">
+                                {answer.question_title}{" "}
+                              </span>
+                              <span className="text-foreground">
+                                {answer.display_value}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            読み込み中...
+                          </p>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
