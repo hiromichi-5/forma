@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { Controller, useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import type { z } from "zod"
 import {
   Dialog,
   DialogContent,
@@ -31,6 +34,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Mail, X, Shield, User, Clock } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { inviteSchema } from "@/lib/form-schemas"
+import { FieldError } from "@/components/ui/field"
 import type { FormInvite } from "@/types"
 import { formQueries } from "@/queries/forms"
 import { queryKeys } from "@/queries/keys"
@@ -74,8 +79,11 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
   const invites = invitesQuery.data ?? EMPTY_INVITES
   const isLoading = membersQuery.isPending
   const loadError = membersQuery.error ?? invitesQuery.error
-  const [inviteEmail, setInviteEmail] = useState("")
-  const [inviteRole, setInviteRole] = useState<"admin" | "editor">("editor")
+  const inviteForm = useForm<z.infer<typeof inviteSchema>>({
+    resolver: zodResolver(inviteSchema),
+    defaultValues: { email: "", role: "editor" },
+  })
+  const inviteErrors = inviteForm.formState.errors
   const [errorMessage, setErrorMessage] = useState("")
   const displayedError =
     errorMessage ||
@@ -102,17 +110,12 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
       queryClient.invalidateQueries({ queryKey: queryKeys.formInvites(formId) }),
     ])
 
-  const handleInvite = async () => {
-    if (!inviteEmail) return
+  const handleInvite = async (values: z.infer<typeof inviteSchema>) => {
     setErrorMessage("")
 
     try {
-      await apiClient.createInvite(formId, {
-        email: inviteEmail,
-        role: inviteRole,
-      })
-      setInviteEmail("")
-      setInviteRole("editor")
+      await apiClient.createInvite(formId, values)
+      inviteForm.reset()
       await loadData()
     } catch (error) {
       console.error("Failed to create invite:", error)
@@ -223,38 +226,60 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
 
             <div className="space-y-3 rounded-lg border border-dashed bg-muted/60 p-4">
               <h3 className="text-sm font-semibold text-foreground">メンバーを招待する</h3>
-              <div className="flex gap-2">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="email" className="text-xs">
-                    メールアドレス
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="example@company.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                  />
+              <form
+                className="space-y-2"
+                noValidate
+                onSubmit={inviteForm.handleSubmit(handleInvite)}
+              >
+                <div className="flex gap-2">
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="inviteEmail" className="text-xs">
+                      メールアドレス
+                    </Label>
+                    <Input
+                      id="inviteEmail"
+                      type="email"
+                      placeholder="example@company.com"
+                      aria-invalid={!!inviteErrors.email}
+                      {...inviteForm.register("email")}
+                    />
+                  </div>
+                  <div className="w-[140px] space-y-2">
+                    <Label htmlFor="inviteRole" className="text-xs">
+                      権限
+                    </Label>
+                    <Controller
+                      control={inviteForm.control}
+                      name="role"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={(v) => field.onChange(toRoleValue(v))}
+                        >
+                          <SelectTrigger id="inviteRole" className="w-full bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">管理者</SelectItem>
+                            <SelectItem value="editor">編集者</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      type="submit"
+                      className="gap-2"
+                      disabled={inviteForm.formState.isSubmitting}
+                    >
+                      <Mail className="h-4 w-4" />
+                      招待
+                    </Button>
+                  </div>
                 </div>
-                <div className="w-[140px] space-y-2">
-                  <Label className="text-xs">権限</Label>
-                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(toRoleValue(v))}>
-                    <SelectTrigger className="w-full bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">管理者</SelectItem>
-                      <SelectItem value="editor">編集者</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end">
-                  <Button onClick={handleInvite} className="gap-2">
-                    <Mail className="h-4 w-4" />
-                    招待
-                  </Button>
-                </div>
-              </div>
+                <FieldError errors={[inviteErrors.email]} />
+              </form>
             </div>
 
             {invites.length > 0 && (

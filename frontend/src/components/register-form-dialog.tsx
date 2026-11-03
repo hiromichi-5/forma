@@ -1,9 +1,11 @@
 import type React from "react"
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import type { z } from "zod"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { TextField } from "@/components/text-field"
 import {
   Dialog,
   DialogContent,
@@ -15,6 +17,7 @@ import { Plus } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
 import { queryKeys } from "@/queries/keys"
+import { registerFormSchema } from "@/lib/form-schemas"
 
 type RegisterFormDialogProps = {
   trigger?: React.ReactNode
@@ -22,7 +25,15 @@ type RegisterFormDialogProps = {
 
 export function RegisterFormDialog({ trigger }: RegisterFormDialogProps) {
   const queryClient = useQueryClient()
-  const [formUrl, setFormUrl] = useState("")
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<z.infer<typeof registerFormSchema>>({
+    resolver: zodResolver(registerFormSchema),
+    defaultValues: { url: "" },
+  })
   const [errorMessage, setErrorMessage] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const registerForm = useMutation({
@@ -34,18 +45,17 @@ export function RegisterFormDialog({ trigger }: RegisterFormDialogProps) {
 
   const handleClose = () => {
     if (isLoading) return
-    setFormUrl("")
+    reset()
     setErrorMessage("")
     setIsOpen(false)
   }
 
-  const handleRegister = async () => {
-    if (!formUrl.trim()) return
+  const onSubmit = async ({ url }: z.infer<typeof registerFormSchema>) => {
     setErrorMessage("")
 
     try {
-      await registerForm.mutateAsync(formUrl.trim())
-      setFormUrl("")
+      await registerForm.mutateAsync(url)
+      reset()
       setIsOpen(false)
     } catch (error) {
       setErrorMessage(
@@ -78,15 +88,15 @@ export function RegisterFormDialog({ trigger }: RegisterFormDialogProps) {
         <DialogHeader>
           <DialogTitle>フォーム連携</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <form className="space-y-4 py-2" noValidate onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-2">
-            <Label htmlFor="formUrl">フォームURL</Label>
-            <Input
+            <TextField
               id="formUrl"
+              label="フォームURL"
               placeholder="https://docs.google.com/forms/d/..."
-              value={formUrl}
-              onChange={(e) => setFormUrl(e.target.value)}
               disabled={isLoading}
+              error={errors.url}
+              {...register("url")}
             />
             <div className="space-y-1.5 text-xs text-muted-foreground">
               <p>連携する前に、以下の操作が必要です</p>
@@ -108,14 +118,10 @@ export function RegisterFormDialog({ trigger }: RegisterFormDialogProps) {
               {errorMessage}
             </div>
           )}
-          <Button
-            onClick={handleRegister}
-            disabled={!formUrl.trim() || isLoading}
-            className="w-full"
-          >
+          <Button type="submit" disabled={isLoading} className="w-full">
             {isLoading ? "連携中..." : "連携する"}
           </Button>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   )

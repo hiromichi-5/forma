@@ -1,20 +1,28 @@
 import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import type { z } from "zod"
 import { Link, Navigate } from "react-router"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { TextField } from "@/components/text-field"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { PASSWORD_MIN_LENGTH, signupSchema } from "@/lib/form-schemas"
 import { Loader2, MailCheck } from "lucide-react"
 
 export default function SignupPage() {
   const { user } = useAuth()
   const { signup } = useAuth()
-  const [displayName, setDisplayName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    formState: { errors, isSubmitting: isLoading },
+  } = useForm<z.infer<typeof signupSchema>>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { display_name: "", email: "", password: "" },
+  })
   const [error, setError] = useState("")
   const [isSignupComplete, setIsSignupComplete] = useState(false)
 
@@ -22,13 +30,11 @@ export default function SignupPage() {
     return <Navigate to="/" replace />
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const onSubmit = async (values: z.infer<typeof signupSchema>) => {
     setError("")
-    setIsLoading(true)
 
     try {
-      await signup({ email, password, display_name: displayName })
+      await signup(values)
       setIsSignupComplete(true)
     } catch (err) {
       setError(
@@ -41,8 +47,6 @@ export default function SignupPage() {
           "サインアップに失敗しました",
         ),
       )
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -60,7 +64,7 @@ export default function SignupPage() {
               <div>
                 <CardTitle className="text-2xl font-bold">確認メールを送信しました</CardTitle>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{email}</span>{" "}
+                  <span className="font-medium text-foreground">{getValues("email")}</span>{" "}
                   に確認メールを送信しました。
                   <br />
                   メール内のリンクをクリックしてアカウントを有効化してください。
@@ -92,43 +96,36 @@ export default function SignupPage() {
               </p>
             </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <Label htmlFor="displayName">表示名</Label>
-                <Input
-                  id="displayName"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
+            <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+              <TextField
+                id="displayName"
+                label="表示名"
+                autoComplete="name"
+                disabled={isLoading}
+                error={errors.display_name}
+                {...register("display_name")}
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="email">メールアドレス</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
+              <TextField
+                id="email"
+                label="メールアドレス"
+                type="email"
+                autoComplete="email"
+                disabled={isLoading}
+                error={errors.email}
+                {...register("email")}
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="password">パスワード</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">8文字以上</p>
-              </div>
+              <TextField
+                id="password"
+                label="パスワード"
+                type="password"
+                autoComplete="new-password"
+                description={`${PASSWORD_MIN_LENGTH}文字以上`}
+                disabled={isLoading}
+                error={errors.password}
+                {...register("password")}
+              />
 
               {error && (
                 <div
@@ -140,11 +137,7 @@ export default function SignupPage() {
                 </div>
               )}
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading || !email || !password || !displayName}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
