@@ -91,7 +91,7 @@ export function NotificationsDialog({
         if (!cancelled) setIsLoading(false)
       }
     }
-    load()
+    void load()
 
     return () => {
       cancelled = true

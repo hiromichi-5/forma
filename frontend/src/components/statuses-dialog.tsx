@@ -448,8 +448,9 @@ export function StatusesDialog({
                     >
                       {!isEditing ? (
                         <div className="flex items-center gap-2 p-2">
-                          <div
-                            className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer select-none"
+                          <button
+                            type="button"
+                            className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer select-none text-left"
                             onClick={() => startEdit(status)}
                           >
                             <div
@@ -461,7 +462,7 @@ export function StatusesDialog({
                             <span className="text-sm flex-1 min-w-0 truncate">
                               {status.name}
                             </span>
-                          </div>
+                          </button>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="inline-flex">

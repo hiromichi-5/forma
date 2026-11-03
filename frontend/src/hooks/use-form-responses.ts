@@ -189,8 +189,8 @@ export function useFormResponses(
     setCounts({})
     setDetails({})
     const { segments, withCounts } = contextRef.current
-    segments.forEach((segment) => loadPage(segment, null))
-    if (withCounts) loadCounts()
+    segments.forEach((segment) => void loadPage(segment, null))
+    if (withCounts) void loadCounts()
   }, [loadPage, loadCounts])
 
   useEffect(() => {
@@ -202,7 +202,7 @@ export function useFormResponses(
       const segment = contextRef.current.segments.find((s) => s.key === key)
       const state = listRef.current.segments[key]
       if (!segment || !state || state.nextCursor === null) return
-      loadPage(segment, state.nextCursor)
+      void loadPage(segment, state.nextCursor)
     },
     [loadPage]
   )
@@ -225,7 +225,7 @@ export function useFormResponses(
 
       if (!withCounts) return
       if (!previous) {
-        loadCounts()
+        void loadCounts()
         return
       }
       if (previous.status.id !== ticket.status.id && matchesQuery(ticket, query)) {

@@ -100,7 +100,7 @@ class ApiClient {
       const response = await fetch(url, config);
 
       if (!response.ok) {
-        const errorData: ErrorResponse = await response.json();
+        const errorData = (await response.json()) as ErrorResponse;
         // ログインの失敗は INVALID_CREDENTIALS なので、セッション失効とは区別できる
         if (errorData.code === "INVALID_SESSION") {
           this.sessionExpiredHandler?.();
@@ -114,7 +114,7 @@ class ApiClient {
 
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
-        return await response.json();
+        return (await response.json()) as T;
       }
 
       return response.text() as unknown as T;

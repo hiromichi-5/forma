@@ -22,7 +22,7 @@ export function useTicketHistories(ticketId: string) {
       }
     };
 
-    fetchHistories();
+    void fetchHistories();
   }, [ticketId]);
 
   return {

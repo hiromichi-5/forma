@@ -49,7 +49,7 @@ export default function VerifyEmailPage() {
       }
     };
 
-    verify();
+    void verify();
   }, [token]);
 
   return (

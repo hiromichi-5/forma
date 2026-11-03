@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     };
 
-    initializeAuth();
+    void initializeAuth();
   }, [hydrateUser]);
 
   // ログイン中にセッションが失効した場合、ログイン画面へ戻すために状態を落とす。
