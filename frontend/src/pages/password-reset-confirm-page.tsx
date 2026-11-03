@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { apiClient } from "../lib/api";
-import { getApiErrorMessage } from "../lib/api-error";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { apiClient } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { CheckCircle, Loader2 } from "lucide-react";
 
 export default function PasswordResetConfirmPage() {

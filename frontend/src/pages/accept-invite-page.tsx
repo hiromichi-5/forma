@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { apiClient } from "../lib/api";
-import { getApiErrorMessage } from "../lib/api-error";
-import { useRequireAuth } from "../hooks/useAuth";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { apiClient } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { useRequireAuth } from "@/hooks/use-auth";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 
 export default function AcceptInvitePage() {

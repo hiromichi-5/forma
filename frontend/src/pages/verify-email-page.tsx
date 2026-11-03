@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { apiClient } from "../lib/api";
-import { getApiErrorMessage } from "../lib/api-error";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { apiClient } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 
 export default function VerifyEmailPage() {

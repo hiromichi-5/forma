@@ -6,16 +6,16 @@ import {
   Navigate,
   useLocation,
 } from "react-router";
-import FormsListPage from "./pages/FormsListPage";
-import FormManagementPage from "./pages/FormManagementPage";
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
-import SettingsPage from "./pages/SettingsPage";
-import VerifyEmailPage from "./pages/VerifyEmailPage";
-import PasswordResetPage from "./pages/PasswordResetPage";
-import PasswordResetConfirmPage from "./pages/PasswordResetConfirmPage";
-import AcceptInvitePage from "./pages/AcceptInvitePage";
-import { useRequireAuth } from "./hooks/useAuth";
+import FormsListPage from "@/pages/forms-list-page";
+import FormManagementPage from "@/pages/form-management-page";
+import LoginPage from "@/pages/login-page";
+import SignupPage from "@/pages/signup-page";
+import SettingsPage from "@/pages/settings-page";
+import VerifyEmailPage from "@/pages/verify-email-page";
+import PasswordResetPage from "@/pages/password-reset-page";
+import PasswordResetConfirmPage from "@/pages/password-reset-confirm-page";
+import AcceptInvitePage from "@/pages/accept-invite-page";
+import { useRequireAuth } from "@/hooks/use-auth";
 
 type RequireAuthProps = {
   children: React.ReactNode;
