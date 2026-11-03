@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Navigate, useNavigate, useParams } from "react-router"
 import { AppLayout } from "@/components/app-layout"
 import { FormManagementHeader } from "@/components/form-management-header"
@@ -26,16 +27,27 @@ import { apiClient } from "@/lib/api"
 import { getApiErrorMessage, toastApiError } from "@/lib/api-error"
 import { FALLBACK_ASSIGNEE_NAME, FALLBACK_STATUS_NAME } from "@/lib/notification-email-preview"
 import { sortStatuses } from "@/lib/ticket-display"
-import type { Member, FormStatus, Form, FormQuestion, TicketSummary } from "@/types"
+import type { FormStatus, TicketSummary } from "@/types"
+import { formQueries } from "@/queries/forms"
+import { queryKeys } from "@/queries/keys"
 import { toast } from "sonner"
 
 const LIST_SEGMENT_KEY = "list"
+const EMPTY_STATUSES: FormStatus[] = []
 
 export default function FormManagementPage() {
   const params = useParams()
   const navigate = useNavigate()
   const formId = params.id
-  const [formStatuses, setFormStatuses] = useState<FormStatus[]>([])
+  const queryClient = useQueryClient()
+  const enabled = Boolean(formId)
+  const { data: form = null } = useQuery({ ...formQueries.detail(formId ?? ""), enabled })
+  const { data: questions = [] } = useQuery({ ...formQueries.questions(formId ?? ""), enabled })
+  const { data: members = [] } = useQuery({ ...formQueries.members(formId ?? ""), enabled })
+  const { data: formStatuses = EMPTY_STATUSES } = useQuery({
+    ...formQueries.statuses(formId ?? ""),
+    enabled,
+  })
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
   const [searchQuery, setSearchQuery] = useState("")
   const debouncedQuery = useDebouncedValue(searchQuery.trim(), 300)
@@ -72,9 +84,6 @@ export default function FormManagementPage() {
     withCounts: viewMode === "kanban",
   })
   const { user } = useAuth()
-  const [form, setForm] = useState<Form | null>(null)
-  const [questions, setQuestions] = useState<FormQuestion[]>([])
-  const [members, setMembers] = useState<Member[]>([])
   const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
@@ -119,7 +128,9 @@ export default function FormManagementPage() {
     if (!formId) return
     try {
       await apiClient.updateForm(formId, { title_question_id: questionId })
-      setForm((prev) => (prev ? { ...prev, title_question_id: questionId } : null))
+      queryClient.setQueryData(queryKeys.form(formId), (prev) =>
+        prev ? { ...prev, title_question_id: questionId } : prev,
+      )
       refetch()
     } catch (error) {
       console.error("Failed to update title question:", error)
@@ -141,6 +152,8 @@ export default function FormManagementPage() {
     try {
       const result = await apiClient.syncForm(formId)
       refetch()
+      // フォーム一覧の回答数も変わる。
+      void queryClient.invalidateQueries({ queryKey: queryKeys.forms(), exact: true })
       toast.success(
         result.new_tickets > 0
           ? `${result.new_tickets}件の新しい回答を同期しました`
@@ -169,6 +182,8 @@ export default function FormManagementPage() {
     setUnregisterError("")
     try {
       await apiClient.deleteForm(formId)
+      // 一覧とサイドバーに削除したフォームが残らないよう、遷移前に取り直す。
+      await queryClient.invalidateQueries({ queryKey: queryKeys.forms(), exact: true })
       void navigate("/")
     } catch (error) {
       console.error("Failed to delete form:", error)
@@ -186,37 +201,6 @@ export default function FormManagementPage() {
       setIsUnregistering(false)
     }
   }
-
-  useEffect(() => {
-    if (!formId) return
-    let isActive = true
-
-    const loadData = async () => {
-      try {
-        const [formResponse, questionsResponse, membersResponse, statusesResponse] =
-          await Promise.all([
-            apiClient.getForm(formId),
-            apiClient.getFormQuestions(formId),
-            apiClient.getMembers(formId),
-            apiClient.getFormStatuses(formId),
-          ])
-        if (!isActive) return
-        setForm(formResponse)
-        setQuestions(questionsResponse.questions)
-        setMembers(membersResponse.members)
-        setFormStatuses(statusesResponse.statuses)
-      } catch (error) {
-        if (!isActive) return
-        console.error("Failed to load data:", error)
-      }
-    }
-
-    void loadData()
-
-    return () => {
-      isActive = false
-    }
-  }, [formId])
 
   if (!formId) {
     return <Navigate to="/" replace />
@@ -298,13 +282,7 @@ export default function FormManagementPage() {
       )}
 
       {formId && (
-        <StatusesDialog
-          formId={formId}
-          open={isStatusesOpen}
-          onOpenChange={setIsStatusesOpen}
-          statuses={formStatuses}
-          onStatusesChange={setFormStatuses}
-        />
+        <StatusesDialog formId={formId} open={isStatusesOpen} onOpenChange={setIsStatusesOpen} />
       )}
 
       <MembersDialog formId={formId} open={isMembersOpen} onOpenChange={setIsMembersOpen} />
