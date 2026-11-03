@@ -154,17 +154,22 @@ function FieldError({
       return children
     }
 
-    if (!errors) {
+    // エラーの無い項目（undefined）だけが渡された場合は何も描画しない。
+    const messages = (errors ?? []).flatMap((error) => (error?.message ? [error.message] : []))
+
+    if (messages.length === 0) {
       return null
     }
 
-    if (errors.length === 1 && errors[0]?.message) {
-      return errors[0].message
+    if (messages.length === 1) {
+      return messages[0]
     }
 
     return (
       <ul className="ml-4 flex list-disc flex-col gap-1">
-        {errors.map((error, index) => error?.message && <li key={index}>{error.message}</li>)}
+        {messages.map((message, index) => (
+          <li key={index}>{message}</li>
+        ))}
       </ul>
     )
   }, [children, errors])
