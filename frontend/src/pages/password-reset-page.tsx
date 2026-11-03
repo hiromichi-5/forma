@@ -28,7 +28,6 @@ export default function PasswordResetPage() {
           err,
           {
             VALIDATION_ERROR: "有効なメールアドレスを入力してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "リセットメールの送信に失敗しました",
         ),

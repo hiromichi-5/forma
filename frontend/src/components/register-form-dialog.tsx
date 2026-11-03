@@ -51,8 +51,6 @@ export function RegisterFormDialog({ onRegistered, trigger }: RegisterFormDialog
             FORM_NOT_SHARED:
               "フォームがサービスアカウントに共有されていません。共有設定を確認してください",
             FORM_ALREADY_REGISTERED: "このフォームは既に登録されています",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "フォーム連携に失敗しました",
         ),
