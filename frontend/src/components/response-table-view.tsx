@@ -1,5 +1,10 @@
 import { Fragment, useMemo, useState } from "react"
-import type { FormStatus, Member, TicketDetail, TicketPriority, TicketSummary } from "@/types"
+import { useQuery } from "@tanstack/react-query"
+import type { FormStatus, Member, TicketPriority, TicketSummary } from "@/types"
+import { InfiniteScrollTrigger } from "@/components/infinite-scroll-trigger"
+import { useTicketList } from "@/hooks/use-ticket-list"
+import type { TicketListFilter } from "@/queries/keys"
+import { ticketQueries } from "@/queries/tickets"
 import {
   Table,
   TableBody,
@@ -30,11 +35,10 @@ import {
 } from "@/lib/ticket-display"
 
 type ResponseTableViewProps = {
-  responses: TicketSummary[]
-  details: Record<string, TicketDetail>
+  formId: string
+  filter: TicketListFilter
   members: Member[]
   statuses: FormStatus[]
-  onExpandRow: (id: string) => void
   onStatusChange: (id: string, statusId: string) => void
   onAssignChange: (id: string, userId: string | null) => void
   onPriorityChange: (id: string, priority: TicketPriority) => void
@@ -42,17 +46,17 @@ type ResponseTableViewProps = {
 }
 
 export function ResponseTableView({
-  responses,
-  details,
+  formId,
+  filter,
   members,
   statuses,
-  onExpandRow,
   onStatusChange,
   onAssignChange,
   onPriorityChange,
   onOpenDetail,
 }: ResponseTableViewProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
+  const { tickets: responses, hasMore, loading, loadMore } = useTicketList(formId, filter)
 
   const sortedStatuses = sortStatuses(statuses)
   const statusMap = useMemo(() => statusById(statuses), [statuses])
@@ -63,184 +67,196 @@ export function ResponseTableView({
       return
     }
     setExpandedRow(id)
-    onExpandRow(id)
   }
 
   return (
-    <div className="rounded-lg border bg-card">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="w-[200px]">回答者</TableHead>
-            <TableHead className="w-[150px]">ステータス</TableHead>
-            <TableHead className="w-[150px]">担当者</TableHead>
-            <TableHead className="w-[100px]">優先度</TableHead>
-            <TableHead className="w-[150px]">送信日時</TableHead>
-            <TableHead className="w-[100px]">アクション</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {responses.map((response) => {
-            const isExpanded = expandedRow === response.id
-            const detailId = `response-details-${response.id}`
-            const email = respondentEmailLabel(response.respondent_email)
-            const status = statusMap.get(response.status.id) ?? response.status
+    <div>
+      <div className="rounded-lg border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="w-[200px]">回答者</TableHead>
+              <TableHead className="w-[150px]">ステータス</TableHead>
+              <TableHead className="w-[150px]">担当者</TableHead>
+              <TableHead className="w-[100px]">優先度</TableHead>
+              <TableHead className="w-[150px]">送信日時</TableHead>
+              <TableHead className="w-[100px]">アクション</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {responses.map((response) => {
+              const isExpanded = expandedRow === response.id
+              const detailId = `response-details-${response.id}`
+              const email = respondentEmailLabel(response.respondent_email)
+              const status = statusMap.get(response.status.id) ?? response.status
 
-            return (
-              <Fragment key={response.id}>
-                <TableRow className="transition-colors hover:bg-muted/50">
-                  <TableCell>
-                    <button
-                      type="button"
-                      className="flex w-full items-start justify-between gap-3 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      onClick={() => toggleRow(response.id)}
-                      aria-expanded={isExpanded}
-                      aria-controls={detailId}
-                    >
-                      <div>
-                        <p className="font-medium text-foreground">{email}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{response.title}</p>
-                      </div>
-                      {isExpanded ? (
-                        <ChevronDown
-                          className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <ChevronRight
-                          className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={response.status.id}
-                      onValueChange={(value) => onStatusChange(response.id, value)}
-                    >
-                      <SelectTrigger className="h-8 w-[130px] border-0 shadow-none">
-                        <div
-                          className="flex items-center gap-2 rounded px-2 py-1"
-                          style={{
-                            backgroundColor: hexToRgba(status.color, 0.1),
-                          }}
-                        >
-                          <div
-                            className="h-2 w-2 shrink-0 rounded-full"
-                            style={{
-                              backgroundColor: status.color || fallbackStatusColor,
-                            }}
-                          />
-                          <span className="text-sm">{status.name}</span>
+              return (
+                <Fragment key={response.id}>
+                  <TableRow className="transition-colors hover:bg-muted/50">
+                    <TableCell>
+                      <button
+                        type="button"
+                        className="flex w-full items-start justify-between gap-3 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        onClick={() => toggleRow(response.id)}
+                        aria-expanded={isExpanded}
+                        aria-controls={detailId}
+                      >
+                        <div>
+                          <p className="font-medium text-foreground">{email}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{response.title}</p>
                         </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sortedStatuses.map((status) => (
-                          <SelectItem key={status.id} value={status.id}>
-                            {status.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={response.assignee?.id ?? "unassigned"}
-                      onValueChange={(value) =>
-                        onAssignChange(response.id, value === "unassigned" ? null : value)
-                      }
-                    >
-                      <SelectTrigger className="h-8 w-[130px] border-0 shadow-none">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">未割当</SelectItem>
-                        {members.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            {member.display_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={response.priority}
-                      onValueChange={(value) =>
-                        onPriorityChange(response.id, toPriorityValue(value))
-                      }
-                    >
-                      <SelectTrigger className="h-8 w-[90px] border-0 shadow-none">
-                        <div
-                          className="flex items-center gap-2 rounded px-2 py-1"
-                          style={{
-                            backgroundColor: hexToRgba(priorityConfig[response.priority].hex, 0.1),
-                          }}
-                        >
-                          <span
-                            className="text-sm font-medium"
+                        {isExpanded ? (
+                          <ChevronDown
+                            className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <ChevronRight
+                            className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={response.status.id}
+                        onValueChange={(value) => onStatusChange(response.id, value)}
+                      >
+                        <SelectTrigger className="h-8 w-[130px] border-0 shadow-none">
+                          <div
+                            className="flex items-center gap-2 rounded px-2 py-1"
                             style={{
-                              color: priorityConfig[response.priority].hex,
+                              backgroundColor: hexToRgba(status.color, 0.1),
                             }}
                           >
-                            {priorityConfig[response.priority].label}
-                          </span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">低</SelectItem>
-                        <SelectItem value="medium">中</SelectItem>
-                        <SelectItem value="high">高</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(response.submitted_at), {
-                        addSuffix: true,
-                        locale: ja,
-                      })}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onOpenDetail(response)}
-                      className="h-8 gap-2"
-                      aria-label={`回答詳細を開く: ${email}`}
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-                {isExpanded && (
-                  <TableRow className="hover:bg-muted/20">
-                    <TableCell colSpan={6} className="bg-muted/20 p-4">
-                      <div id={detailId} className="space-y-3">
-                        <h4 className="text-sm font-semibold text-foreground">回答内容</h4>
-                        {details[response.id] ? (
-                          details[response.id].answers.map((answer, index) => (
-                            <div key={`${answer.question_id}-${index}`} className="text-sm">
-                              <span className="text-muted-foreground">
-                                {answer.question_title}{" "}
-                              </span>
-                              <span className="text-foreground">{answer.display_value}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-sm text-muted-foreground">読み込み中...</p>
-                        )}
-                      </div>
+                            <div
+                              className="h-2 w-2 shrink-0 rounded-full"
+                              style={{
+                                backgroundColor: status.color || fallbackStatusColor,
+                              }}
+                            />
+                            <span className="text-sm">{status.name}</span>
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sortedStatuses.map((status) => (
+                            <SelectItem key={status.id} value={status.id}>
+                              {status.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={response.assignee?.id ?? "unassigned"}
+                        onValueChange={(value) =>
+                          onAssignChange(response.id, value === "unassigned" ? null : value)
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-[130px] border-0 shadow-none">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">未割当</SelectItem>
+                          {members.map((member) => (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.display_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={response.priority}
+                        onValueChange={(value) =>
+                          onPriorityChange(response.id, toPriorityValue(value))
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-[90px] border-0 shadow-none">
+                          <div
+                            className="flex items-center gap-2 rounded px-2 py-1"
+                            style={{
+                              backgroundColor: hexToRgba(
+                                priorityConfig[response.priority].hex,
+                                0.1,
+                              ),
+                            }}
+                          >
+                            <span
+                              className="text-sm font-medium"
+                              style={{
+                                color: priorityConfig[response.priority].hex,
+                              }}
+                            >
+                              {priorityConfig[response.priority].label}
+                            </span>
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">低</SelectItem>
+                          <SelectItem value="medium">中</SelectItem>
+                          <SelectItem value="high">高</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(response.submitted_at), {
+                          addSuffix: true,
+                          locale: ja,
+                        })}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onOpenDetail(response)}
+                        className="h-8 gap-2"
+                        aria-label={`回答詳細を開く: ${email}`}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
-                )}
-              </Fragment>
-            )
-          })}
-        </TableBody>
-      </Table>
+                  {isExpanded && (
+                    <TableRow className="hover:bg-muted/20">
+                      <TableCell colSpan={6} className="bg-muted/20 p-4">
+                        <div id={detailId} className="space-y-3">
+                          <h4 className="text-sm font-semibold text-foreground">回答内容</h4>
+                          <ExpandedAnswers ticketId={response.id} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <InfiniteScrollTrigger hasMore={hasMore} loading={loading} onLoadMore={loadMore} />
     </div>
   )
+}
+
+/** 行を展開したときの回答本文。一覧には含まれないため、展開した時点で取得する。 */
+function ExpandedAnswers({ ticketId }: { ticketId: string }) {
+  const { data: detail, isError } = useQuery(ticketQueries.detail(ticketId))
+
+  if (isError) {
+    return <p className="text-sm text-destructive">回答内容の取得に失敗しました</p>
+  }
+  if (!detail) {
+    return <p className="text-sm text-muted-foreground">読み込み中...</p>
+  }
+  return detail.answers.map((answer, index) => (
+    <div key={`${answer.question_id}-${index}`} className="text-sm">
+      <span className="text-muted-foreground">{answer.question_title} </span>
+      <span className="text-foreground">{answer.display_value}</span>
+    </div>
+  ))
 }
