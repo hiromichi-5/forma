@@ -55,7 +55,7 @@ export default function FormsListPage() {
       }
     }
 
-    load()
+    void load()
 
     return () => {
       isActive = false

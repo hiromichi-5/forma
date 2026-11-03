@@ -51,7 +51,7 @@ export default function AcceptInvitePage() {
       }
     };
 
-    accept();
+    void accept();
   }, [authLoading, user, inviteId, status]);
 
   if (authLoading) {

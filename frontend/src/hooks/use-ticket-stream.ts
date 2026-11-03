@@ -17,7 +17,7 @@ export function useTicketStream(
     const es = new EventSource(`${baseUrl}/v1/forms/${formId}/stream`, { withCredentials: true })
 
     es.addEventListener("ticket_updated", (e: MessageEvent) => {
-      const { ticket } = JSON.parse(e.data) as TicketUpdatedEvent
+      const { ticket } = JSON.parse(e.data as string) as TicketUpdatedEvent
       callbackRef.current(ticket)
     })
 

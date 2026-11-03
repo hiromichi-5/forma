@@ -55,12 +55,12 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   useEffect(() => {
-    loadForms();
+    void loadForms();
   }, []);
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    void navigate("/login");
   };
 
   return (

@@ -69,7 +69,7 @@ export default function SettingsPage() {
         setIsLoading(false);
       }
     };
-    loadProfile();
+    void loadProfile();
   }, []);
 
   const handleUpdateProfile = async () => {
@@ -155,7 +155,7 @@ export default function SettingsPage() {
       setIsDeletingAccount(true);
       await apiClient.deleteProfile();
       toast.success("アカウントを削除しました");
-      navigate("/login");
+      void navigate("/login");
     } catch (error) {
       console.error("Failed to delete account:", error);
       toast.error(
