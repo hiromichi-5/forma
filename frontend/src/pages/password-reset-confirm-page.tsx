@@ -1,77 +1,78 @@
-import { useState } from "react";
-import { Link, useSearchParams } from "react-router";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { apiClient } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/api-error";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { useState } from "react"
+import { Link, useSearchParams } from "react-router"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
+import { apiClient } from "@/lib/api"
+import { getApiErrorMessage } from "@/lib/api-error"
+import { CheckCircle, Loader2 } from "lucide-react"
 
 export default function PasswordResetConfirmPage() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [isComplete, setIsComplete] = useState(false);
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get("token")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [isComplete, setIsComplete] = useState(false)
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
         <Card className="w-full max-w-md shadow-lg">
-          <CardContent className="p-6 text-center space-y-4">
+          <CardContent className="space-y-4 p-6 text-center">
             <CardTitle className="text-xl">無効なリンク</CardTitle>
             <p className="text-sm text-muted-foreground">
               パスワードリセット用のトークンが見つかりません。
             </p>
             <Link
               to="/password-reset"
-              className="inline-block font-medium text-primary hover:underline text-sm"
+              className="inline-block text-sm font-medium text-primary hover:underline"
             >
               パスワードリセットを再度リクエスト
             </Link>
           </CardContent>
         </Card>
       </div>
-    );
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+    e.preventDefault()
+    setError("")
 
     if (newPassword !== confirmPassword) {
-      setError("パスワードが一致しません");
-      return;
+      setError("パスワードが一致しません")
+      return
     }
 
-    setIsLoading(true);
+    setIsLoading(true)
 
     try {
-      await apiClient.passwordResetConfirm({ token, new_password: newPassword });
-      setIsComplete(true);
+      await apiClient.passwordResetConfirm({ token, new_password: newPassword })
+      setIsComplete(true)
     } catch (err) {
       setError(
         getApiErrorMessage(
           err,
           {
-            TOKEN_NOT_FOUND: "トークンが無効または期限切れです。再度リセットをリクエストしてください。",
+            TOKEN_NOT_FOUND:
+              "トークンが無効または期限切れです。再度リセットをリクエストしてください。",
             VALIDATION_ERROR: "パスワードは8文字以上で入力してください",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "パスワードリセットに失敗しました"
-        )
-      );
+          "パスワードリセットに失敗しました",
+        ),
+      )
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   if (isComplete) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
         <Card className="w-full max-w-md shadow-lg">
           <CardContent className="p-6">
             <div className="space-y-6 text-center">
@@ -86,21 +87,18 @@ export default function PasswordResetConfirmPage() {
                   新しいパスワードでログインしてください。
                 </p>
               </div>
-              <Link
-                to="/login"
-                className="inline-block font-medium text-primary hover:underline"
-              >
+              <Link to="/login" className="inline-block font-medium text-primary hover:underline">
                 ログインページへ
               </Link>
             </div>
           </CardContent>
         </Card>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardContent className="p-6">
           <div className="space-y-6">
@@ -155,7 +153,7 @@ export default function PasswordResetConfirmPage() {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     変更中...
                   </>
                 ) : (
@@ -167,5 +165,5 @@ export default function PasswordResetConfirmPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

@@ -1,10 +1,9 @@
-
 import { useEffect, useRef } from "react"
 import type { TicketDetail, TicketUpdatedEvent } from "@/types"
 
 export function useTicketStream(
   formId: string | null,
-  onTicketUpdated: (ticket: TicketDetail) => void
+  onTicketUpdated: (ticket: TicketDetail) => void,
 ) {
   const callbackRef = useRef(onTicketUpdated)
   useEffect(() => {

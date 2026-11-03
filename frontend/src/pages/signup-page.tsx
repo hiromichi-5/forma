@@ -1,35 +1,35 @@
-import { useState } from "react";
-import { Link, Navigate } from "react-router";
-import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { getApiErrorMessage } from "@/lib/api-error";
-import { Loader2, MailCheck } from "lucide-react";
+import { useState } from "react"
+import { Link, Navigate } from "react-router"
+import { useAuth } from "@/hooks/use-auth"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
+import { getApiErrorMessage } from "@/lib/api-error"
+import { Loader2, MailCheck } from "lucide-react"
 
 export default function SignupPage() {
-  const { user } = useAuth();
-  const { signup } = useAuth();
-  const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [isSignupComplete, setIsSignupComplete] = useState(false);
+  const { user } = useAuth()
+  const { signup } = useAuth()
+  const [displayName, setDisplayName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [isSignupComplete, setIsSignupComplete] = useState(false)
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/" replace />
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
 
     try {
-      await signup({ email, password, display_name: displayName });
-      setIsSignupComplete(true);
+      await signup({ email, password, display_name: displayName })
+      setIsSignupComplete(true)
     } catch (err) {
       setError(
         getApiErrorMessage(
@@ -39,17 +39,17 @@ export default function SignupPage() {
             VALIDATION_ERROR: "入力内容を確認してください（パスワードは8文字以上）",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "サインアップに失敗しました"
-        )
-      );
+          "サインアップに失敗しました",
+        ),
+      )
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   if (isSignupComplete) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
         <Card className="w-full max-w-md shadow-lg">
           <CardContent className="p-6">
             <div className="space-y-6 text-center">
@@ -61,17 +61,14 @@ export default function SignupPage() {
               <div>
                 <CardTitle className="text-2xl font-bold">確認メールを送信しました</CardTitle>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{email}</span>
-                  {" "}に確認メールを送信しました。
+                  <span className="font-medium text-foreground">{email}</span>{" "}
+                  に確認メールを送信しました。
                   <br />
                   メール内のリンクをクリックしてアカウントを有効化してください。
                 </p>
               </div>
               <div className="pt-2">
-                <Link
-                  to="/login"
-                  className="font-medium text-primary hover:underline text-sm"
-                >
+                <Link to="/login" className="text-sm font-medium text-primary hover:underline">
                   ログインページへ
                 </Link>
               </div>
@@ -79,11 +76,11 @@ export default function SignupPage() {
           </CardContent>
         </Card>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardContent className="p-6">
           <div className="space-y-6">
@@ -151,7 +148,7 @@ export default function SignupPage() {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     作成中...
                   </>
                 ) : (
@@ -163,10 +160,7 @@ export default function SignupPage() {
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
                 すでにアカウントをお持ちの方は{" "}
-                <Link
-                  to="/login"
-                  className="font-medium text-primary hover:underline"
-                >
+                <Link to="/login" className="font-medium text-primary hover:underline">
                   ログイン
                 </Link>
               </p>
@@ -175,5 +169,5 @@ export default function SignupPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

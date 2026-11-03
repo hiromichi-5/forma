@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState } from "react"
 import type { NotificationMode, NotificationSetting, NotificationType } from "@/types"
 import { apiClient } from "@/lib/api"
@@ -40,7 +39,7 @@ export function useNotificationSettings(formId: string | null) {
   const modeOf = useCallback(
     (notificationType: NotificationType): NotificationMode =>
       settings.find((s) => s.notification_type === notificationType)?.mode ?? "off",
-    [settings]
+    [settings],
   )
 
   return {

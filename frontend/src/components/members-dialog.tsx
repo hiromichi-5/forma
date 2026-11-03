@@ -1,11 +1,22 @@
-
 import { useCallback, useEffect, useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -56,7 +67,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
   const [removeTarget, setRemoveTarget] = useState<MemberView | null>(null)
   const [removeError, setRemoveError] = useState("")
 
-  const toRoleValue = (value: string): "admin" | "editor" => (value === "admin" ? "admin" : "editor")
+  const toRoleValue = (value: string): "admin" | "editor" =>
+    value === "admin" ? "admin" : "editor"
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
@@ -72,7 +84,7 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
           name: member.display_name,
           email: member.email,
           role: member.role,
-        }))
+        })),
       )
       setInvites(invitesRes.invites)
     } catch (error) {
@@ -86,8 +98,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
             INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "データの取得に失敗しました"
-        )
+          "データの取得に失敗しました",
+        ),
       )
     } finally {
       setIsLoading(false)
@@ -119,8 +131,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
             ...inviteErrorMessages,
             VALIDATION_ERROR: "招待する権限またはメールアドレスを確認してください",
           },
-          "招待の送信に失敗しました"
-        )
+          "招待の送信に失敗しました",
+        ),
       )
     }
   }
@@ -145,8 +157,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
             INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "招待の取消に失敗しました"
-        )
+          "招待の取消に失敗しました",
+        ),
       )
     } finally {
       setIsWorking(false)
@@ -173,8 +185,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
             INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "メンバーの削除に失敗しました"
-        )
+          "メンバーの削除に失敗しました",
+        ),
       )
     } finally {
       setIsWorking(false)
@@ -199,8 +211,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
             INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "権限変更に失敗しました"
-        )
+          "権限変更に失敗しました",
+        ),
       )
     }
   }
@@ -221,10 +233,12 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
 
           <div className="space-y-6">
             {errorMessage && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{errorMessage}</div>
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {errorMessage}
+              </div>
             )}
 
-            <div className="space-y-3 p-4 bg-muted/60 border border-dashed rounded-lg">
+            <div className="space-y-3 rounded-lg border border-dashed bg-muted/60 p-4">
               <h3 className="text-sm font-semibold text-foreground">メンバーを招待する</h3>
               <div className="flex gap-2">
                 <div className="flex-1 space-y-2">
@@ -262,17 +276,24 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
 
             {invites.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-foreground">保留中の招待 ({invites.length})</h3>
-                <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                <h3 className="text-sm font-semibold text-foreground">
+                  保留中の招待 ({invites.length})
+                </h3>
+                <div className="max-h-[200px] space-y-1.5 overflow-y-auto">
                   {invites.map((invite) => (
-                    <div key={invite.id} className="flex items-center justify-between p-2 bg-card border border-dashed rounded-lg">
-                      <div className="flex items-center gap-2 flex-1">
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                    <div
+                      key={invite.id}
+                      className="flex items-center justify-between rounded-lg border border-dashed bg-card p-2"
+                    >
+                      <div className="flex flex-1 items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
                           <Clock className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-sm text-foreground">{invite.email}</p>
-                          <p className="text-xs text-muted-foreground">{formatExpiresAt(invite.expires_at)}</p>
+                          <p className="text-sm font-medium text-foreground">{invite.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatExpiresAt(invite.expires_at)}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -295,15 +316,20 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
             )}
 
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">現在のメンバー ({members.length})</h3>
-              <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+              <h3 className="text-sm font-semibold text-foreground">
+                現在のメンバー ({members.length})
+              </h3>
+              <div className="max-h-[280px] space-y-1.5 overflow-y-auto">
                 {isLoading && (
                   <div className="p-2 text-sm text-muted-foreground">読み込み中...</div>
                 )}
                 {members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-2 bg-card border rounded-lg">
-                    <div className="flex items-center gap-2 flex-1">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between rounded-lg border bg-card p-2"
+                  >
+                    <div className="flex flex-1 items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
                         {member.role === "admin" ? (
                           <Shield className="h-4 w-4 text-primary" />
                         ) : (
@@ -311,7 +337,7 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
                         )}
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-sm text-foreground">{member.name}</p>
+                        <p className="text-sm font-medium text-foreground">{member.name}</p>
                         <p className="text-xs text-muted-foreground">{member.email}</p>
                       </div>
                     </div>
@@ -321,7 +347,7 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
                         value={member.role}
                         onValueChange={(v) => handleRoleChange(member.id, toRoleValue(v))}
                       >
-                        <SelectTrigger className="w-[110px] h-8">
+                        <SelectTrigger className="h-8 w-[110px]">
                           <Badge variant={member.role === "admin" ? "default" : "secondary"}>
                             {member.role === "admin" ? "管理者" : "編集者"}
                           </Badge>
@@ -346,9 +372,7 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {member.role === "admin"
-                            ? "管理者は削除できません"
-                            : "メンバーを削除"}
+                          {member.role === "admin" ? "管理者は削除できません" : "メンバーを削除"}
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -403,7 +427,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
           <AlertDialogHeader>
             <AlertDialogTitle>メンバーを削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              「{removeTarget?.name}」をこのフォームのメンバーから削除します。一度削除したメンバーを追加する場合は、再度招待する必要があります。
+              「{removeTarget?.name}
+              」をこのフォームのメンバーから削除します。一度削除したメンバーを追加する場合は、再度招待する必要があります。
             </AlertDialogDescription>
           </AlertDialogHeader>
           {removeError && (

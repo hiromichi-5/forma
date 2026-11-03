@@ -1,11 +1,15 @@
-
 import { useState } from "react"
 import type { ChatMessage } from "@/types/form-response"
 
 export function useChatMessages(responseId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
 
-  const sendMessage = (message: string, senderId: string, senderName: string, _respondentEmail?: string) => {
+  const sendMessage = (
+    message: string,
+    senderId: string,
+    senderName: string,
+    _respondentEmail?: string,
+  ) => {
     const newMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
       responseId,

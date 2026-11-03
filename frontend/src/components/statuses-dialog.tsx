@@ -1,19 +1,9 @@
-
 import { useMemo, useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -23,19 +13,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ArrowDown, ArrowUp, Check, Flag, Pencil, Plus, Trash2, X } from "lucide-react"
 import type { FormStatus } from "@/types"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
 
 const colorSwitchTooltip = "ONにするとステータスに色を設定できます"
-const defaultStatusDescription =
-  "新しい回答はこのステータスになります"
+const defaultStatusDescription = "新しい回答はこのステータスになります"
 const setAsDefaultStatusTooltip = `クリックすると${defaultStatusDescription}`
 
 type StatusesDialogProps = {
@@ -87,12 +72,7 @@ type ColorSwatchPickerProps = {
   className?: string
 }
 
-function ColorSwatchPicker({
-  value,
-  disabled,
-  onChange,
-  className,
-}: ColorSwatchPickerProps) {
+function ColorSwatchPicker({ value, disabled, onChange, className }: ColorSwatchPickerProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -102,8 +82,9 @@ function ColorSwatchPicker({
           type="button"
           disabled={disabled}
           aria-label="色を選択"
-          className={`rounded-md border border-border disabled:opacity-40 disabled:cursor-not-allowed ${className ?? "h-7 w-7"
-            }`}
+          className={`rounded-md border border-border disabled:cursor-not-allowed disabled:opacity-40 ${
+            className ?? "h-7 w-7"
+          }`}
           style={{ backgroundColor: value }}
         />
       </PopoverTrigger>
@@ -166,7 +147,7 @@ export function StatusesDialog({
 
   const sortedStatuses = useMemo(
     () => [...statuses].sort((a, b) => a.display_order - b.display_order),
-    [statuses]
+    [statuses],
   )
 
   const resetNewFields = () => {
@@ -205,10 +186,7 @@ export function StatusesDialog({
     setIsWorking(true)
     setErrorMessage("")
     try {
-      const maxOrder = statuses.reduce(
-        (max, status) => Math.max(max, status.display_order),
-        0
-      )
+      const maxOrder = statuses.reduce((max, status) => Math.max(max, status.display_order), 0)
       const created = await apiClient.createFormStatus(formId, {
         name: newName.trim(),
         color: colorValueOrNull(newColor),
@@ -225,8 +203,8 @@ export function StatusesDialog({
             ...defaultStatusErrorMessages,
             VALIDATION_ERROR: "ステータス名と表示順を確認してください",
           },
-          "ステータスの追加に失敗しました"
-        )
+          "ステータスの追加に失敗しました",
+        ),
       )
     } finally {
       setIsWorking(false)
@@ -242,9 +220,7 @@ export function StatusesDialog({
         name: editName.trim(),
         color: colorValueOrNull(editColor),
       })
-      onStatusesChange(
-        statuses.map((status) => (status.id === statusId ? updated : status))
-      )
+      onStatusesChange(statuses.map((status) => (status.id === statusId ? updated : status)))
       cancelEdit()
     } catch (error) {
       console.error("Failed to update status:", error)
@@ -255,8 +231,8 @@ export function StatusesDialog({
             ...defaultStatusErrorMessages,
             VALIDATION_ERROR: "ステータス名・色・表示順を確認してください",
           },
-          "ステータスの更新に失敗しました"
-        )
+          "ステータスの更新に失敗しました",
+        ),
       )
     } finally {
       setIsWorking(false)
@@ -273,9 +249,7 @@ export function StatusesDialog({
     setDeleteError("")
     try {
       await apiClient.deleteFormStatus(formId, deleteTarget.id)
-      onStatusesChange(
-        statuses.filter((status) => status.id !== deleteTarget.id)
-      )
+      onStatusesChange(statuses.filter((status) => status.id !== deleteTarget.id))
       setIsDeleteDialogOpen(false)
       setDeleteTarget(null)
     } catch (error) {
@@ -288,8 +262,8 @@ export function StatusesDialog({
             VALIDATION_ERROR:
               "このステータスは削除できません。使用中のチケットがないか確認してください",
           },
-          "ステータスの削除に失敗しました"
-        )
+          "ステータスの削除に失敗しました",
+        ),
       )
     } finally {
       setIsWorking(false)
@@ -300,16 +274,14 @@ export function StatusesDialog({
     setIsWorking(true)
     setErrorMessage("")
     try {
-      const updatedDefault = await apiClient.updateFormStatus(
-        formId,
-        statusId,
-        { is_default: true }
-      )
+      const updatedDefault = await apiClient.updateFormStatus(formId, statusId, {
+        is_default: true,
+      })
       onStatusesChange(
         statuses.map((status) => ({
           ...status,
           is_default: status.id === updatedDefault.id,
-        }))
+        })),
       )
     } catch (error) {
       console.error("Failed to set default status:", error)
@@ -317,8 +289,8 @@ export function StatusesDialog({
         getApiErrorMessage(
           error,
           defaultStatusErrorMessages,
-          "デフォルトステータスの設定に失敗しました"
-        )
+          "デフォルトステータスの設定に失敗しました",
+        ),
       )
     } finally {
       setIsWorking(false)
@@ -337,10 +309,8 @@ export function StatusesDialog({
     setIsWorking(true)
     setErrorMessage("")
     try {
-      const tempOrderBase = Math.max(
-        ...sortedStatuses.map((status) => status.display_order),
-        0
-      ) + 1000
+      const tempOrderBase =
+        Math.max(...sortedStatuses.map((status) => status.display_order), 0) + 1000
       const tempOrder = tempOrderBase + index
 
       await apiClient.updateFormStatus(formId, current.id, {
@@ -357,16 +327,12 @@ export function StatusesDialog({
           if (status.id === updatedCurrent.id) return updatedCurrent
           if (status.id === updatedTarget.id) return updatedTarget
           return status
-        })
+        }),
       )
     } catch (error) {
       console.error("Failed to reorder status:", error)
       setErrorMessage(
-        getApiErrorMessage(
-          error,
-          defaultStatusErrorMessages,
-          "表示順の更新に失敗しました"
-        )
+        getApiErrorMessage(error, defaultStatusErrorMessages, "表示順の更新に失敗しました"),
       )
     } finally {
       setIsWorking(false)
@@ -406,9 +372,7 @@ export function StatusesDialog({
                 <ColorSwatchPicker
                   value={newColor.value}
                   disabled={!newColor.enabled}
-                  onChange={(value) =>
-                    setNewColor((prev) => ({ ...prev, value }))
-                  }
+                  onChange={(value) => setNewColor((prev) => ({ ...prev, value }))}
                   className="h-7 w-7"
                 />
               </div>
@@ -431,37 +395,31 @@ export function StatusesDialog({
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  ステータス一覧
-                </h3>
-                <span className="text-xs text-muted-foreground">
-                  {sortedStatuses.length}件
-                </span>
+                <h3 className="text-sm font-medium text-muted-foreground">ステータス一覧</h3>
+                <span className="text-xs text-muted-foreground">{sortedStatuses.length}件</span>
               </div>
-              <div className="space-y-1 max-h-[400px] overflow-y-auto">
+              <div className="max-h-[400px] space-y-1 overflow-y-auto">
                 {sortedStatuses.map((status, index) => {
                   const isEditing = editingId === status.id
                   return (
                     <div
                       key={status.id}
-                      className="rounded-md border bg-card hover:bg-accent/50 transition-colors"
+                      className="rounded-md border bg-card transition-colors hover:bg-accent/50"
                     >
                       {!isEditing ? (
                         <div className="flex items-center gap-2 p-2">
                           <button
                             type="button"
-                            className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer select-none text-left"
+                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left select-none"
                             onClick={() => startEdit(status)}
                           >
                             <div
-                              className="h-3 w-3 rounded-full flex-shrink-0"
+                              className="h-3 w-3 flex-shrink-0 rounded-full"
                               style={{
                                 backgroundColor: status.color ?? "#9CA3AF",
                               }}
                             />
-                            <span className="text-sm flex-1 min-w-0 truncate">
-                              {status.name}
-                            </span>
+                            <span className="min-w-0 flex-1 truncate text-sm">{status.name}</span>
                           </button>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -472,16 +430,15 @@ export function StatusesDialog({
                                   className="h-7 w-7 flex-shrink-0"
                                   disabled={isWorking}
                                   onClick={() =>
-                                    status.is_default
-                                      ? undefined
-                                      : handleSetDefault(status.id)
+                                    status.is_default ? undefined : handleSetDefault(status.id)
                                   }
                                 >
                                   <Flag
-                                    className={`h-3.5 w-3.5 ${status.is_default
-                                      ? "fill-primary text-primary"
-                                      : "text-muted-foreground"
-                                      }`}
+                                    className={`h-3.5 w-3.5 ${
+                                      status.is_default
+                                        ? "fill-primary text-primary"
+                                        : "text-muted-foreground"
+                                    }`}
                                   />
                                 </Button>
                               </span>
@@ -492,7 +449,7 @@ export function StatusesDialog({
                                 : setAsDefaultStatusTooltip}
                             </TooltipContent>
                           </Tooltip>
-                          <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <div className="flex flex-shrink-0 items-center gap-0.5">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -506,9 +463,7 @@ export function StatusesDialog({
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
-                              disabled={
-                                isWorking || index === sortedStatuses.length - 1
-                              }
+                              disabled={isWorking || index === sortedStatuses.length - 1}
                               onClick={() => handleMove(status.id, "down")}
                             >
                               <ArrowDown className="h-3.5 w-3.5" />
@@ -537,12 +492,12 @@ export function StatusesDialog({
                           </div>
                         </div>
                       ) : (
-                        <div className="p-2 space-y-2">
+                        <div className="space-y-2 p-2">
                           <div className="flex items-center gap-2">
                             <Input
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
-                              className="flex-1 h-8"
+                              className="h-8 flex-1"
                               placeholder="ステータス名"
                             />
                             <div className="flex items-center gap-1">
@@ -560,16 +515,12 @@ export function StatusesDialog({
                                     />
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent>
-                                  {colorSwitchTooltip}
-                                </TooltipContent>
+                                <TooltipContent>{colorSwitchTooltip}</TooltipContent>
                               </Tooltip>
                               <ColorSwatchPicker
                                 value={editColor.value}
                                 disabled={!editColor.enabled}
-                                onChange={(value) =>
-                                  setEditColor((prev) => ({ ...prev, value }))
-                                }
+                                onChange={(value) => setEditColor((prev) => ({ ...prev, value }))}
                                 className="h-6 w-6"
                               />
                             </div>
@@ -630,11 +581,7 @@ export function StatusesDialog({
           )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isWorking}>キャンセル</AlertDialogCancel>
-            <Button
-              onClick={handleDelete}
-              disabled={isWorking}
-              variant="destructive"
-            >
+            <Button onClick={handleDelete} disabled={isWorking} variant="destructive">
               削除する
             </Button>
           </AlertDialogFooter>
