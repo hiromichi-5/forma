@@ -1,49 +1,46 @@
-import type React from "react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import type React from "react"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
-import { apiClient } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/api-error";
+} from "@/components/ui/dialog"
+import { Plus } from "lucide-react"
+import { apiClient } from "@/lib/api"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 type RegisterFormDialogProps = {
-  onRegistered: () => Promise<void>;
-  trigger?: React.ReactNode;
-};
+  onRegistered: () => Promise<void>
+  trigger?: React.ReactNode
+}
 
-export function RegisterFormDialog({
-  onRegistered,
-  trigger,
-}: RegisterFormDialogProps) {
-  const [formUrl, setFormUrl] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
+export function RegisterFormDialog({ onRegistered, trigger }: RegisterFormDialogProps) {
+  const [formUrl, setFormUrl] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [isOpen, setIsOpen] = useState(false)
 
   const handleClose = () => {
-    if (isLoading) return;
-    setFormUrl("");
-    setErrorMessage("");
-    setIsOpen(false);
-  };
+    if (isLoading) return
+    setFormUrl("")
+    setErrorMessage("")
+    setIsOpen(false)
+  }
 
   const handleRegister = async () => {
-    if (!formUrl.trim()) return;
-    setIsLoading(true);
-    setErrorMessage("");
+    if (!formUrl.trim()) return
+    setIsLoading(true)
+    setErrorMessage("")
 
     try {
-      await apiClient.registerForm({ url: formUrl.trim() });
-      await onRegistered();
-      handleClose();
+      await apiClient.registerForm({ url: formUrl.trim() })
+      await onRegistered()
+      handleClose()
     } catch (error) {
       setErrorMessage(
         getApiErrorMessage(
@@ -57,19 +54,16 @@ export function RegisterFormDialog({
             INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "フォーム連携に失敗しました"
-        )
-      );
+          "フォーム連携に失敗しました",
+        ),
+      )
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => (open ? setIsOpen(true) : handleClose())}
-    >
+    <Dialog open={isOpen} onOpenChange={(open) => (open ? setIsOpen(true) : handleClose())}>
       <DialogTrigger asChild>
         {trigger ?? (
           <Button className="gap-2">
@@ -94,14 +88,12 @@ export function RegisterFormDialog({
             />
             <div className="space-y-1.5 text-xs text-muted-foreground">
               <p>連携する前に、以下の操作が必要です</p>
-              <ol className="list-decimal list-inside space-y-1 ml-1">
+              <ol className="ml-1 list-inside list-decimal space-y-1">
                 <li>Googleフォームの編集画面を開く</li>
-                <li>
-                  右上の「公開」ボタンの左にある共有ボタン（人型のアイコン）を選択する
-                </li>
+                <li>右上の「公開」ボタンの左にある共有ボタン（人型のアイコン）を選択する</li>
                 <li>
                   以下のメールアドレスを「編集者」として追加する
-                  <div className="mt-1 p-2 bg-muted rounded font-mono text-[10px] break-all">
+                  <div className="mt-1 rounded bg-muted p-2 font-mono text-[10px] break-all">
                     forma-service@forma-470418.iam.gserviceaccount.com
                   </div>
                 </li>
@@ -124,5 +116,5 @@ export function RegisterFormDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

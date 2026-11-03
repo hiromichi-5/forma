@@ -1,19 +1,19 @@
-import type { User } from "@/types/form-response";
-import type { FormStatus, TicketSummary, TicketPriority } from "@/types";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import type { User } from "@/types/form-response"
+import type { FormStatus, TicketSummary, TicketPriority } from "@/types"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { MessageSquare, Calendar } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { ja } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+} from "@/components/ui/select"
+import { MessageSquare, Calendar } from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
+import { ja } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 import {
   fallbackStatusColor,
   hexToRgba,
@@ -21,7 +21,7 @@ import {
   respondentEmailLabel,
   sortStatuses,
   toPriorityValue,
-} from "@/lib/ticket-display";
+} from "@/lib/ticket-display"
 import {
   DndContext,
   DragOverlay,
@@ -31,31 +31,31 @@ import {
   closestCorners,
   useDroppable,
   useDraggable,
-} from "@dnd-kit/core";
-import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
-import { useState } from "react";
-import { InfiniteScrollTrigger } from "@/components/infinite-scroll-trigger";
-import type { SegmentPage } from "@/hooks/use-form-responses";
+} from "@dnd-kit/core"
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
+import { useState } from "react"
+import { InfiniteScrollTrigger } from "@/components/infinite-scroll-trigger"
+import type { SegmentPage } from "@/hooks/use-form-responses"
 
 type ResponseKanbanViewProps = {
-  pages: Record<string, SegmentPage>;
-  counts: Record<string, number>;
-  onLoadMore: (statusId: string) => void;
-  users: User[];
-  statuses: FormStatus[];
-  onStatusChange: (id: string, statusId: string) => void;
-  onAssignChange: (id: string, userId: string | null) => void;
-  onPriorityChange: (id: string, priority: TicketPriority) => void;
-  onOpenDetail: (response: TicketSummary) => void;
-};
+  pages: Record<string, SegmentPage>
+  counts: Record<string, number>
+  onLoadMore: (statusId: string) => void
+  users: User[]
+  statuses: FormStatus[]
+  onStatusChange: (id: string, statusId: string) => void
+  onAssignChange: (id: string, userId: string | null) => void
+  onPriorityChange: (id: string, priority: TicketPriority) => void
+  onOpenDetail: (response: TicketSummary) => void
+}
 
 type DraggableCardProps = {
-  response: TicketSummary;
-  users: User[];
-  onAssignChange: (id: string, userId: string | null) => void;
-  onPriorityChange: (id: string, priority: TicketPriority) => void;
-  onOpenDetail: (response: TicketSummary) => void;
-};
+  response: TicketSummary
+  users: User[]
+  onAssignChange: (id: string, userId: string | null) => void
+  onPriorityChange: (id: string, priority: TicketPriority) => void
+  onOpenDetail: (response: TicketSummary) => void
+}
 
 function DraggableCard({
   response,
@@ -64,21 +64,20 @@ function DraggableCard({
   onPriorityChange,
   onOpenDetail,
 }: DraggableCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: response.id,
-      data: {
-        response,
-      },
-    });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: response.id,
+    data: {
+      response,
+    },
+  })
 
   const style = transform
     ? {
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
       }
-    : undefined;
+    : undefined
 
-  const email = respondentEmailLabel(response.respondent_email);
+  const email = respondentEmailLabel(response.respondent_email)
 
   return (
     <Card
@@ -86,7 +85,7 @@ function DraggableCard({
       style={style}
       className={cn(
         "cursor-grab border p-3 shadow-none transition-colors hover:bg-muted/30 active:cursor-grabbing",
-        isDragging && "opacity-50"
+        isDragging && "opacity-50",
       )}
       {...attributes}
       {...listeners}
@@ -109,21 +108,16 @@ function DraggableCard({
           </Button>
           <Select
             value={response.priority}
-            onValueChange={(value) =>
-              onPriorityChange(response.id, toPriorityValue(value))
-            }
+            onValueChange={(value) => onPriorityChange(response.id, toPriorityValue(value))}
           >
             <SelectTrigger
-              className="w-[80px] h-7 text-xs shrink-0 border-0 shadow-none"
+              className="h-7 w-[80px] shrink-0 border-0 text-xs shadow-none"
               onClick={(e) => e.stopPropagation()}
             >
               <div
-                className="flex items-center gap-1.5 px-2 py-1 rounded"
+                className="flex items-center gap-1.5 rounded px-2 py-1"
                 style={{
-                  backgroundColor: hexToRgba(
-                    priorityConfig[response.priority].hex,
-                    0.1
-                  ),
+                  backgroundColor: hexToRgba(priorityConfig[response.priority].hex, 0.1),
                 }}
               >
                 <span
@@ -150,10 +144,7 @@ function DraggableCard({
             onAssignChange(response.id, value === "unassigned" ? null : value)
           }
         >
-          <SelectTrigger
-            className="w-full h-7 text-xs"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <SelectTrigger className="h-7 w-full text-xs" onClick={(e) => e.stopPropagation()}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -166,21 +157,19 @@ function DraggableCard({
           </SelectContent>
         </Select>
 
-        <div className="flex items-center justify-between pt-1.5 border-t">
+        <div className="flex items-center justify-between border-t pt-1.5">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
-            <span>
-              {formatDistanceToNow(new Date(response.submitted_at), { locale: ja })}
-            </span>
+            <span>{formatDistanceToNow(new Date(response.submitted_at), { locale: ja })}</span>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={(e) => {
-              e.stopPropagation();
-              onOpenDetail(response);
+              e.stopPropagation()
+              onOpenDetail(response)
             }}
-            className="gap-1 h-7 px-2"
+            className="h-7 gap-1 px-2"
             aria-label={`回答詳細を開く: ${email}`}
           >
             <MessageSquare className="h-3 w-3" />
@@ -188,16 +177,16 @@ function DraggableCard({
         </div>
       </div>
     </Card>
-  );
+  )
 }
 
 type DroppableColumnProps = {
-  statusId: string;
-  statusName: string;
-  statusColor?: string | null;
-  children: React.ReactNode;
-  count: number;
-};
+  statusId: string
+  statusName: string
+  statusColor?: string | null
+  children: React.ReactNode
+  count: number
+}
 
 function DroppableColumn({
   statusId,
@@ -208,26 +197,24 @@ function DroppableColumn({
 }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: statusId,
-  });
+  })
 
   return (
     <div className="flex w-60 shrink-0 flex-col gap-2">
       <div
-        className="flex items-center justify-between p-2 rounded-lg"
+        className="flex items-center justify-between rounded-lg p-2"
         style={{
           backgroundColor: hexToRgba(statusColor, 0.1),
         }}
       >
         <div className="flex items-center gap-2">
           <div
-            className="w-2 h-2 rounded-full shrink-0"
+            className="h-2 w-2 shrink-0 rounded-full"
             style={{
               backgroundColor: statusColor || fallbackStatusColor,
             }}
           />
-          <h3 className="font-semibold text-sm text-foreground">
-            {statusName}
-          </h3>
+          <h3 className="text-sm font-semibold text-foreground">{statusName}</h3>
         </div>
         <Badge variant="secondary" className="bg-card">
           {count}
@@ -237,14 +224,14 @@ function DroppableColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          "space-y-2 min-h-[160px] p-2 rounded-lg transition-colors",
-          isOver && "bg-muted/50"
+          "min-h-[160px] space-y-2 rounded-lg p-2 transition-colors",
+          isOver && "bg-muted/50",
         )}
       >
         {children}
       </div>
     </div>
-  );
+  )
 }
 
 export function ResponseKanbanView({
@@ -258,45 +245,43 @@ export function ResponseKanbanView({
   onPriorityChange,
   onOpenDetail,
 }: ResponseKanbanViewProps) {
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null)
 
-  const sortedStatuses = sortStatuses(statuses);
-  const responses = Object.values(pages).flatMap((page) => page.tickets);
+  const sortedStatuses = sortStatuses(statuses)
+  const responses = Object.values(pages).flatMap((page) => page.tickets)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
       },
-    })
-  );
+    }),
+  )
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
+    setActiveId(event.active.id as string)
+  }
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
+    const { active, over } = event
 
     if (!over) {
-      setActiveId(null);
-      return;
+      setActiveId(null)
+      return
     }
 
-    const responseId = active.id as string;
-    const newStatusId = over.id as string;
+    const responseId = active.id as string
+    const newStatusId = over.id as string
 
-    const response = responses.find((r) => r.id === responseId);
+    const response = responses.find((r) => r.id === responseId)
     if (response && response.status.id !== newStatusId) {
-      onStatusChange(responseId, newStatusId);
+      onStatusChange(responseId, newStatusId)
     }
 
-    setActiveId(null);
-  };
+    setActiveId(null)
+  }
 
-  const activeResponse = activeId
-    ? responses.find((r) => r.id === activeId)
-    : null;
+  const activeResponse = activeId ? responses.find((r) => r.id === activeId) : null
 
   return (
     <DndContext
@@ -307,7 +292,7 @@ export function ResponseKanbanView({
     >
       <div className="flex gap-3 overflow-x-auto pb-2">
         {sortedStatuses.map((status) => {
-          const page = pages[status.id];
+          const page = pages[status.id]
           return (
             <DroppableColumn
               key={status.id}
@@ -334,17 +319,17 @@ export function ResponseKanbanView({
                 />
               )}
             </DroppableColumn>
-          );
+          )
         })}
       </div>
 
       <DragOverlay>
         {activeResponse ? (
-          <Card className="p-4 border bg-card shadow-lg rotate-3">
+          <Card className="rotate-3 border bg-card p-4 shadow-lg">
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
-                  <h4 className="font-semibold text-sm text-foreground mb-1">
+                  <h4 className="mb-1 text-sm font-semibold text-foreground">
                     {activeResponse.title}
                   </h4>
                   <p className="text-xs text-muted-foreground">
@@ -353,8 +338,8 @@ export function ResponseKanbanView({
                 </div>
                 <span
                   className={cn(
-                    "font-medium text-xs",
-                    priorityConfig[activeResponse.priority].color
+                    "text-xs font-medium",
+                    priorityConfig[activeResponse.priority].color,
                   )}
                 >
                   {priorityConfig[activeResponse.priority].label}
@@ -365,5 +350,5 @@ export function ResponseKanbanView({
         ) : null}
       </DragOverlay>
     </DndContext>
-  );
+  )
 }

@@ -1,38 +1,38 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { apiClient } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/api-error";
-import { useRequireAuth } from "@/hooks/use-auth";
-import { CheckCircle, Loader2, XCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react"
+import { Link, useParams } from "react-router"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
+import { apiClient } from "@/lib/api"
+import { getApiErrorMessage } from "@/lib/api-error"
+import { useRequireAuth } from "@/hooks/use-auth"
+import { CheckCircle, Loader2, XCircle } from "lucide-react"
 
 export default function AcceptInvitePage() {
-  const { inviteId } = useParams<{ inviteId: string }>();
-  const { isLoading: authLoading, user } = useRequireAuth();
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-  const acceptedRef = useRef(false);
+  const { inviteId } = useParams<{ inviteId: string }>()
+  const { isLoading: authLoading, user } = useRequireAuth()
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [errorMessage, setErrorMessage] = useState("")
+  const acceptedRef = useRef(false)
 
   useEffect(() => {
-    if (authLoading || !user || !inviteId) return;
+    if (authLoading || !user || !inviteId) return
     if (acceptedRef.current) {
-      setStatus("success");
-      return;
+      setStatus("success")
+      return
     }
-    if (status !== "idle") return;
+    if (status !== "idle") return
 
     const accept = async () => {
-      setStatus("loading");
+      setStatus("loading")
       try {
-        await apiClient.acceptInvite(inviteId);
-        acceptedRef.current = true;
-        setStatus("success");
+        await apiClient.acceptInvite(inviteId)
+        acceptedRef.current = true
+        setStatus("success")
       } catch (err) {
         if (acceptedRef.current) {
-          setStatus("success");
-          return;
+          setStatus("success")
+          return
         }
-        setStatus("error");
+        setStatus("error")
         setErrorMessage(
           getApiErrorMessage(
             err,
@@ -45,31 +45,31 @@ export default function AcceptInvitePage() {
               INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
               NETWORK_ERROR: "ネットワークエラーが発生しました",
             },
-            "招待の受諾に失敗しました"
-          )
-        );
+            "招待の受諾に失敗しました",
+          ),
+        )
       }
-    };
+    }
 
-    void accept();
-  }, [authLoading, user, inviteId, status]);
+    void accept()
+  }, [authLoading, user, inviteId, status])
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardContent className="p-6">
           <div className="space-y-6 text-center">
             {status === "loading" || status === "idle" ? (
               <>
-                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
                 <CardTitle className="text-xl">招待を受諾中...</CardTitle>
               </>
             ) : status === "success" ? (
@@ -85,10 +85,7 @@ export default function AcceptInvitePage() {
                     フォームにアクセスできるようになりました。
                   </p>
                 </div>
-                <Link
-                  to="/"
-                  className="inline-block font-medium text-primary hover:underline"
-                >
+                <Link to="/" className="inline-block font-medium text-primary hover:underline">
                   フォーム一覧へ
                 </Link>
               </>
@@ -103,10 +100,7 @@ export default function AcceptInvitePage() {
                   <CardTitle className="text-xl">受諾に失敗しました</CardTitle>
                   <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
                 </div>
-                <Link
-                  to="/"
-                  className="inline-block font-medium text-primary hover:underline"
-                >
+                <Link to="/" className="inline-block font-medium text-primary hover:underline">
                   ホームへ戻る
                 </Link>
               </>
@@ -115,5 +109,5 @@ export default function AcceptInvitePage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

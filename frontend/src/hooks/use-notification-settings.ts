@@ -39,7 +39,7 @@ export function useNotificationSettings(formId: string | null) {
   const modeOf = useCallback(
     (notificationType: NotificationType): NotificationMode =>
       settings.find((s) => s.notification_type === notificationType)?.mode ?? "off",
-    [settings]
+    [settings],
   )
 
   return {

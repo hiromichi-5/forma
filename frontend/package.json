@@ -7,8 +7,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "gen:types": "openapi-typescript ../openapi/openapi.yaml -o src/types/api.ts --root-types --root-types-no-schema-prefix",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "gen:types": "openapi-typescript ../openapi/openapi.yaml -o src/types/api.ts --root-types --root-types-no-schema-prefix",
     "preview": "vite preview"
   },
   "dependencies": {

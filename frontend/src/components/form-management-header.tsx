@@ -1,12 +1,12 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -14,31 +14,42 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { LayoutList, LayoutGrid, Search, Users, Settings, Trash2, ChevronDown, ExternalLink, RefreshCw, Bell } from "lucide-react";
-import { fallbackStatusColor, sortStatuses } from "@/lib/ticket-display";
-import type { FormStatus, FormQuestion } from "@/types";
+} from "@/components/ui/dropdown-menu"
+import {
+  LayoutList,
+  LayoutGrid,
+  Search,
+  Users,
+  Settings,
+  Trash2,
+  ChevronDown,
+  ExternalLink,
+  RefreshCw,
+  Bell,
+} from "lucide-react"
+import { fallbackStatusColor, sortStatuses } from "@/lib/ticket-display"
+import type { FormStatus, FormQuestion } from "@/types"
 
 type FormManagementHeaderProps = {
-  googleFormId: string | null;
-  formTitle: string;
-  viewMode: "list" | "kanban";
-  onViewModeChange: (mode: "list" | "kanban") => void;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-  statusFilters: string[];
-  onStatusFiltersChange: (statusIds: string[]) => void;
-  statuses: FormStatus[];
-  questions: FormQuestion[];
-  titleQuestionId: string | null;
-  onTitleQuestionChange: (questionId: string | null) => void;
-  onStatusManageClick?: () => void;
-  onMembersClick: () => void;
-  onNotificationsClick: () => void;
-  onUnregisterClick: () => void;
-  isSyncing: boolean;
-  onSyncClick: () => void;
-};
+  googleFormId: string | null
+  formTitle: string
+  viewMode: "list" | "kanban"
+  onViewModeChange: (mode: "list" | "kanban") => void
+  searchQuery: string
+  onSearchChange: (query: string) => void
+  statusFilters: string[]
+  onStatusFiltersChange: (statusIds: string[]) => void
+  statuses: FormStatus[]
+  questions: FormQuestion[]
+  titleQuestionId: string | null
+  onTitleQuestionChange: (questionId: string | null) => void
+  onStatusManageClick?: () => void
+  onMembersClick: () => void
+  onNotificationsClick: () => void
+  onUnregisterClick: () => void
+  isSyncing: boolean
+  onSyncClick: () => void
+}
 
 export function FormManagementHeader({
   googleFormId,
@@ -60,25 +71,20 @@ export function FormManagementHeader({
   isSyncing,
   onSyncClick,
 }: FormManagementHeaderProps) {
-  const sortedStatuses = sortStatuses(statuses);
-  const selectedStatuses = sortedStatuses.filter((status) =>
-    statusFilters.includes(status.id)
-  );
+  const sortedStatuses = sortStatuses(statuses)
+  const selectedStatuses = sortedStatuses.filter((status) => statusFilters.includes(status.id))
   // 1件だけ選んでいる場合は、そのステータスの色と名前をそのまま見せる。
-  const singleSelectedStatus =
-    selectedStatuses.length === 1 ? selectedStatuses[0] : null;
+  const singleSelectedStatus = selectedStatuses.length === 1 ? selectedStatuses[0] : null
   const statusFilterLabel =
     selectedStatuses.length === 0
       ? "全てのステータス"
-      : selectedStatuses.map((status) => status.name).join(", ");
+      : selectedStatuses.map((status) => status.name).join(", ")
 
   const toggleStatusFilter = (statusId: string, checked: boolean) => {
     onStatusFiltersChange(
-      checked
-        ? [...statusFilters, statusId]
-        : statusFilters.filter((id) => id !== statusId)
-    );
-  };
+      checked ? [...statusFilters, statusId] : statusFilters.filter((id) => id !== statusId),
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -88,19 +94,16 @@ export function FormManagementHeader({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-1.5 rounded-md px-2 py-1 -mx-2 text-left transition-colors hover:bg-accent"
+              className="-mx-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors hover:bg-accent"
             >
               <h1 className="text-2xl font-bold text-foreground">{formTitle}</h1>
-              <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
+              <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="p-1.5 border-gray-300 shadow-sm rounded-xl"
-          >
+          <DropdownMenuContent align="start" className="rounded-xl border-gray-300 p-1.5 shadow-sm">
             {googleFormId && (
               <>
-                <DropdownMenuItem asChild className="text-base py-2 rounded-lg">
+                <DropdownMenuItem asChild className="rounded-lg py-2 text-base">
                   <a
                     href={`https://docs.google.com/forms/d/${googleFormId}/edit`}
                     target="_blank"
@@ -114,29 +117,23 @@ export function FormManagementHeader({
               </>
             )}
             {onStatusManageClick && (
-              <DropdownMenuItem
-                onClick={onStatusManageClick}
-                className="text-base py-2 rounded-lg"
-              >
+              <DropdownMenuItem onClick={onStatusManageClick} className="rounded-lg py-2 text-base">
                 <Settings className="h-4 w-4" />
                 ステータス管理
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={onMembersClick} className="text-base py-2 rounded-lg">
+            <DropdownMenuItem onClick={onMembersClick} className="rounded-lg py-2 text-base">
               <Users className="h-4 w-4" />
               メンバー管理
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={onNotificationsClick}
-              className="text-base py-2 rounded-lg"
-            >
+            <DropdownMenuItem onClick={onNotificationsClick} className="rounded-lg py-2 text-base">
               <Bell className="h-4 w-4" />
               通知設定
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={onUnregisterClick}
-              className="text-base py-2 rounded-lg text-destructive focus:text-destructive"
+              className="rounded-lg py-2 text-base text-destructive focus:text-destructive"
             >
               <Trash2 className="h-4 w-4" />
               登録解除
@@ -158,9 +155,9 @@ export function FormManagementHeader({
       </div>
 
       {/* 行2: 検索・フィルター・表示設定 */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="回答者のメールアドレスで検索..."
             value={searchQuery}
@@ -173,15 +170,14 @@ export function FormManagementHeader({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="border-input hover:bg-accent/50 focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full items-center justify-between gap-2 rounded-xl border bg-transparent px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] sm:w-[200px]"
+              className="flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-input bg-transparent px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none hover:bg-accent/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:w-[200px]"
             >
               <div className="flex min-w-0 items-center gap-2">
                 {singleSelectedStatus && (
                   <div
-                    className="w-2 h-2 rounded-full shrink-0"
+                    className="h-2 w-2 shrink-0 rounded-full"
                     style={{
-                      backgroundColor:
-                        singleSelectedStatus.color ?? fallbackStatusColor,
+                      backgroundColor: singleSelectedStatus.color ?? fallbackStatusColor,
                     }}
                   />
                 )}
@@ -194,12 +190,12 @@ export function FormManagementHeader({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
-            className="w-[220px] p-1.5 border-gray-300 shadow-sm rounded-xl"
+            className="w-[220px] rounded-xl border-gray-300 p-1.5 shadow-sm"
           >
             <DropdownMenuCheckboxItem
               checked={statusFilters.length === 0}
               onCheckedChange={() => onStatusFiltersChange([])}
-              className="py-2 rounded-lg"
+              className="rounded-lg py-2"
             >
               全てのステータス
             </DropdownMenuCheckboxItem>
@@ -208,16 +204,14 @@ export function FormManagementHeader({
               <DropdownMenuCheckboxItem
                 key={status.id}
                 checked={statusFilters.includes(status.id)}
-                onCheckedChange={(checked) =>
-                  toggleStatusFilter(status.id, checked)
-                }
+                onCheckedChange={(checked) => toggleStatusFilter(status.id, checked)}
                 // 続けて複数選べるよう、選択してもメニューを閉じない。
                 onSelect={(event) => event.preventDefault()}
-                className="py-2 rounded-lg"
+                className="rounded-lg py-2"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <div
-                    className="w-2 h-2 rounded-full shrink-0"
+                    className="h-2 w-2 shrink-0 rounded-full"
                     style={{
                       backgroundColor: status.color ?? fallbackStatusColor,
                     }}
@@ -231,9 +225,7 @@ export function FormManagementHeader({
 
         <Select
           value={titleQuestionId ?? "none"}
-          onValueChange={(value) =>
-            onTitleQuestionChange(value === "none" ? null : value)
-          }
+          onValueChange={(value) => onTitleQuestionChange(value === "none" ? null : value)}
         >
           <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="表示する質問を選択" />
@@ -248,22 +240,20 @@ export function FormManagementHeader({
           </SelectContent>
         </Select>
 
-        <div className="relative grid grid-cols-2 gap-0.5 bg-muted p-0.5 rounded-md">
+        <div className="relative grid grid-cols-2 gap-0.5 rounded-md bg-muted p-0.5">
           <div
-            className="absolute top-0.5 bottom-0.5 bg-white rounded shadow-sm transition-transform duration-200 ease-in-out"
+            className="absolute top-0.5 bottom-0.5 rounded bg-white shadow-sm transition-transform duration-200 ease-in-out"
             style={{
               width: "calc(50% - 0.125rem)",
               transform:
-                viewMode === "kanban"
-                  ? "translateX(calc(100% + 0.125rem))"
-                  : "translateX(0)",
+                viewMode === "kanban" ? "translateX(calc(100% + 0.125rem))" : "translateX(0)",
             }}
           />
 
           <button
             type="button"
             onClick={() => onViewModeChange("list")}
-            className={`relative z-10 flex items-center justify-center gap-1 px-3 py-1.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`relative z-10 flex items-center justify-center gap-1 rounded px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors ${
               viewMode === "list"
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -276,7 +266,7 @@ export function FormManagementHeader({
           <button
             type="button"
             onClick={() => onViewModeChange("kanban")}
-            className={`relative z-10 flex items-center justify-center gap-1 px-3 py-1.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`relative z-10 flex items-center justify-center gap-1 rounded px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors ${
               viewMode === "kanban"
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -288,5 +278,5 @@ export function FormManagementHeader({
         </div>
       </div>
     </div>
-  );
+  )
 }

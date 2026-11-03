@@ -1,77 +1,78 @@
-import React, { useState } from "react";
-import { Navigate, Link, useLocation } from "react-router";
-import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { apiClient } from "@/lib/api";
-import { getApiErrorMessage, hasApiErrorCode } from "@/lib/api-error";
-import { Loader2 } from "lucide-react";
+import React, { useState } from "react"
+import { Navigate, Link, useLocation } from "react-router"
+import { useAuth } from "@/hooks/use-auth"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
+import { apiClient } from "@/lib/api"
+import { getApiErrorMessage, hasApiErrorCode } from "@/lib/api-error"
+import { Loader2 } from "lucide-react"
 
 export default function LoginPage() {
-  const { user, login } = useAuth();
-  const location = useLocation();
-  const from = (location.state as { from?: string })?.from ?? "/";
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [showResendVerification, setShowResendVerification] = useState(false);
-  const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const { user, login } = useAuth()
+  const location = useLocation()
+  const from = (location.state as { from?: string })?.from ?? "/"
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [showResendVerification, setShowResendVerification] = useState(false)
+  const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent">("idle")
 
   if (user) {
-    return <Navigate to={from} replace />;
+    return <Navigate to={from} replace />
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setShowResendVerification(false);
-    setIsLoading(true);
+    e.preventDefault()
+    setError("")
+    setShowResendVerification(false)
+    setIsLoading(true)
 
     try {
-      await login({ email, password });
+      await login({ email, password })
     } catch (err) {
       if (hasApiErrorCode(err, "EMAIL_NOT_VERIFIED")) {
-        setError("メールアドレスが未認証です。確認メールをご確認ください。");
-        setShowResendVerification(true);
+        setError("メールアドレスが未認証です。確認メールをご確認ください。")
+        setShowResendVerification(true)
       } else {
         setError(
           getApiErrorMessage(
             err,
             {
               INVALID_CREDENTIALS: "メールアドレスまたはパスワードが間違っています",
-              RATE_LIMITED: "ログインの試行回数が上限に達しました。しばらくしてから再度お試しください",
+              RATE_LIMITED:
+                "ログインの試行回数が上限に達しました。しばらくしてから再度お試しください",
               VALIDATION_ERROR: "入力内容を確認してください",
               NETWORK_ERROR: "ネットワークエラーが発生しました",
             },
-            "ログインに失敗しました"
-          )
-        );
+            "ログインに失敗しました",
+          ),
+        )
       }
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleResendVerification = async () => {
-    setResendStatus("sending");
+    setResendStatus("sending")
     try {
-      await apiClient.resendVerification({ email });
-      setResendStatus("sent");
+      await apiClient.resendVerification({ email })
+      setResendStatus("sent")
     } catch {
-      setResendStatus("idle");
+      setResendStatus("idle")
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardContent className="p-6">
           <div className="space-y-6">
             <div className="text-center">
-              <div className="flex justify-center mb-4">
+              <div className="mb-4 flex justify-center">
                 <div className="rounded-full bg-primary p-3">
                   <img src="/favicon.svg" alt="Logo" className="h-20 w-20" />
                 </div>
@@ -100,10 +101,7 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">パスワード</Label>
-                  <Link
-                    to="/password-reset"
-                    className="text-xs text-primary hover:underline"
-                  >
+                  <Link to="/password-reset" className="text-xs text-primary hover:underline">
                     パスワードを忘れた方
                   </Link>
                 </div>
@@ -145,14 +143,10 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading || !email || !password}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading || !email || !password}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ログイン中...
                   </>
                 ) : (
@@ -164,10 +158,7 @@ export default function LoginPage() {
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
                 アカウントをお持ちでない方は{" "}
-                <Link
-                  to="/signup"
-                  className="font-medium text-primary hover:underline"
-                >
+                <Link to="/signup" className="font-medium text-primary hover:underline">
                   サインアップ
                 </Link>
               </p>
@@ -176,5 +167,5 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
