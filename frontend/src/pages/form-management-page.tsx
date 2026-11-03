@@ -25,7 +25,7 @@ import {
   type TicketSegment,
 } from "@/hooks/use-form-responses"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/hooks/use-auth"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
 import {
