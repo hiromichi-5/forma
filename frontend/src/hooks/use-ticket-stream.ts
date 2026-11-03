@@ -1,4 +1,3 @@
-"use client"
 
 import { useEffect, useRef } from "react"
 import type { TicketDetail, TicketUpdatedEvent } from "@/types"

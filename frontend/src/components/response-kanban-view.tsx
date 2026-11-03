@@ -1,4 +1,3 @@
-"use client";
 
 import type { User } from "@/types/form-response";
 import type { FormStatus, TicketSummary, TicketPriority } from "@/types";

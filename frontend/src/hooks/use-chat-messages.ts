@@ -1,4 +1,3 @@
-"use client"
 
 import { useState } from "react"
 import type { ChatMessage } from "@/types/form-response"
