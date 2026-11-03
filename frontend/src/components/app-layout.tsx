@@ -1,8 +1,7 @@
-import type React from "react"
-
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useNavigate, useLocation, Link } from "react-router"
+import { useNavigate, useLocation, Link, Outlet } from "react-router"
+import { PageLoading } from "@/components/page-loading"
 import { Button } from "@/components/ui/button"
 import {
   LogOut,
@@ -21,11 +20,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { formQueries } from "@/queries/forms"
 import { RegisterFormDialog } from "@/components/register-form-dialog"
 
-type AppLayoutProps = {
-  children: React.ReactNode
-}
-
-export function AppLayout({ children }: AppLayoutProps) {
+/** ログイン後の画面の共通レイアウト。ページを移動してもサイドバーの状態は保たれる。 */
+export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -174,7 +170,11 @@ export function AppLayout({ children }: AppLayoutProps) {
       </aside>
 
       <main className="flex-1 overflow-auto bg-white">
-        <div className="container mx-auto p-6">{children}</div>
+        <div className="container mx-auto p-6">
+          <Suspense fallback={<PageLoading />}>
+            <Outlet />
+          </Suspense>
+        </div>
       </main>
     </div>
   )

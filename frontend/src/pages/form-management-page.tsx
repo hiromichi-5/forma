@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Navigate, useNavigate, useParams } from "react-router"
-import { AppLayout } from "@/components/app-layout"
 import { FormManagementHeader } from "@/components/form-management-header"
 import { ResponseTableView } from "@/components/response-table-view"
 import { ResponseKanbanView } from "@/components/response-kanban-view"
@@ -195,7 +194,7 @@ export default function FormManagementPage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-6 pt-4">
         <FormManagementHeader
           googleFormId={form?.form_id ?? null}
@@ -326,6 +325,6 @@ export default function FormManagementPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AppLayout>
+    </>
   )
 }

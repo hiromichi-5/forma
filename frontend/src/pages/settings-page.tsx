@@ -3,7 +3,6 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { z } from "zod"
 import { useNavigate } from "react-router"
-import { AppLayout } from "@/components/app-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { TextField } from "@/components/text-field"
@@ -51,7 +50,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="max-w-3xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">設定</h1>
@@ -127,7 +126,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
-    </AppLayout>
+    </>
   )
 }
 
