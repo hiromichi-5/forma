@@ -5,9 +5,9 @@ import { FormManagementHeader } from "@/components/form-management-header"
 import { ResponseTableView } from "@/components/response-table-view"
 import { ResponseKanbanView } from "@/components/response-kanban-view"
 import { ResponseDetail } from "@/components/response-detail"
-import { MembersDialog } from "@/components/members-dialog"
+import { MembersDialog } from "@/components/members/members-dialog"
 import { NotificationsDialog } from "@/components/notifications-dialog"
-import { StatusesDialog } from "@/components/statuses-dialog"
+import { StatusesDialog } from "@/components/statuses/statuses-dialog"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
