@@ -244,7 +244,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
                       {...inviteForm.register("email")}
                     />
                   </div>
-                  <div className="w-[140px] space-y-2">
+                  {/* フォーム内の Select は送信用の隠れた select を追加するため、space-y ではなく gap で間隔を空ける。 */}
+                  <div className="flex w-[140px] flex-col gap-2">
                     <Label htmlFor="inviteRole" className="text-xs">
                       権限
                     </Label>
