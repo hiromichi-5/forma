@@ -25,7 +25,12 @@ export function TextField({
 }: TextFieldProps) {
   const errorId = `${id}-error`
   const descriptionId = `${id}-description`
-  const labelElement = <FieldLabel htmlFor={id}>{label}</FieldLabel>
+  // 既存の Label と行の高さを揃える（FieldLabel の既定は leading-snug）。
+  const labelElement = (
+    <FieldLabel htmlFor={id} className="leading-none">
+      {label}
+    </FieldLabel>
+  )
 
   return (
     <Field className="gap-2" data-invalid={!!error}>
