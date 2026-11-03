@@ -1,7 +1,7 @@
 import type React from "react";
 
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import {
   LogOut,

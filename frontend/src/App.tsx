@@ -5,7 +5,7 @@ import {
   Route,
   Navigate,
   useLocation,
-} from "react-router-dom";
+} from "react-router";
 import FormsListPage from "./pages/FormsListPage";
 import FormManagementPage from "./pages/FormManagementPage";
 import LoginPage from "./pages/LoginPage";
