@@ -28,10 +28,6 @@ export default tseslint.config([
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
     },
     languageOptions: {
       ecmaVersion: 2022,
