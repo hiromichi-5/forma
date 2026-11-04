@@ -148,7 +148,7 @@ export function ResponseDetail({
 
   const handleSend = () => {
     if (inputValue.trim()) {
-      sendMessage(inputValue.trim(), currentUserId, currentUserName, email)
+      sendMessage(inputValue.trim(), currentUserId, currentUserName)
       setInputValue("")
     }
   }
