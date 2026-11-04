@@ -6,7 +6,6 @@ import { FormManagementHeader } from "@/components/form-management-header"
 import { ResponseTableView } from "@/components/response-table-view"
 import { ResponseKanbanView } from "@/components/response-kanban-view"
 import { ResponseDetail } from "@/components/response-detail"
-import { InfiniteScrollTrigger } from "@/components/infinite-scroll-trigger"
 import { MembersDialog } from "@/components/members-dialog"
 import { NotificationsDialog } from "@/components/notifications-dialog"
 import { StatusesDialog } from "@/components/statuses-dialog"
@@ -20,7 +19,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { notificationLabel, useFormResponses, type TicketSegment } from "@/hooks/use-form-responses"
+import { notificationLabel, useTicketActions } from "@/hooks/use-ticket-actions"
+import { useTicketStream } from "@/hooks/use-ticket-stream"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useAuth } from "@/hooks/use-auth"
 import { apiClient } from "@/lib/api"
@@ -32,7 +32,6 @@ import { formQueries } from "@/queries/forms"
 import { queryKeys } from "@/queries/keys"
 import { toast } from "sonner"
 
-const LIST_SEGMENT_KEY = "list"
 const EMPTY_STATUSES: FormStatus[] = []
 
 export default function FormManagementPage() {
@@ -54,37 +53,31 @@ export default function FormManagementPage() {
   // 空配列は絞り込みなし（全てのステータス）を表す。
   const [statusFilters, setStatusFilters] = useState<string[]>([])
 
-  const segments = useMemo<TicketSegment[]>(() => {
-    if (viewMode === "list") {
-      return [{ key: LIST_SEGMENT_KEY, statusIds: statusFilters }]
-    }
-    return sortStatuses(formStatuses)
-      .filter((status) => statusFilters.length === 0 || statusFilters.includes(status.id))
-      .map((status) => ({ key: status.id, statusIds: [status.id] }))
-  }, [viewMode, statusFilters, formStatuses])
+  const ticketFilter = useMemo(
+    () => ({ statusIds: statusFilters, query: debouncedQuery }),
+    [statusFilters, debouncedQuery],
+  )
+  // カンバンは絞り込みで選んだステータスの列だけを表示する。
+  const kanbanStatuses = useMemo(
+    () =>
+      sortStatuses(formStatuses).filter(
+        (status) => statusFilters.length === 0 || statusFilters.includes(status.id),
+      ),
+    [formStatuses, statusFilters],
+  )
 
+  useTicketStream(formId ?? null)
   const {
-    pages,
-    ticketsById,
-    counts,
-    loadMore,
-    details,
-    loadDetail,
     updateResponseStatus,
     assignResponse,
     updatePriority,
-    refetch,
     pendingNotification,
     resolvePendingNotification,
     cancelPendingNotification,
     sendNotification,
-  } = useFormResponses(formId ?? null, {
-    segments,
-    query: debouncedQuery,
-    withCounts: viewMode === "kanban",
-  })
+  } = useTicketActions(formId ?? "")
   const { user } = useAuth()
-  const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null)
+  const [selectedResponse, setSelectedResponse] = useState<TicketSummary | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
@@ -98,11 +91,6 @@ export default function FormManagementPage() {
     () => members.some((member) => member.id === user?.id && member.role === "admin"),
     [members, user?.id],
   )
-
-  const listPage = pages[LIST_SEGMENT_KEY]
-
-  // 更新後の値をダイアログに反映するため、開いた時点のスナップショットではなく最新の一覧から引く。
-  const selectedResponse = selectedResponseId ? (ticketsById[selectedResponseId] ?? null) : null
 
   const formTitle = form?.title || "フォーム管理"
 
@@ -119,9 +107,8 @@ export default function FormManagementPage() {
   )
 
   const handleOpenDetail = (response: TicketSummary) => {
-    setSelectedResponseId(response.id)
+    setSelectedResponse(response)
     setIsDetailOpen(true)
-    void loadDetail(response.id)
   }
 
   const handleTitleQuestionChange = async (questionId: string | null) => {
@@ -131,7 +118,8 @@ export default function FormManagementPage() {
       queryClient.setQueryData(queryKeys.form(formId), (prev) =>
         prev ? { ...prev, title_question_id: questionId } : prev,
       )
-      refetch()
+      // チケットのタイトルは選んだ質問の回答から作られるため、一覧を取り直す。
+      void queryClient.invalidateQueries({ queryKey: queryKeys.formTickets(formId) })
     } catch (error) {
       console.error("Failed to update title question:", error)
       toastApiError(
@@ -151,7 +139,7 @@ export default function FormManagementPage() {
     setIsSyncing(true)
     try {
       const result = await apiClient.syncForm(formId)
-      refetch()
+      void queryClient.invalidateQueries({ queryKey: queryKeys.formTickets(formId) })
       // フォーム一覧の回答数も変わる。
       void queryClient.invalidateQueries({ queryKey: queryKeys.forms(), exact: true })
       toast.success(
@@ -231,33 +219,22 @@ export default function FormManagementPage() {
         />
 
         {viewMode === "list" ? (
-          <div>
-            <ResponseTableView
-              responses={listPage?.tickets ?? []}
-              details={details}
-              members={members}
-              statuses={formStatuses}
-              onExpandRow={loadDetail}
-              onStatusChange={updateResponseStatus}
-              onAssignChange={assignResponse}
-              onPriorityChange={updatePriority}
-              onOpenDetail={handleOpenDetail}
-            />
-            {listPage && (
-              <InfiniteScrollTrigger
-                hasMore={listPage.hasMore}
-                loading={listPage.loading}
-                onLoadMore={() => loadMore(LIST_SEGMENT_KEY)}
-              />
-            )}
-          </div>
-        ) : (
-          <ResponseKanbanView
-            pages={pages}
-            counts={counts}
-            onLoadMore={loadMore}
+          <ResponseTableView
+            formId={formId}
+            filter={ticketFilter}
             members={members}
             statuses={formStatuses}
+            onStatusChange={updateResponseStatus}
+            onAssignChange={assignResponse}
+            onPriorityChange={updatePriority}
+            onOpenDetail={handleOpenDetail}
+          />
+        ) : (
+          <ResponseKanbanView
+            formId={formId}
+            query={debouncedQuery}
+            columns={kanbanStatuses}
+            members={members}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
@@ -269,7 +246,6 @@ export default function FormManagementPage() {
       {selectedResponse && (
         <ResponseDetail
           response={selectedResponse}
-          detail={details[selectedResponse.id]}
           open={isDetailOpen}
           onOpenChange={setIsDetailOpen}
           members={members}
