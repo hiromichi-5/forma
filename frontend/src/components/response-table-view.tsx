@@ -1,6 +1,5 @@
 import { Fragment, useMemo, useState } from "react"
-import type { User } from "@/types/form-response"
-import type { FormStatus, TicketDetail, TicketPriority, TicketSummary } from "@/types"
+import type { FormStatus, Member, TicketDetail, TicketPriority, TicketSummary } from "@/types"
 import {
   Table,
   TableBody,
@@ -33,7 +32,7 @@ import {
 type ResponseTableViewProps = {
   responses: TicketSummary[]
   details: Record<string, TicketDetail>
-  users: User[]
+  members: Member[]
   statuses: FormStatus[]
   onExpandRow: (id: string) => void
   onStatusChange: (id: string, statusId: string) => void
@@ -45,7 +44,7 @@ type ResponseTableViewProps = {
 export function ResponseTableView({
   responses,
   details,
-  users,
+  members,
   statuses,
   onExpandRow,
   onStatusChange,
@@ -157,9 +156,9 @@ export function ResponseTableView({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unassigned">未割当</SelectItem>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name}
+                        {members.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.display_name}
                           </SelectItem>
                         ))}
                       </SelectContent>

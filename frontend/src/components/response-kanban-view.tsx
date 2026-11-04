@@ -1,5 +1,4 @@
-import type { User } from "@/types/form-response"
-import type { FormStatus, TicketSummary, TicketPriority } from "@/types"
+import type { FormStatus, Member, TicketSummary, TicketPriority } from "@/types"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,7 +40,7 @@ type ResponseKanbanViewProps = {
   pages: Record<string, SegmentPage>
   counts: Record<string, number>
   onLoadMore: (statusId: string) => void
-  users: User[]
+  members: Member[]
   statuses: FormStatus[]
   onStatusChange: (id: string, statusId: string) => void
   onAssignChange: (id: string, userId: string | null) => void
@@ -51,7 +50,7 @@ type ResponseKanbanViewProps = {
 
 type DraggableCardProps = {
   response: TicketSummary
-  users: User[]
+  members: Member[]
   onAssignChange: (id: string, userId: string | null) => void
   onPriorityChange: (id: string, priority: TicketPriority) => void
   onOpenDetail: (response: TicketSummary) => void
@@ -59,7 +58,7 @@ type DraggableCardProps = {
 
 function DraggableCard({
   response,
-  users,
+  members,
   onAssignChange,
   onPriorityChange,
   onOpenDetail,
@@ -149,9 +148,9 @@ function DraggableCard({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="unassigned">未割当</SelectItem>
-            {users.map((user) => (
-              <SelectItem key={user.id} value={user.id}>
-                {user.name}
+            {members.map((member) => (
+              <SelectItem key={member.id} value={member.id}>
+                {member.display_name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -238,7 +237,7 @@ export function ResponseKanbanView({
   pages,
   counts,
   onLoadMore,
-  users,
+  members,
   statuses,
   onStatusChange,
   onAssignChange,
@@ -305,7 +304,7 @@ export function ResponseKanbanView({
                 <DraggableCard
                   key={response.id}
                   response={response}
-                  users={users}
+                  members={members}
                   onAssignChange={onAssignChange}
                   onPriorityChange={onPriorityChange}
                   onOpenDetail={onOpenDetail}
