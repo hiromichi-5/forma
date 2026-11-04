@@ -26,4 +26,11 @@ export default tseslint.config([
       globals: globals.browser,
     },
   },
+  {
+    // shadcn/ui の生成コードは variants などを同じファイルから export する流儀のため、Fast Refresh の制約を外す。
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])
