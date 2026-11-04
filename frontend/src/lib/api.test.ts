@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ApiError, apiClient } from "@/lib/api"
 
-const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>()
+const fetchMock = vi.fn<(request: Request) => Promise<Response>>()
 
 const jsonResponse = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -20,9 +20,9 @@ describe("apiClient", () => {
 
     await apiClient.getForms()
 
-    const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toMatch(/\/v1\/forms$/)
-    expect(init?.credentials).toBe("include")
+    const [request] = fetchMock.mock.calls[0]
+    expect(request.url).toMatch(/\/v1\/forms$/)
+    expect(request.credentials).toBe("include")
   })
 
   it("チケット一覧の絞り込み条件をクエリ文字列にする", async () => {
@@ -35,7 +35,7 @@ describe("apiClient", () => {
       cursor: "c1",
     })
 
-    const url = new URL(fetchMock.mock.calls[0][0])
+    const url = new URL(fetchMock.mock.calls[0][0].url)
     expect(url.searchParams.get("form_id")).toBe("form-1")
     expect(url.searchParams.getAll("status_id")).toEqual(["s1", "s2"])
     expect(url.searchParams.get("q")).toBe("foo")
@@ -72,6 +72,26 @@ describe("apiClient", () => {
 
     expect(handler).not.toHaveBeenCalled()
     apiClient.setSessionExpiredHandler(null)
+  })
+
+  it("API のエラー形式でない応答（プロキシのエラーページなど）は UNEXPECTED_RESPONSE にする", async () => {
+    fetchMock.mockResolvedValue(
+      new Response("<html>502 Bad Gateway</html>", {
+        status: 502,
+        headers: { "Content-Type": "text/html" },
+      }),
+    )
+
+    const error = await apiClient.getForms().catch((e: unknown) => e)
+
+    expect((error as ApiError).status).toBe(502)
+    expect((error as ApiError).error.code).toBe("UNEXPECTED_RESPONSE")
+  })
+
+  it("本文の無い成功応答（204）を扱える", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+
+    await expect(apiClient.deleteForm("form-1")).resolves.toBeUndefined()
   })
 
   it("通信自体に失敗した場合は NETWORK_ERROR にする", async () => {

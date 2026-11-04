@@ -1,46 +1,36 @@
+import createClient from "openapi-fetch"
 import type {
-  LoginRequest,
-  SignupRequest,
-  VerifyEmailRequest,
-  ResendVerificationRequest,
-  PasswordResetRequest,
-  PasswordResetConfirmRequest,
-  RegisterFormRequest,
-  RegisterFormResponse,
-  ListFormsResponse,
-  Form,
-  UpdateFormRequest,
-  ListMembersResponse,
   AddMemberRequest,
   ChangeMemberRoleRequest,
-  ListFormInvitesResponse,
-  CreateInviteRequest,
-  CreateInviteResponse,
-  SyncResponse,
-  ListTicketsResponse,
-  ListTicketCountsResponse,
-  ListFormQuestionsResponse,
-  ListFormStatusesResponse,
-  FormStatus,
-  CreateFormStatusRequest,
-  UpdateFormStatusRequest,
-  TicketDetail,
-  TicketUpdateResponse,
-  UpdateTicketRequest,
-  ListTicketHistoriesResponse,
-  NotificationSettingsResponse,
-  UpdateNotificationSettingsRequest,
-  SendNotificationRequest,
-  SentNotificationResponse,
-  UserProfile,
-  UpdateUserProfileRequest,
   ChangePasswordRequest,
+  CreateFormStatusRequest,
+  CreateInviteRequest,
   Error as ApiErrorBody,
   ErrorCode as ServerErrorCode,
+  LoginRequest,
+  PasswordResetConfirmRequest,
+  PasswordResetRequest,
+  RegisterFormRequest,
+  ResendVerificationRequest,
+  SendNotificationRequest,
+  SignupRequest,
+  UpdateFormRequest,
+  UpdateFormStatusRequest,
+  UpdateNotificationSettingsRequest,
+  UpdateTicketRequest,
+  UpdateUserProfileRequest,
+  VerifyEmailRequest,
 } from "@/types"
+import type { paths } from "@/types/api"
 
-/** ネットワークに到達できない場合はレスポンス自体が無いため、クライアント側でコードを補う。 */
-export type ErrorCode = ServerErrorCode | "NETWORK_ERROR"
+export const API_BASE_URL: string = import.meta.env.VITE_API_URL || "http://localhost:8080"
+
+/**
+ * サーバーが返すコードに、クライアント側で補うコードを加えたもの。
+ * - NETWORK_ERROR: サーバーに到達できず、レスポンス自体が無い
+ * - UNEXPECTED_RESPONSE: プロキシのエラーページなど、API のエラー形式でない応答
+ */
+export type ErrorCode = ServerErrorCode | "NETWORK_ERROR" | "UNEXPECTED_RESPONSE"
 
 export type ErrorResponse = Omit<ApiErrorBody, "code"> & { code: ErrorCode }
 
@@ -54,362 +44,209 @@ export class ApiError extends Error {
     this.status = status
     this.error = error
   }
-
-  get isUnauthorized() {
-    return this.status === 401
-  }
-
-  get isForbidden() {
-    return this.status === 403
-  }
-
-  get isValidationError() {
-    return this.status === 400
-  }
 }
 
-class ApiClient {
-  private baseUrl: string = import.meta.env.VITE_API_URL || "http://localhost:8080"
-  private sessionExpiredHandler: (() => void) | null = null
+const isErrorBody = (value: unknown): value is ApiErrorBody =>
+  typeof value === "object" && value !== null && typeof (value as ApiErrorBody).code === "string"
 
+let sessionExpiredHandler: (() => void) | null = null
+
+const client = createClient<paths>({
+  baseUrl: API_BASE_URL,
+  credentials: "include",
+  // テストで差し替えられるよう、呼び出しのたびに現在の fetch を参照する。
+  fetch: (request) => globalThis.fetch(request),
+})
+
+type FetchResult<T> = { data?: T; error?: unknown; response: Response }
+
+/**
+ * openapi-fetch の結果を、成功時はデータ、失敗時は ApiError の例外に揃える。
+ * 呼び出し側は try/catch だけでエラーを扱える。
+ */
+async function call<T>(request: Promise<FetchResult<T>>): Promise<T> {
+  let result: FetchResult<T>
+  try {
+    result = await request
+  } catch {
+    throw new ApiError(0, { code: "NETWORK_ERROR", message: "ネットワークエラーが発生しました" })
+  }
+
+  const { data, error, response } = result
+  if (!response.ok) {
+    if (!isErrorBody(error)) {
+      throw new ApiError(response.status, { code: "UNEXPECTED_RESPONSE" })
+    }
+    // ログインの失敗は INVALID_CREDENTIALS なので、セッション失効とは区別できる。
+    if (error.code === "INVALID_SESSION") sessionExpiredHandler?.()
+    throw new ApiError(response.status, error)
+  }
+  // 204 などボディの無い成功応答では data が undefined になる。戻り値の型が void の呼び出しでのみ起こる。
+  return data as T
+}
+
+const formPath = (form_id: string) => ({ params: { path: { form_id } } })
+const ticketPath = (ticket_id: string) => ({ params: { path: { ticket_id } } })
+
+export const apiClient = {
   setSessionExpiredHandler(handler: (() => void) | null) {
-    this.sessionExpiredHandler = handler
-  }
-
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    }
-
-    if (options.headers) {
-      Object.assign(headers, options.headers)
-    }
-
-    const config: RequestInit = {
-      credentials: "include",
-      ...options,
-      headers,
-    }
-
-    try {
-      const response = await fetch(url, config)
-
-      if (!response.ok) {
-        const errorData = (await response.json()) as ErrorResponse
-        // ログインの失敗は INVALID_CREDENTIALS なので、セッション失効とは区別できる
-        if (errorData.code === "INVALID_SESSION") {
-          this.sessionExpiredHandler?.()
-        }
-        throw new ApiError(response.status, errorData)
-      }
-
-      if (response.status === 204 || response.status === 202) {
-        return {} as T
-      }
-
-      const contentType = response.headers.get("content-type")
-      if (contentType && contentType.includes("application/json")) {
-        return (await response.json()) as T
-      }
-
-      return response.text() as unknown as T
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error
-      }
-
-      throw new ApiError(0, {
-        code: "NETWORK_ERROR",
-        message: "ネットワークエラーが発生しました",
-      })
-    }
-  }
+    sessionExpiredHandler = handler
+  },
 
   // Auth
 
-  async login(request: LoginRequest): Promise<void> {
-    await this.request<void>("/v1/auth/login", {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
-
-  async signup(request: SignupRequest): Promise<{ id: string }> {
-    return this.request<{ id: string }>("/v1/auth/signup", {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
-
+  async login(body: LoginRequest): Promise<void> {
+    await call(client.POST("/v1/auth/login", { body }))
+  },
+  signup: (body: SignupRequest) => call(client.POST("/v1/auth/signup", { body })),
   async logout(): Promise<void> {
-    await this.request<void>("/v1/auth/logout", {
-      method: "POST",
-    })
-  }
-
-  async verifyEmail(request: VerifyEmailRequest): Promise<void> {
-    await this.request<void>("/v1/auth/verify-email", {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
-
-  async resendVerification(request: ResendVerificationRequest): Promise<void> {
-    await this.request<void>("/v1/auth/verify-email/resend", {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
-
-  async passwordReset(request: PasswordResetRequest): Promise<void> {
-    await this.request<void>("/v1/auth/password-reset", {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
-
-  async passwordResetConfirm(request: PasswordResetConfirmRequest): Promise<void> {
-    await this.request<void>("/v1/auth/password-reset/confirm", {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
+    await call(client.POST("/v1/auth/logout"))
+  },
+  async verifyEmail(body: VerifyEmailRequest): Promise<void> {
+    await call(client.POST("/v1/auth/verify-email", { body }))
+  },
+  async resendVerification(body: ResendVerificationRequest): Promise<void> {
+    await call(client.POST("/v1/auth/verify-email/resend", { body }))
+  },
+  async passwordReset(body: PasswordResetRequest): Promise<void> {
+    await call(client.POST("/v1/auth/password-reset", { body }))
+  },
+  async passwordResetConfirm(body: PasswordResetConfirmRequest): Promise<void> {
+    await call(client.POST("/v1/auth/password-reset/confirm", { body }))
+  },
 
   // User
 
-  async getProfile(): Promise<UserProfile> {
-    return this.request<UserProfile>("/v1/me")
-  }
-
-  async updateProfile(request: UpdateUserProfileRequest): Promise<UserProfile> {
-    return this.request<UserProfile>("/v1/me", {
-      method: "PATCH",
-      body: JSON.stringify(request),
-    })
-  }
-
-  async changePassword(request: ChangePasswordRequest): Promise<void> {
-    await this.request<void>("/v1/me/password", {
-      method: "PATCH",
-      body: JSON.stringify(request),
-    })
-  }
-
+  getProfile: () => call(client.GET("/v1/me")),
+  updateProfile: (body: UpdateUserProfileRequest) => call(client.PATCH("/v1/me", { body })),
+  async changePassword(body: ChangePasswordRequest): Promise<void> {
+    await call(client.PATCH("/v1/me/password", { body }))
+  },
   async deleteProfile(): Promise<void> {
-    return this.request<void>("/v1/me", {
-      method: "DELETE",
-    })
-  }
+    await call(client.DELETE("/v1/me"))
+  },
 
   // Forms
 
-  async getForms(): Promise<ListFormsResponse> {
-    return this.request<ListFormsResponse>("/v1/forms")
-  }
-
-  async registerForm(request: RegisterFormRequest): Promise<RegisterFormResponse> {
-    return this.request<RegisterFormResponse>("/v1/forms", {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
-
-  async getForm(formId: string): Promise<Form> {
-    return this.request<Form>(`/v1/forms/${formId}`)
-  }
-
-  async updateForm(formId: string, request: UpdateFormRequest): Promise<void> {
-    await this.request<void>(`/v1/forms/${formId}`, {
-      method: "PATCH",
-      body: JSON.stringify(request),
-    })
-  }
-
+  getForms: () => call(client.GET("/v1/forms")),
+  registerForm: (body: RegisterFormRequest) => call(client.POST("/v1/forms", { body })),
+  getForm: (formId: string) => call(client.GET("/v1/forms/{form_id}", formPath(formId))),
+  async updateForm(formId: string, body: UpdateFormRequest): Promise<void> {
+    await call(client.PATCH("/v1/forms/{form_id}", { ...formPath(formId), body }))
+  },
   async deleteForm(formId: string): Promise<void> {
-    await this.request<void>(`/v1/forms/${formId}`, {
-      method: "DELETE",
-    })
-  }
+    await call(client.DELETE("/v1/forms/{form_id}", formPath(formId)))
+  },
+  syncForm: (formId: string) => call(client.POST("/v1/forms/{form_id}/sync", formPath(formId))),
 
   // Members
 
-  async getMembers(formId: string): Promise<ListMembersResponse> {
-    return this.request<ListMembersResponse>(`/v1/forms/${formId}/members`)
-  }
-
-  async addMember(formId: string, request: AddMemberRequest): Promise<void> {
-    return this.request<void>(`/v1/forms/${formId}/members`, {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
-
+  getMembers: (formId: string) => call(client.GET("/v1/forms/{form_id}/members", formPath(formId))),
+  async addMember(formId: string, body: AddMemberRequest): Promise<void> {
+    await call(client.POST("/v1/forms/{form_id}/members", { ...formPath(formId), body }))
+  },
   async changeMemberRole(
     formId: string,
     userId: string,
-    request: ChangeMemberRoleRequest,
+    body: ChangeMemberRoleRequest,
   ): Promise<void> {
-    return this.request<void>(`/v1/forms/${formId}/members/${userId}`, {
-      method: "PUT",
-      body: JSON.stringify(request),
-    })
-  }
-
+    await call(
+      client.PUT("/v1/forms/{form_id}/members/{user_id}", {
+        params: { path: { form_id: formId, user_id: userId } },
+        body,
+      }),
+    )
+  },
   async removeMember(formId: string, userId: string): Promise<void> {
-    return this.request<void>(`/v1/forms/${formId}/members/${userId}`, {
-      method: "DELETE",
-    })
-  }
+    await call(
+      client.DELETE("/v1/forms/{form_id}/members/{user_id}", {
+        params: { path: { form_id: formId, user_id: userId } },
+      }),
+    )
+  },
 
   // Invites
 
-  async listInvites(formId: string): Promise<ListFormInvitesResponse> {
-    return this.request<ListFormInvitesResponse>(`/v1/forms/${formId}/invites`)
-  }
-
-  async createInvite(formId: string, request: CreateInviteRequest): Promise<CreateInviteResponse> {
-    return this.request<CreateInviteResponse>(`/v1/forms/${formId}/invites`, {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
-
+  listInvites: (formId: string) =>
+    call(client.GET("/v1/forms/{form_id}/invites", formPath(formId))),
+  createInvite: (formId: string, body: CreateInviteRequest) =>
+    call(client.POST("/v1/forms/{form_id}/invites", { ...formPath(formId), body })),
   async revokeInvite(formId: string, inviteId: string): Promise<void> {
-    return this.request<void>(`/v1/forms/${formId}/invites/${inviteId}`, {
-      method: "DELETE",
-    })
-  }
-
+    await call(
+      client.DELETE("/v1/forms/{form_id}/invites/{invite_id}", {
+        params: { path: { form_id: formId, invite_id: inviteId } },
+      }),
+    )
+  },
   async acceptInvite(inviteId: string): Promise<void> {
-    return this.request<void>(`/v1/invites/${inviteId}/accept`, {
-      method: "POST",
-    })
-  }
+    await call(
+      client.POST("/v1/invites/{invite_id}/accept", {
+        params: { path: { invite_id: inviteId } },
+      }),
+    )
+  },
 
-  // Sync
+  // Questions / Statuses
 
-  async syncForm(formId: string): Promise<SyncResponse> {
-    return this.request<SyncResponse>(`/v1/forms/${formId}/sync`, {
-      method: "POST",
-    })
-  }
-
-  // Questions
-
-  async getFormQuestions(formId: string): Promise<ListFormQuestionsResponse> {
-    return this.request<ListFormQuestionsResponse>(`/v1/forms/${formId}/questions`)
-  }
-
-  // Statuses
-
-  async getFormStatuses(formId: string): Promise<ListFormStatusesResponse> {
-    return this.request<ListFormStatusesResponse>(`/v1/forms/${formId}/statuses`)
-  }
-
-  async createFormStatus(formId: string, request: CreateFormStatusRequest): Promise<FormStatus> {
-    return this.request<FormStatus>(`/v1/forms/${formId}/statuses`, {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
-
-  async updateFormStatus(
-    formId: string,
-    statusId: string,
-    request: UpdateFormStatusRequest,
-  ): Promise<FormStatus> {
-    return this.request<FormStatus>(`/v1/forms/${formId}/statuses/${statusId}`, {
-      method: "PATCH",
-      body: JSON.stringify(request),
-    })
-  }
-
+  getFormQuestions: (formId: string) =>
+    call(client.GET("/v1/forms/{form_id}/questions", formPath(formId))),
+  getFormStatuses: (formId: string) =>
+    call(client.GET("/v1/forms/{form_id}/statuses", formPath(formId))),
+  createFormStatus: (formId: string, body: CreateFormStatusRequest) =>
+    call(client.POST("/v1/forms/{form_id}/statuses", { ...formPath(formId), body })),
+  updateFormStatus: (formId: string, statusId: string, body: UpdateFormStatusRequest) =>
+    call(
+      client.PATCH("/v1/forms/{form_id}/statuses/{status_id}", {
+        params: { path: { form_id: formId, status_id: statusId } },
+        body,
+      }),
+    ),
   async deleteFormStatus(formId: string, statusId: string): Promise<void> {
-    await this.request<void>(`/v1/forms/${formId}/statuses/${statusId}`, {
-      method: "DELETE",
-    })
-  }
+    await call(
+      client.DELETE("/v1/forms/{form_id}/statuses/{status_id}", {
+        params: { path: { form_id: formId, status_id: statusId } },
+      }),
+    )
+  },
 
   // Tickets
 
-  async getTickets(
+  getTickets: (
     formId: string,
-    options: {
-      statusIds?: string[]
-      query?: string
-      limit?: number
-      cursor?: string | null
-    } = {},
-  ): Promise<ListTicketsResponse> {
-    const params = new URLSearchParams()
-    params.append("form_id", formId)
-    options.statusIds?.forEach((id) => params.append("status_id", id))
-    if (options.query) params.append("q", options.query)
-    if (options.limit) params.append("limit", String(options.limit))
-    if (options.cursor) params.append("cursor", options.cursor)
-
-    return this.request<ListTicketsResponse>(`/v1/tickets?${params.toString()}`)
-  }
-
-  async getTicketCounts(formId: string, query?: string): Promise<ListTicketCountsResponse> {
-    const params = new URLSearchParams()
-    params.append("form_id", formId)
-    if (query) params.append("q", query)
-
-    return this.request<ListTicketCountsResponse>(`/v1/tickets/counts?${params.toString()}`)
-  }
-
-  async getTicket(ticketId: string): Promise<TicketDetail> {
-    return this.request<TicketDetail>(`/v1/tickets/${ticketId}`)
-  }
-
-  async updateTicket(
-    ticketId: string,
-    request: UpdateTicketRequest,
-  ): Promise<TicketUpdateResponse> {
-    return this.request<TicketUpdateResponse>(`/v1/tickets/${ticketId}`, {
-      method: "PATCH",
-      body: JSON.stringify(request),
-    })
-  }
-
-  async getTicketHistories(ticketId: string): Promise<ListTicketHistoriesResponse> {
-    return this.request<ListTicketHistoriesResponse>(`/v1/tickets/${ticketId}/histories`)
-  }
+    options: { statusIds?: string[]; query?: string; limit?: number; cursor?: string | null } = {},
+  ) =>
+    call(
+      client.GET("/v1/tickets", {
+        params: {
+          query: {
+            form_id: formId,
+            status_id: options.statusIds?.length ? options.statusIds : undefined,
+            q: options.query || undefined,
+            limit: options.limit,
+            cursor: options.cursor ?? undefined,
+          },
+        },
+      }),
+    ),
+  getTicketCounts: (formId: string, query?: string) =>
+    call(
+      client.GET("/v1/tickets/counts", {
+        params: { query: { form_id: formId, q: query || undefined } },
+      }),
+    ),
+  getTicket: (ticketId: string) =>
+    call(client.GET("/v1/tickets/{ticket_id}", ticketPath(ticketId))),
+  updateTicket: (ticketId: string, body: UpdateTicketRequest) =>
+    call(client.PATCH("/v1/tickets/{ticket_id}", { ...ticketPath(ticketId), body })),
+  getTicketHistories: (ticketId: string) =>
+    call(client.GET("/v1/tickets/{ticket_id}/histories", ticketPath(ticketId))),
 
   // Notifications
 
-  async getNotificationSettings(formId: string): Promise<NotificationSettingsResponse> {
-    return this.request<NotificationSettingsResponse>(`/v1/forms/${formId}/notification-settings`)
-  }
-
-  async updateNotificationSettings(
-    formId: string,
-    request: UpdateNotificationSettingsRequest,
-  ): Promise<NotificationSettingsResponse> {
-    return this.request<NotificationSettingsResponse>(`/v1/forms/${formId}/notification-settings`, {
-      method: "PATCH",
-      body: JSON.stringify(request),
-    })
-  }
-
-  async sendTicketNotification(
-    ticketId: string,
-    request: SendNotificationRequest,
-  ): Promise<SentNotificationResponse> {
-    return this.request<SentNotificationResponse>(`/v1/tickets/${ticketId}/notifications`, {
-      method: "POST",
-      body: JSON.stringify(request),
-    })
-  }
-
-  // Health
-
-  async health(): Promise<string> {
-    return this.request<string>("/health")
-  }
+  getNotificationSettings: (formId: string) =>
+    call(client.GET("/v1/forms/{form_id}/notification-settings", formPath(formId))),
+  updateNotificationSettings: (formId: string, body: UpdateNotificationSettingsRequest) =>
+    call(client.PATCH("/v1/forms/{form_id}/notification-settings", { ...formPath(formId), body })),
+  sendTicketNotification: (ticketId: string, body: SendNotificationRequest) =>
+    call(client.POST("/v1/tickets/{ticket_id}/notifications", { ...ticketPath(ticketId), body })),
 }
-
-export const apiClient = new ApiClient()
