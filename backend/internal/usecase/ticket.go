@@ -400,7 +400,7 @@ func (uc *TicketUseCase) UpdateTicket(
 			if err != nil {
 				return err
 			}
-			rec.record(entity.FieldStatus, strPtr(oldStatus.Name), strPtr(newStatus.Name))
+			rec.record(entity.FieldStatus, new(oldStatus.Name), new(newStatus.Name))
 			notifyTypes = append(notifyTypes, entity.NotificationTypeStatusChange)
 		}
 
@@ -423,8 +423,8 @@ func (uc *TicketUseCase) UpdateTicket(
 		if oldPriority, changed := current.ChangePriority(in.Priority); changed {
 			rec.record(
 				entity.FieldPriority,
-				strPtr(string(oldPriority)),
-				strPtr(string(current.Priority)),
+				new(string(oldPriority)),
+				new(string(current.Priority)),
 			)
 		}
 
@@ -565,8 +565,4 @@ func (uc *TicketUseCase) getVisibleStatus(
 		return entity.FormStatus{}, entity.NewError(entity.CodeResourceHidden)
 	}
 	return status, nil
-}
-
-func strPtr(s string) *string {
-	return &s
 }
