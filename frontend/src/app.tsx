@@ -1,80 +1,75 @@
-import React from "react"
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router"
-import FormsListPage from "@/pages/forms-list-page"
-import FormManagementPage from "@/pages/form-management-page"
-import LoginPage from "@/pages/login-page"
-import SignupPage from "@/pages/signup-page"
-import SettingsPage from "@/pages/settings-page"
-import VerifyEmailPage from "@/pages/verify-email-page"
-import PasswordResetPage from "@/pages/password-reset-page"
-import PasswordResetConfirmPage from "@/pages/password-reset-confirm-page"
-import AcceptInvitePage from "@/pages/accept-invite-page"
+import { lazy, Suspense } from "react"
+import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router"
+import { RouterProvider } from "react-router/dom"
+import { AppLayout } from "@/components/app-layout"
+import { PageLoading } from "@/components/page-loading"
 import { useRequireAuth } from "@/hooks/use-auth"
+import RouteErrorPage from "@/pages/route-error-page"
 
-type RequireAuthProps = {
-  children: React.ReactNode
+// ページは表示するときに読み込む。初回に読み込む JavaScript を減らし、ログイン画面を速く表示する。
+const LoginPage = lazy(() => import("@/pages/login-page"))
+const SignupPage = lazy(() => import("@/pages/signup-page"))
+const VerifyEmailPage = lazy(() => import("@/pages/verify-email-page"))
+const PasswordResetPage = lazy(() => import("@/pages/password-reset-page"))
+const PasswordResetConfirmPage = lazy(() => import("@/pages/password-reset-confirm-page"))
+const AcceptInvitePage = lazy(() => import("@/pages/accept-invite-page"))
+const FormsListPage = lazy(() => import("@/pages/forms-list-page"))
+const FormManagementPage = lazy(() => import("@/pages/form-management-page"))
+const SettingsPage = lazy(() => import("@/pages/settings-page"))
+
+function RootLayout() {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <Outlet />
+    </Suspense>
+  )
 }
 
-function RequireAuth({ children }: RequireAuthProps) {
+/** ログインが必要な画面。未ログインならログイン画面へ送り、ログイン後に元の画面へ戻す。 */
+function RequireAuth() {
   const { isLoading, shouldRedirect } = useRequireAuth()
   const location = useLocation()
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">読み込み中...</div>
+    return <PageLoading />
   }
 
   if (shouldRedirect) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />
+    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />
   }
 
-  return children
+  return <Outlet />
 }
 
-function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/password-reset" element={<PasswordResetPage />} />
-        <Route path="/password-reset/confirm" element={<PasswordResetConfirmPage />} />
-        <Route
-          path="/invites/:inviteId/accept"
-          element={
-            <RequireAuth>
-              <AcceptInvitePage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/"
-          element={
-            <RequireAuth>
-              <FormsListPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/forms/:id"
-          element={
-            <RequireAuth>
-              <FormManagementPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <RequireAuth>
-              <SettingsPage />
-            </RequireAuth>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
-  )
-}
+const router = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    errorElement: <RouteErrorPage />,
+    children: [
+      { path: "/login", element: <LoginPage /> },
+      { path: "/signup", element: <SignupPage /> },
+      { path: "/verify-email", element: <VerifyEmailPage /> },
+      { path: "/password-reset", element: <PasswordResetPage /> },
+      { path: "/password-reset/confirm", element: <PasswordResetConfirmPage /> },
+      {
+        element: <RequireAuth />,
+        children: [
+          { path: "/invites/:inviteId/accept", element: <AcceptInvitePage /> },
+          {
+            element: <AppLayout />,
+            children: [
+              { path: "/", element: <FormsListPage /> },
+              { path: "/forms/:id", element: <FormManagementPage /> },
+              { path: "/settings", element: <SettingsPage /> },
+            ],
+          },
+        ],
+      },
+      { path: "*", element: <Navigate to="/" replace /> },
+    ],
+  },
+])
 
-export default App
+export default function App() {
+  return <RouterProvider router={router} />
+}

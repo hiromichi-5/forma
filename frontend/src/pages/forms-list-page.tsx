@@ -4,7 +4,6 @@ import { Link } from "react-router"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Plus, Search } from "lucide-react"
-import { AppLayout } from "@/components/app-layout"
 import { formQueries } from "@/queries/forms"
 import type { FormSummary } from "@/types"
 import { RegisterFormDialog } from "@/components/register-form-dialog"
@@ -33,7 +32,7 @@ export default function FormsListPage() {
   )
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">フォーム一覧</h1>
@@ -109,7 +108,7 @@ export default function FormsListPage() {
           </div>
         )}
       </div>
-    </AppLayout>
+    </>
   )
 }
 
