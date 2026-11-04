@@ -19,19 +19,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  notificationLabel,
-  useFormResponses,
-  type TicketSegment,
-} from "@/hooks/use-form-responses"
+import { notificationLabel, useFormResponses, type TicketSegment } from "@/hooks/use-form-responses"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/hooks/use-auth"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
-import {
-  FALLBACK_ASSIGNEE_NAME,
-  FALLBACK_STATUS_NAME,
-} from "@/lib/notification-email-preview"
+import { FALLBACK_ASSIGNEE_NAME, FALLBACK_STATUS_NAME } from "@/lib/notification-email-preview"
 import { sortStatuses } from "@/lib/ticket-display"
 import type { Member, FormStatus, Form, FormQuestion, TicketSummary } from "@/types"
 import { toast } from "sonner"
@@ -94,7 +87,7 @@ export default function FormManagementPage() {
 
   const isAdmin = useMemo(
     () => members.some((member) => member.id === user?.id && member.role === "admin"),
-    [members, user?.id]
+    [members, user?.id],
   )
 
   const memberUsers = useMemo(
@@ -104,7 +97,7 @@ export default function FormManagementPage() {
         name: member.display_name,
         email: member.email,
       })),
-    [members]
+    [members],
   )
 
   const listPage = pages[LIST_SEGMENT_KEY]
@@ -123,13 +116,13 @@ export default function FormManagementPage() {
       assigneeName:
         members.find((member) => member.id === user?.id)?.display_name ?? FALLBACK_ASSIGNEE_NAME,
     }),
-    [form?.title, formTitle, formStatuses, members, user?.id]
+    [form?.title, formTitle, formStatuses, members, user?.id],
   )
 
   const handleOpenDetail = (response: TicketSummary) => {
     setSelectedResponseId(response.id)
     setIsDetailOpen(true)
-    loadDetail(response.id)
+    void loadDetail(response.id)
   }
 
   const handleTitleQuestionChange = async (questionId: string | null) => {
@@ -137,7 +130,7 @@ export default function FormManagementPage() {
     try {
       await apiClient.updateForm(formId, { title_question_id: questionId })
       setForm((prev) => (prev ? { ...prev, title_question_id: questionId } : null))
-      await refetch()
+      refetch()
     } catch (error) {
       console.error("Failed to update title question:", error)
       toast.error(
@@ -150,8 +143,8 @@ export default function FormManagementPage() {
             INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "タイトル質問の更新に失敗しました"
-        )
+          "タイトル質問の更新に失敗しました",
+        ),
       )
     }
   }
@@ -161,11 +154,11 @@ export default function FormManagementPage() {
     setIsSyncing(true)
     try {
       const result = await apiClient.syncForm(formId)
-      await refetch()
+      refetch()
       toast.success(
         result.new_tickets > 0
           ? `${result.new_tickets}件の新しい回答を同期しました`
-          : "新しい回答はありませんでした"
+          : "新しい回答はありませんでした",
       )
     } catch (error) {
       console.error("Failed to sync form:", error)
@@ -180,8 +173,8 @@ export default function FormManagementPage() {
             INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "フォームの同期に失敗しました"
-        )
+          "フォームの同期に失敗しました",
+        ),
       )
     } finally {
       setIsSyncing(false)
@@ -194,7 +187,7 @@ export default function FormManagementPage() {
     setUnregisterError("")
     try {
       await apiClient.deleteForm(formId)
-      navigate("/")
+      void navigate("/")
     } catch (error) {
       console.error("Failed to delete form:", error)
       setUnregisterError(
@@ -206,8 +199,8 @@ export default function FormManagementPage() {
             INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "フォームの登録解除に失敗しました"
-        )
+          "フォームの登録解除に失敗しました",
+        ),
       )
     } finally {
       setIsUnregistering(false)
@@ -220,12 +213,13 @@ export default function FormManagementPage() {
 
     const loadData = async () => {
       try {
-        const [formResponse, questionsResponse, membersResponse, statusesResponse] = await Promise.all([
-          apiClient.getForm(formId),
-          apiClient.getFormQuestions(formId),
-          apiClient.getMembers(formId),
-          apiClient.getFormStatuses(formId),
-        ])
+        const [formResponse, questionsResponse, membersResponse, statusesResponse] =
+          await Promise.all([
+            apiClient.getForm(formId),
+            apiClient.getFormQuestions(formId),
+            apiClient.getMembers(formId),
+            apiClient.getFormStatuses(formId),
+          ])
         if (!isActive) return
         setForm(formResponse)
         setQuestions(questionsResponse.questions)
@@ -237,7 +231,7 @@ export default function FormManagementPage() {
       }
     }
 
-    loadData()
+    void loadData()
 
     return () => {
       isActive = false
@@ -383,7 +377,8 @@ export default function FormManagementPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>フォームの登録を解除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              「{formTitle}」を登録解除すると、担当者の割り当てなどを含むすべてのデータが削除され元に戻せません。この操作は管理者のみが実行できます。Googleフォームのフォームやデータ自体は削除されません。
+              「{formTitle}
+              」を登録解除すると、担当者の割り当てなどを含むすべてのデータが削除され元に戻せません。この操作は管理者のみが実行できます。Googleフォームのフォームやデータ自体は削除されません。
             </AlertDialogDescription>
           </AlertDialogHeader>
           {unregisterError && (
@@ -393,11 +388,7 @@ export default function FormManagementPage() {
           )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isUnregistering}>キャンセル</AlertDialogCancel>
-            <Button
-              onClick={handleUnregister}
-              disabled={isUnregistering}
-              variant="destructive"
-            >
+            <Button onClick={handleUnregister} disabled={isUnregistering} variant="destructive">
               登録解除する
             </Button>
           </AlertDialogFooter>

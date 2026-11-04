@@ -1,40 +1,40 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router";
-import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { apiClient } from "../lib/api";
-import { getApiErrorMessage } from "../lib/api-error";
-import { CheckCircle, Loader2, XCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react"
+import { Link, useSearchParams } from "react-router"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
+import { apiClient } from "@/lib/api"
+import { getApiErrorMessage } from "@/lib/api-error"
+import { CheckCircle, Loader2, XCircle } from "lucide-react"
 
 export default function VerifyEmailPage() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [errorMessage, setErrorMessage] = useState("");
-  const verifiedRef = useRef(false);
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get("token")
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
+  const [errorMessage, setErrorMessage] = useState("")
+  const verifiedRef = useRef(false)
 
   useEffect(() => {
     if (!token) {
-      setStatus("error");
-      setErrorMessage("認証トークンが見つかりません");
-      return;
+      setStatus("error")
+      setErrorMessage("認証トークンが見つかりません")
+      return
     }
 
     if (verifiedRef.current) {
-      setStatus("success");
-      return;
+      setStatus("success")
+      return
     }
 
     const verify = async () => {
       try {
-        await apiClient.verifyEmail({ token });
-        verifiedRef.current = true;
-        setStatus("success");
+        await apiClient.verifyEmail({ token })
+        verifiedRef.current = true
+        setStatus("success")
       } catch (err) {
         if (verifiedRef.current) {
-          setStatus("success");
-          return;
+          setStatus("success")
+          return
         }
-        setStatus("error");
+        setStatus("error")
         setErrorMessage(
           getApiErrorMessage(
             err,
@@ -43,23 +43,23 @@ export default function VerifyEmailPage() {
               VALIDATION_ERROR: "認証トークンが不正です",
               NETWORK_ERROR: "ネットワークエラーが発生しました",
             },
-            "認証に失敗しました"
-          )
-        );
+            "認証に失敗しました",
+          ),
+        )
       }
-    };
+    }
 
-    verify();
-  }, [token]);
+    void verify()
+  }, [token])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardContent className="p-6">
           <div className="space-y-6 text-center">
             {status === "loading" && (
               <>
-                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
                 <CardTitle className="text-xl">メールアドレスを確認中...</CardTitle>
               </>
             )}
@@ -77,10 +77,7 @@ export default function VerifyEmailPage() {
                     アカウントが有効化されました。ログインしてご利用ください。
                   </p>
                 </div>
-                <Link
-                  to="/login"
-                  className="inline-block font-medium text-primary hover:underline"
-                >
+                <Link to="/login" className="inline-block font-medium text-primary hover:underline">
                   ログインページへ
                 </Link>
               </>
@@ -97,10 +94,7 @@ export default function VerifyEmailPage() {
                   <CardTitle className="text-xl">認証に失敗しました</CardTitle>
                   <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
                 </div>
-                <Link
-                  to="/login"
-                  className="inline-block font-medium text-primary hover:underline"
-                >
+                <Link to="/login" className="inline-block font-medium text-primary hover:underline">
                   ログインページへ
                 </Link>
               </>
@@ -109,5 +103,5 @@ export default function VerifyEmailPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

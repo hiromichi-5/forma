@@ -1,16 +1,10 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
-import { AppLayout } from "@/components/app-layout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router"
+import { AppLayout } from "@/components/app-layout"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,39 +15,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { apiClient } from "@/lib/api";
-import { getApiErrorMessage } from "@/lib/api-error";
-import { toast } from "sonner";
-import type { UserProfile } from "@/types";
-import { Loader2 } from "lucide-react";
+} from "@/components/ui/alert-dialog"
+import { apiClient } from "@/lib/api"
+import { getApiErrorMessage } from "@/lib/api-error"
+import { toast } from "sonner"
+import type { UserProfile } from "@/types"
+import { Loader2 } from "lucide-react"
 
-const sessionExpiredMessage =
-  "セッションの有効期限が切れました。ログインし直してください";
+const sessionExpiredMessage = "セッションの有効期限が切れました。ログインし直してください"
 
 export default function SettingsPage() {
-  const navigate = useNavigate();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const navigate = useNavigate()
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
 
-  const [displayName, setDisplayName] = useState("");
+  const [displayName, setDisplayName] = useState("")
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
 
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        setIsLoading(true);
-        const data = await apiClient.getProfile();
-        setProfile(data);
-        setDisplayName(data.display_name);
+        setIsLoading(true)
+        const data = await apiClient.getProfile()
+        setProfile(data)
+        setDisplayName(data.display_name)
       } catch (error) {
-        console.error("Failed to load profile:", error);
+        console.error("Failed to load profile:", error)
         toast.error(
           getApiErrorMessage(
             error,
@@ -62,31 +55,31 @@ export default function SettingsPage() {
               USER_NOT_FOUND: "アカウントが見つかりません",
               NETWORK_ERROR: "ネットワークエラーが発生しました",
             },
-            "プロフィールの読み込みに失敗しました"
-          )
-        );
+            "プロフィールの読み込みに失敗しました",
+          ),
+        )
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
-    };
-    loadProfile();
-  }, []);
+    }
+    void loadProfile()
+  }, [])
 
   const handleUpdateProfile = async () => {
     if (!displayName.trim()) {
-      toast.error("表示名を入力してください");
-      return;
+      toast.error("表示名を入力してください")
+      return
     }
 
     try {
-      setIsSavingProfile(true);
+      setIsSavingProfile(true)
       const updatedProfile = await apiClient.updateProfile({
         display_name: displayName,
-      });
-      setProfile(updatedProfile);
-      toast.success("プロフィールを更新しました");
+      })
+      setProfile(updatedProfile)
+      toast.success("プロフィールを更新しました")
     } catch (error) {
-      console.error("Failed to update profile:", error);
+      console.error("Failed to update profile:", error)
       toast.error(
         getApiErrorMessage(
           error,
@@ -96,42 +89,42 @@ export default function SettingsPage() {
             USER_NOT_FOUND: "アカウントが見つかりません",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "プロフィールの更新に失敗しました"
-        )
-      );
+          "プロフィールの更新に失敗しました",
+        ),
+      )
     } finally {
-      setIsSavingProfile(false);
+      setIsSavingProfile(false)
     }
-  };
+  }
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error("すべての項目を入力してください");
-      return;
+      toast.error("すべての項目を入力してください")
+      return
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("新しいパスワードが一致しません");
-      return;
+      toast.error("新しいパスワードが一致しません")
+      return
     }
 
     if (newPassword.length < 8) {
-      toast.error("パスワードは8文字以上で設定してください");
-      return;
+      toast.error("パスワードは8文字以上で設定してください")
+      return
     }
 
     try {
-      setIsChangingPassword(true);
+      setIsChangingPassword(true)
       await apiClient.changePassword({
         current_password: currentPassword,
         new_password: newPassword,
-      });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      toast.success("パスワードを変更しました");
+      })
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      toast.success("パスワードを変更しました")
     } catch (error) {
-      console.error("Failed to change password:", error);
+      console.error("Failed to change password:", error)
       toast.error(
         getApiErrorMessage(
           error,
@@ -142,22 +135,22 @@ export default function SettingsPage() {
             USER_NOT_FOUND: "アカウントが見つかりません",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "パスワードの変更に失敗しました"
-        )
-      );
+          "パスワードの変更に失敗しました",
+        ),
+      )
     } finally {
-      setIsChangingPassword(false);
+      setIsChangingPassword(false)
     }
-  };
+  }
 
   const handleDeleteAccount = async () => {
     try {
-      setIsDeletingAccount(true);
-      await apiClient.deleteProfile();
-      toast.success("アカウントを削除しました");
-      navigate("/login");
+      setIsDeletingAccount(true)
+      await apiClient.deleteProfile()
+      toast.success("アカウントを削除しました")
+      void navigate("/login")
     } catch (error) {
-      console.error("Failed to delete account:", error);
+      console.error("Failed to delete account:", error)
       toast.error(
         getApiErrorMessage(
           error,
@@ -166,40 +159,36 @@ export default function SettingsPage() {
             USER_NOT_FOUND: "アカウントが見つかりません",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "アカウントの削除に失敗しました"
-        )
-      );
+          "アカウントの削除に失敗しました",
+        ),
+      )
     } finally {
-      setIsDeletingAccount(false);
+      setIsDeletingAccount(false)
     }
-  };
+  }
 
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex min-h-[400px] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </AppLayout>
-    );
+    )
   }
 
   return (
     <AppLayout>
-      <div className="space-y-6 max-w-3xl">
+      <div className="max-w-3xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">設定</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            アカウント情報・セキュリティ設定
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">アカウント情報・セキュリティ設定</p>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle>プロフィール</CardTitle>
-            <CardDescription>
-              アカウントの基本情報を変更できます
-            </CardDescription>
+            <CardDescription>アカウントの基本情報を変更できます</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -211,9 +200,7 @@ export default function SettingsPage() {
                 disabled
                 className="bg-muted"
               />
-              <p className="text-xs text-muted-foreground">
-                メールアドレスは変更できません
-              </p>
+              <p className="text-xs text-muted-foreground">メールアドレスは変更できません</p>
             </div>
 
             <div className="space-y-2">
@@ -229,9 +216,7 @@ export default function SettingsPage() {
 
             <Button
               onClick={handleUpdateProfile}
-              disabled={
-                isSavingProfile || displayName === profile?.display_name
-              }
+              disabled={isSavingProfile || displayName === profile?.display_name}
             >
               {isSavingProfile ? (
                 <>
@@ -248,9 +233,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>パスワード変更</CardTitle>
-            <CardDescription>
-              アカウントのパスワードを変更できます
-            </CardDescription>
+            <CardDescription>アカウントのパスワードを変更できます</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -286,10 +269,7 @@ export default function SettingsPage() {
               />
             </div>
 
-            <Button
-              onClick={handleChangePassword}
-              disabled={isChangingPassword}
-            >
+            <Button onClick={handleChangePassword} disabled={isChangingPassword}>
               {isChangingPassword ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -305,9 +285,7 @@ export default function SettingsPage() {
         <Card className="border-destructive/50">
           <CardHeader>
             <CardTitle className="text-destructive">アカウント削除</CardTitle>
-            <CardDescription>
-              この操作は取り消すことができません
-            </CardDescription>
+            <CardDescription>この操作は取り消すことができません</CardDescription>
           </CardHeader>
           <CardContent>
             <AlertDialog>
@@ -345,5 +323,5 @@ export default function SettingsPage() {
         </Card>
       </div>
     </AppLayout>
-  );
+  )
 }

@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -90,16 +96,19 @@ export function NotificationsDialog({
         if (!cancelled) setIsLoading(false)
       }
     }
-    load()
+    void load()
 
     return () => {
       cancelled = true
     }
   }, [formId, open])
 
-  const updateSetting = (notificationType: NotificationType, patch: Partial<NotificationSetting>) => {
+  const updateSetting = (
+    notificationType: NotificationType,
+    patch: Partial<NotificationSetting>,
+  ) => {
     setSettings((prev) =>
-      prev.map((s) => (s.notification_type === notificationType ? { ...s, ...patch } : s))
+      prev.map((s) => (s.notification_type === notificationType ? { ...s, ...patch } : s)),
     )
   }
 
@@ -204,11 +213,7 @@ export function NotificationsDialog({
 
             {canEdit ? (
               <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isWorking}
-                >
+                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isWorking}>
                   キャンセル
                 </Button>
                 <Button onClick={handleSave} disabled={isWorking}>

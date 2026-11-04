@@ -1,11 +1,6 @@
-import { Fragment, useMemo, useState } from "react";
-import type { User } from "@/types/form-response";
-import type {
-  FormStatus,
-  TicketDetail,
-  TicketPriority,
-  TicketSummary,
-} from "@/types";
+import { Fragment, useMemo, useState } from "react"
+import type { User } from "@/types/form-response"
+import type { FormStatus, TicketDetail, TicketPriority, TicketSummary } from "@/types"
 import {
   Table,
   TableBody,
@@ -13,18 +8,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+} from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { ja } from "date-fns/locale";
+} from "@/components/ui/select"
+import { ChevronDown, ChevronRight, MessageSquare } from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
+import { ja } from "date-fns/locale"
 import {
   fallbackStatusColor,
   hexToRgba,
@@ -33,19 +28,19 @@ import {
   sortStatuses,
   statusById,
   toPriorityValue,
-} from "@/lib/ticket-display";
+} from "@/lib/ticket-display"
 
 type ResponseTableViewProps = {
-  responses: TicketSummary[];
-  details: Record<string, TicketDetail>;
-  users: User[];
-  statuses: FormStatus[];
-  onExpandRow: (id: string) => void;
-  onStatusChange: (id: string, statusId: string) => void;
-  onAssignChange: (id: string, userId: string | null) => void;
-  onPriorityChange: (id: string, priority: TicketPriority) => void;
-  onOpenDetail: (response: TicketSummary) => void;
-};
+  responses: TicketSummary[]
+  details: Record<string, TicketDetail>
+  users: User[]
+  statuses: FormStatus[]
+  onExpandRow: (id: string) => void
+  onStatusChange: (id: string, statusId: string) => void
+  onAssignChange: (id: string, userId: string | null) => void
+  onPriorityChange: (id: string, priority: TicketPriority) => void
+  onOpenDetail: (response: TicketSummary) => void
+}
 
 export function ResponseTableView({
   responses,
@@ -58,22 +53,22 @@ export function ResponseTableView({
   onPriorityChange,
   onOpenDetail,
 }: ResponseTableViewProps) {
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null)
 
-  const sortedStatuses = sortStatuses(statuses);
-  const statusMap = useMemo(() => statusById(statuses), [statuses]);
+  const sortedStatuses = sortStatuses(statuses)
+  const statusMap = useMemo(() => statusById(statuses), [statuses])
 
   const toggleRow = (id: string) => {
     if (expandedRow === id) {
-      setExpandedRow(null);
-      return;
+      setExpandedRow(null)
+      return
     }
-    setExpandedRow(id);
-    onExpandRow(id);
-  };
+    setExpandedRow(id)
+    onExpandRow(id)
+  }
 
   return (
-    <div className="bg-card rounded-lg border">
+    <div className="rounded-lg border bg-card">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -87,14 +82,14 @@ export function ResponseTableView({
         </TableHeader>
         <TableBody>
           {responses.map((response) => {
-            const isExpanded = expandedRow === response.id;
-            const detailId = `response-details-${response.id}`;
-            const email = respondentEmailLabel(response.respondent_email);
-            const status = statusMap.get(response.status.id) ?? response.status;
+            const isExpanded = expandedRow === response.id
+            const detailId = `response-details-${response.id}`
+            const email = respondentEmailLabel(response.respondent_email)
+            const status = statusMap.get(response.status.id) ?? response.status
 
             return (
               <Fragment key={response.id}>
-                <TableRow className="hover:bg-muted/50 transition-colors">
+                <TableRow className="transition-colors hover:bg-muted/50">
                   <TableCell>
                     <button
                       type="button"
@@ -105,9 +100,7 @@ export function ResponseTableView({
                     >
                       <div>
                         <p className="font-medium text-foreground">{email}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {response.title}
-                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">{response.title}</p>
                       </div>
                       {isExpanded ? (
                         <ChevronDown
@@ -125,19 +118,17 @@ export function ResponseTableView({
                   <TableCell>
                     <Select
                       value={response.status.id}
-                      onValueChange={(value) =>
-                        onStatusChange(response.id, value)
-                      }
+                      onValueChange={(value) => onStatusChange(response.id, value)}
                     >
-                      <SelectTrigger className="w-[130px] h-8 border-0 shadow-none">
+                      <SelectTrigger className="h-8 w-[130px] border-0 shadow-none">
                         <div
-                          className="flex items-center gap-2 px-2 py-1 rounded"
+                          className="flex items-center gap-2 rounded px-2 py-1"
                           style={{
                             backgroundColor: hexToRgba(status.color, 0.1),
                           }}
                         >
                           <div
-                            className="w-2 h-2 rounded-full shrink-0"
+                            className="h-2 w-2 shrink-0 rounded-full"
                             style={{
                               backgroundColor: status.color || fallbackStatusColor,
                             }}
@@ -158,13 +149,10 @@ export function ResponseTableView({
                     <Select
                       value={response.assignee?.id ?? "unassigned"}
                       onValueChange={(value) =>
-                        onAssignChange(
-                          response.id,
-                          value === "unassigned" ? null : value
-                        )
+                        onAssignChange(response.id, value === "unassigned" ? null : value)
                       }
                     >
-                      <SelectTrigger className="w-[130px] h-8 border-0 shadow-none">
+                      <SelectTrigger className="h-8 w-[130px] border-0 shadow-none">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -184,14 +172,11 @@ export function ResponseTableView({
                         onPriorityChange(response.id, toPriorityValue(value))
                       }
                     >
-                      <SelectTrigger className="w-[90px] h-8 border-0 shadow-none">
+                      <SelectTrigger className="h-8 w-[90px] border-0 shadow-none">
                         <div
-                          className="flex items-center gap-2 px-2 py-1 rounded"
+                          className="flex items-center gap-2 rounded px-2 py-1"
                           style={{
-                            backgroundColor: hexToRgba(
-                              priorityConfig[response.priority].hex,
-                              0.1
-                            ),
+                            backgroundColor: hexToRgba(priorityConfig[response.priority].hex, 0.1),
                           }}
                         >
                           <span
@@ -224,7 +209,7 @@ export function ResponseTableView({
                       variant="ghost"
                       size="sm"
                       onClick={() => onOpenDetail(response)}
-                      className="gap-2 h-8"
+                      className="h-8 gap-2"
                       aria-label={`回答詳細を開く: ${email}`}
                     >
                       <MessageSquare className="h-4 w-4" />
@@ -235,37 +220,28 @@ export function ResponseTableView({
                   <TableRow className="hover:bg-muted/20">
                     <TableCell colSpan={6} className="bg-muted/20 p-4">
                       <div id={detailId} className="space-y-3">
-                        <h4 className="font-semibold text-sm text-foreground">
-                          回答内容
-                        </h4>
+                        <h4 className="text-sm font-semibold text-foreground">回答内容</h4>
                         {details[response.id] ? (
                           details[response.id].answers.map((answer, index) => (
-                            <div
-                              key={`${answer.question_id}-${index}`}
-                              className="text-sm"
-                            >
+                            <div key={`${answer.question_id}-${index}`} className="text-sm">
                               <span className="text-muted-foreground">
                                 {answer.question_title}{" "}
                               </span>
-                              <span className="text-foreground">
-                                {answer.display_value}
-                              </span>
+                              <span className="text-foreground">{answer.display_value}</span>
                             </div>
                           ))
                         ) : (
-                          <p className="text-sm text-muted-foreground">
-                            読み込み中...
-                          </p>
+                          <p className="text-sm text-muted-foreground">読み込み中...</p>
                         )}
                       </div>
                     </TableCell>
                   </TableRow>
                 )}
               </Fragment>
-            );
+            )
           })}
         </TableBody>
       </Table>
     </div>
-  );
+  )
 }

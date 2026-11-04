@@ -55,7 +55,7 @@ export default function FormsListPage() {
       }
     }
 
-    load()
+    void load()
 
     return () => {
       isActive = false
@@ -64,7 +64,7 @@ export default function FormsListPage() {
 
   const filteredForms = useMemo(
     () => forms.filter((form) => form.title.toLowerCase().includes(searchQuery.toLowerCase())),
-    [forms, searchQuery]
+    [forms, searchQuery],
   )
 
   return (
@@ -72,11 +72,11 @@ export default function FormsListPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">フォーム一覧</h1>
-          <p className="text-sm text-muted-foreground mt-1">管理しているGoogleフォームの一覧</p>
+          <p className="mt-1 text-sm text-muted-foreground">管理しているGoogleフォームの一覧</p>
         </div>
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="フォーム名で検索..."
             value={searchQuery}
@@ -87,7 +87,9 @@ export default function FormsListPage() {
 
         {isLoading && (
           <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">フォーム一覧を読み込み中...</CardContent>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              フォーム一覧を読み込み中...
+            </CardContent>
           </Card>
         )}
 
@@ -111,16 +113,15 @@ export default function FormsListPage() {
               <Card
                 asChild
                 key={form.id}
-                className="border-border/60 bg-card/95 shadow-none transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="border-border/60 bg-card/95 shadow-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 <Link to={`/forms/${form.id}`}>
                   <CardContent className="p-4">
-                    <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">
+                    <h3 className="line-clamp-2 text-sm leading-5 font-semibold text-foreground">
                       {form.title}
                     </h3>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {form.responseCount}件
-                      <span className="mx-1.5">•</span>
+                      {form.responseCount}件<span className="mx-1.5">•</span>
                       {form.latestSubmittedAt
                         ? `最終提出 ${formatCompactDate(form.latestSubmittedAt)}`
                         : "回答なし"}
@@ -134,7 +135,7 @@ export default function FormsListPage() {
               trigger={
                 <button
                   type="button"
-                  className="flex min-h-[84px] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-muted-foreground/40 bg-transparent p-4 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex min-h-[84px] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-muted-foreground/40 bg-transparent p-4 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   <Plus className="h-5 w-5" />
                   <span className="text-sm font-medium">フォームを追加する</span>

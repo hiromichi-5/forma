@@ -1,8 +1,8 @@
-import type React from "react";
+import type React from "react"
 
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation, Link } from "react-router";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react"
+import { useNavigate, useLocation, Link } from "react-router"
+import { Button } from "@/components/ui/button"
 import {
   LogOut,
   Settings,
@@ -13,73 +13,69 @@ import {
   Home,
   FileText,
   Plus,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/useAuth";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { apiClient } from "@/lib/api";
-import type { FormSummary } from "@/types";
-import { RegisterFormDialog } from "@/components/register-form-dialog";
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { apiClient } from "@/lib/api"
+import type { FormSummary } from "@/types"
+import { RegisterFormDialog } from "@/components/register-form-dialog"
 
 type AppLayoutProps = {
-  children: React.ReactNode;
-};
+  children: React.ReactNode
+}
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isFormsOpen, setIsFormsOpen] = useState(true);
-  const [forms, setForms] = useState<FormSummary[]>([]);
-  const [loadingForms, setLoadingForms] = useState(false);
-  const { logout } = useAuth();
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isFormsOpen, setIsFormsOpen] = useState(true)
+  const [forms, setForms] = useState<FormSummary[]>([])
+  const [loadingForms, setLoadingForms] = useState(false)
+  const { logout } = useAuth()
 
-  const isFormsListPage = location.pathname === "/";
-  const isSettingsPage = location.pathname === "/settings";
+  const isFormsListPage = location.pathname === "/"
+  const isSettingsPage = location.pathname === "/settings"
 
   // フォーム一覧を取得
   const loadForms = async () => {
     try {
-      setLoadingForms(true);
-      const response = await apiClient.getForms();
-      setForms(response.forms);
+      setLoadingForms(true)
+      const response = await apiClient.getForms()
+      setForms(response.forms)
     } catch (error) {
-      console.error("Failed to load forms:", error);
+      console.error("Failed to load forms:", error)
     } finally {
-      setLoadingForms(false);
+      setLoadingForms(false)
     }
-  };
+  }
 
   useEffect(() => {
-    loadForms();
-  }, []);
+    void loadForms()
+  }, [])
 
   const handleLogout = async () => {
-    await logout();
-    navigate("/login");
-  };
+    await logout()
+    void navigate("/login")
+  }
 
   return (
-    <div className="h-screen bg-muted/30 flex overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-muted/30">
       <aside
         className={cn(
-          "bg-blue-50 border-r transition-all duration-300 flex flex-col shrink-0 z-10",
+          "z-10 flex shrink-0 flex-col border-r bg-blue-50 transition-all duration-300",
           "[&_[data-slot=button]]:hover:bg-blue-100",
-          isCollapsed ? "w-16" : "w-64"
+          isCollapsed ? "w-16" : "w-64",
         )}
       >
-        <div className="p-4 border-b flex items-center justify-between">
+        <div className="flex items-center justify-between border-b p-4">
           {!isCollapsed && (
             <Link
               to="/"
-              className="flex items-center gap-2 -mx-2 -my-1 rounded-md px-2 py-1 transition-colors hover:bg-accent"
+              className="-mx-2 -my-1 flex items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-accent"
             >
-              <img src="/favicon.svg" alt="forma Logo" className="w-6 h-6" />
-              <span className="font-bold text-xl tracking-tight">forma</span>
+              <img src="/favicon.svg" alt="forma Logo" className="h-6 w-6" />
+              <span className="text-xl font-bold tracking-tight">forma</span>
             </Link>
           )}
           <Button
@@ -96,13 +92,13 @@ export function AppLayout({ children }: AppLayoutProps) {
           </Button>
         </div>
 
-        <nav className="flex-1 p-2 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto p-2">
           <Button
             variant="ghost"
             className={cn(
-              "w-full justify-start gap-3 mb-2",
+              "mb-2 w-full justify-start gap-3",
               isCollapsed && "justify-center",
-              isFormsListPage && "bg-blue-100"
+              isFormsListPage && "bg-blue-100",
             )}
             onClick={() => navigate("/")}
           >
@@ -113,10 +109,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           {!isCollapsed && (
             <Collapsible open={isFormsOpen} onOpenChange={setIsFormsOpen}>
               <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between gap-2 mb-1"
-                >
+                <Button variant="ghost" className="mb-1 w-full justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />
                     <span className="text-sm font-medium">フォーム</span>
@@ -130,42 +123,39 @@ export function AppLayout({ children }: AppLayoutProps) {
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-1">
                 {loadingForms ? (
-                  <div className="px-2 py-1 text-xs text-muted-foreground">
-                    読み込み中...
-                  </div>
+                  <div className="px-2 py-1 text-xs text-muted-foreground">読み込み中...</div>
                 ) : forms.length === 0 ? (
                   <div className="px-2 py-1 text-xs text-muted-foreground">
                     フォームがありません
                   </div>
                 ) : (
                   forms.map((form) => {
-                    const isActive =
-                      location.pathname === `/forms/${form.id}`;
+                    const isActive = location.pathname === `/forms/${form.id}`
                     return (
                       <div key={form.id} className="pl-6">
                         <Button
                           variant="ghost"
                           size="sm"
                           className={cn(
-                            "w-full justify-start text-sm h-8 pr-2 min-w-0 rounded-2xl",
-                            isActive && "bg-blue-100 font-medium"
+                            "h-8 w-full min-w-0 justify-start rounded-2xl pr-2 text-sm",
+                            isActive && "bg-blue-100 font-medium",
                           )}
                           onClick={() => navigate(`/forms/${form.id}`)}
                         >
                           <span className="truncate">{form.title}</span>
                         </Button>
                       </div>
-                    );
+                    )
                   })
                 )}
-                <div className="pl-6 mt-4">
+                <div className="mt-4 pl-6">
                   <RegisterFormDialog
                     onRegistered={loadForms}
                     trigger={
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="w-full justify-start gap-2 text-sm h-8 pr-2 min-w-0 rounded-2xl border border-dashed border-muted-foreground/40 text-muted-foreground"
+                        className="h-8 w-full min-w-0 justify-start gap-2 rounded-2xl border border-dashed border-muted-foreground/40 pr-2 text-sm text-muted-foreground"
                       >
                         <Plus className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">フォームを追加する</span>
@@ -178,13 +168,13 @@ export function AppLayout({ children }: AppLayoutProps) {
           )}
         </nav>
 
-        <div className="p-2 border-t space-y-1">
+        <div className="space-y-1 border-t p-2">
           <Button
             variant="ghost"
             className={cn(
               "w-full justify-start gap-3",
               isCollapsed && "justify-center",
-              isSettingsPage && "bg-blue-100"
+              isSettingsPage && "bg-blue-100",
             )}
             onClick={() => navigate("/settings")}
           >
@@ -193,10 +183,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </Button>
           <Button
             variant="ghost"
-            className={cn(
-              "w-full justify-start gap-3",
-              isCollapsed && "justify-center"
-            )}
+            className={cn("w-full justify-start gap-3", isCollapsed && "justify-center")}
             onClick={handleLogout}
           >
             <LogOut className="h-5 w-5" />
@@ -209,5 +196,5 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="container mx-auto p-6">{children}</div>
       </main>
     </div>
-  );
+  )
 }
