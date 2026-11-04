@@ -28,10 +28,6 @@ export default tseslint.config([
       ],
       // useEffect 内でのデータ取得に伴う setState を検出する。取得処理を TanStack Query へ移すまでは警告にとどめる。
       "react-hooks/set-state-in-effect": "warn",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
     },
     languageOptions: {
       ecmaVersion: 2022,
