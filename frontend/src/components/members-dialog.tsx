@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react"
+import { useMemo, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,8 @@ import { Mail, X, Shield, User, Clock } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
 import type { FormInvite } from "@/types"
+import { formQueries } from "@/queries/forms"
+import { queryKeys } from "@/queries/keys"
 
 type MemberView = {
   id: string
@@ -38,6 +41,8 @@ type MemberView = {
   email: string
   role: "admin" | "editor"
 }
+
+const EMPTY_INVITES: FormInvite[] = []
 
 type MembersDialogProps = {
   formId: string
@@ -52,12 +57,35 @@ const inviteErrorMessages = {
 } as const
 
 export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps) {
-  const [members, setMembers] = useState<MemberView[]>([])
-  const [invites, setInvites] = useState<FormInvite[]>([])
+  const queryClient = useQueryClient()
+  const membersQuery = useQuery(formQueries.members(formId))
+  // 招待はこのダイアログでしか使わないため、開いている間だけ取得する。
+  const invitesQuery = useQuery({ ...formQueries.invites(formId), enabled: open })
+  const members = useMemo<MemberView[]>(
+    () =>
+      (membersQuery.data ?? []).map((member) => ({
+        id: member.id,
+        name: member.display_name,
+        email: member.email,
+        role: member.role,
+      })),
+    [membersQuery.data],
+  )
+  const invites = invitesQuery.data ?? EMPTY_INVITES
+  const isLoading = membersQuery.isPending
+  const loadError = membersQuery.error ?? invitesQuery.error
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState<"admin" | "editor">("editor")
-  const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
+  const displayedError =
+    errorMessage ||
+    (loadError
+      ? getApiErrorMessage(
+          loadError,
+          { RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません" },
+          "データの取得に失敗しました",
+        )
+      : "")
   const [isWorking, setIsWorking] = useState(false)
   const [revokeTarget, setRevokeTarget] = useState<FormInvite | null>(null)
   const [revokeError, setRevokeError] = useState("")
@@ -67,42 +95,12 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
   const toRoleValue = (value: string): "admin" | "editor" =>
     value === "admin" ? "admin" : "editor"
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true)
-    setErrorMessage("")
-    try {
-      const [membersRes, invitesRes] = await Promise.all([
-        apiClient.getMembers(formId),
-        apiClient.listInvites(formId),
-      ])
-      setMembers(
-        membersRes.members.map((member) => ({
-          id: member.id,
-          name: member.display_name,
-          email: member.email,
-          role: member.role,
-        })),
-      )
-      setInvites(invitesRes.invites)
-    } catch (error) {
-      console.error("Failed to load data:", error)
-      setErrorMessage(
-        getApiErrorMessage(
-          error,
-          {
-            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-          },
-          "データの取得に失敗しました",
-        ),
-      )
-    } finally {
-      setIsLoading(false)
-    }
-  }, [formId])
-
-  useEffect(() => {
-    void loadData()
-  }, [loadData])
+  // メンバーの変更はフォーム管理画面（管理者判定・担当者の選択肢）にも影響するため、共有のキャッシュを取り直す。
+  const loadData = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.formMembers(formId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.formInvites(formId) }),
+    ])
 
   const handleInvite = async () => {
     if (!inviteEmail) return
@@ -217,9 +215,9 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
           </DialogHeader>
 
           <div className="space-y-6">
-            {errorMessage && (
+            {displayedError && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {errorMessage}
+                {displayedError}
               </div>
             )}
 

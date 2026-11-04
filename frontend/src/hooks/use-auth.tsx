@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
 import type { ReactNode } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api"
 import type {
@@ -39,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
 
+  const queryClient = useQueryClient()
   const isAuthenticated = !!user
   const isAuthenticatedRef = useRef(false)
 
@@ -95,11 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticatedRef.current = false
       setUser(null)
       setProfile(null)
+      // 別のユーザーでログインし直したときに、前のユーザーのデータを表示しないよう破棄する。
+      queryClient.clear()
       toast.error("セッションの有効期限が切れました。再度ログインしてください")
     })
 
     return () => apiClient.setSessionExpiredHandler(null)
-  }, [])
+  }, [queryClient])
 
   const login = async (credentials: LoginRequest) => {
     await apiClient.login(credentials)
@@ -126,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null)
       setProfile(null)
+      queryClient.clear()
     }
   }
 

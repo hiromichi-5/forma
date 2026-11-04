@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { apiClient } from "@/lib/api"
 import { useFormResponses, type TicketSegment } from "@/hooks/use-form-responses"
 import { ticketDetail, ticketSummary } from "@/test/factories"
+import { createQueryWrapper } from "@/test/query"
 import type { ListTicketsResponse, TicketSummary } from "@/types"
 
 /** SSE の購読先。テストからイベントを流し込む。 */
@@ -60,8 +61,9 @@ describe("useFormResponses", () => {
       .mockResolvedValueOnce(page(first, "cursor-2"))
       .mockResolvedValueOnce(page(second))
 
-    const { result } = renderHook(() =>
-      useFormResponses("form-1", { segments: listSegments, query: "", withCounts: false }),
+    const { result } = renderHook(
+      () => useFormResponses("form-1", { segments: listSegments, query: "", withCounts: false }),
+      createQueryWrapper(),
     )
 
     await waitFor(() => expect(result.current.pages.list.loading).toBe(false))
@@ -89,7 +91,7 @@ describe("useFormResponses", () => {
     const { result, rerender } = renderHook(
       ({ query }) =>
         useFormResponses("form-1", { segments: listSegments, query, withCounts: false }),
-      { initialProps: { query: "old" } },
+      { initialProps: { query: "old" }, ...createQueryWrapper() },
     )
     rerender({ query: "new" })
     await waitFor(() => expect(result.current.pages.list.tickets).toEqual([fresh]))
@@ -114,8 +116,9 @@ describe("useFormResponses", () => {
       ],
     })
 
-    const { result } = renderHook(() =>
-      useFormResponses("form-1", { segments: kanbanSegments, query: "", withCounts: true }),
+    const { result } = renderHook(
+      () => useFormResponses("form-1", { segments: kanbanSegments, query: "", withCounts: true }),
+      createQueryWrapper(),
     )
     await waitFor(() => expect(result.current.pages[OPEN.id].tickets).toEqual([ticket]))
     await waitFor(() => expect(result.current.counts[OPEN.id]).toBe(1))
@@ -145,8 +148,9 @@ describe("useFormResponses", () => {
       .spyOn(apiClient, "sendTicketNotification")
       .mockResolvedValue({ notification_type: "status_change", sent_at: "2026-11-01T00:00:00Z" })
 
-    const { result } = renderHook(() =>
-      useFormResponses("form-1", { segments: listSegments, query: "", withCounts: false }),
+    const { result } = renderHook(
+      () => useFormResponses("form-1", { segments: listSegments, query: "", withCounts: false }),
+      createQueryWrapper(),
     )
     await waitFor(() => expect(result.current.pages.list.tickets).toHaveLength(1))
     await waitFor(() => expect(notificationSettings).toHaveBeenCalled())
