@@ -21,13 +21,11 @@ type AuthContextType = {
   user: SessionUser | null
   profile: UserProfile | null
   isLoading: boolean
-  isProfileLoading: boolean
   isAuthenticated: boolean
   login: (credentials: LoginRequest) => Promise<void>
   signup: (credentials: SignupRequest) => Promise<void>
   logout: () => Promise<void>
   updateProfile: (request: UpdateUserProfileRequest) => Promise<UserProfile>
-  refreshProfile: () => Promise<void>
   changePassword: (request: ChangePasswordRequest) => Promise<void>
   deleteAccount: () => Promise<void>
 }
@@ -38,7 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isProfileLoading, setIsProfileLoading] = useState(false)
 
   const queryClient = useQueryClient()
   const isAuthenticated = !!user
@@ -65,20 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return false
     }
   }, [])
-
-  const refreshProfile = async () => {
-    if (!user) return
-    setIsProfileLoading(true)
-    try {
-      const profileData = await apiClient.getProfile()
-      setProfile(profileData)
-      setUser((prev) => (prev ? { ...prev, email: profileData.email } : null))
-    } catch (error) {
-      console.error("Failed to fetch profile:", error)
-    } finally {
-      setIsProfileLoading(false)
-    }
-  }
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -149,13 +132,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         isLoading,
-        isProfileLoading,
         isAuthenticated,
         login,
         signup,
         logout,
         updateProfile,
-        refreshProfile,
         changePassword,
         deleteAccount,
       }}

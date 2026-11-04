@@ -1,19 +1,27 @@
 import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import type { z } from "zod"
 import { Link, useSearchParams } from "react-router"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { TextField } from "@/components/text-field"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { PASSWORD_MIN_LENGTH, passwordResetConfirmSchema } from "@/lib/form-schemas"
 import { CheckCircle, Loader2 } from "lucide-react"
 
 export default function PasswordResetConfirmPage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get("token")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting: isLoading },
+  } = useForm<z.infer<typeof passwordResetConfirmSchema>>({
+    resolver: zodResolver(passwordResetConfirmSchema),
+    defaultValues: { new_password: "", confirm_password: "" },
+  })
   const [error, setError] = useState("")
   const [isComplete, setIsComplete] = useState(false)
 
@@ -38,19 +46,11 @@ export default function PasswordResetConfirmPage() {
     )
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (values: z.infer<typeof passwordResetConfirmSchema>) => {
     setError("")
 
-    if (newPassword !== confirmPassword) {
-      setError("パスワードが一致しません")
-      return
-    }
-
-    setIsLoading(true)
-
     try {
-      await apiClient.passwordResetConfirm({ token, new_password: newPassword })
+      await apiClient.passwordResetConfirm({ token, new_password: values.new_password })
       setIsComplete(true)
     } catch (err) {
       setError(
@@ -64,8 +64,6 @@ export default function PasswordResetConfirmPage() {
           "パスワードリセットに失敗しました",
         ),
       )
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -108,33 +106,27 @@ export default function PasswordResetConfirmPage() {
               </p>
             </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">新しいパスワード</Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">8文字以上</p>
-              </div>
+            <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+              <TextField
+                id="newPassword"
+                label="新しいパスワード"
+                type="password"
+                autoComplete="new-password"
+                description={`${PASSWORD_MIN_LENGTH}文字以上`}
+                disabled={isLoading}
+                error={errors.new_password}
+                {...register("new_password")}
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">パスワード確認</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  disabled={isLoading}
-                />
-              </div>
+              <TextField
+                id="confirmPassword"
+                label="パスワード確認"
+                type="password"
+                autoComplete="new-password"
+                disabled={isLoading}
+                error={errors.confirm_password}
+                {...register("confirm_password")}
+              />
 
               {error && (
                 <div
@@ -145,11 +137,7 @@ export default function PasswordResetConfirmPage() {
                 </div>
               )}
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading || !newPassword || !confirmPassword}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

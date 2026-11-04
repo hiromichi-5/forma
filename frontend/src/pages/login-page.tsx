@@ -1,21 +1,30 @@
-import React, { useState } from "react"
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import type { z } from "zod"
 import { Navigate, Link, useLocation } from "react-router"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { TextField } from "@/components/text-field"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage, hasApiErrorCode } from "@/lib/api-error"
+import { loginSchema } from "@/lib/form-schemas"
 import { Loader2 } from "lucide-react"
 
 export default function LoginPage() {
   const { user, login } = useAuth()
   const location = useLocation()
   const from = (location.state as { from?: string })?.from ?? "/"
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    formState: { errors, isSubmitting: isLoading },
+  } = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  })
   const [error, setError] = useState("")
   const [showResendVerification, setShowResendVerification] = useState(false)
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent">("idle")
@@ -24,14 +33,12 @@ export default function LoginPage() {
     return <Navigate to={from} replace />
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     setError("")
     setShowResendVerification(false)
-    setIsLoading(true)
 
     try {
-      await login({ email, password })
+      await login(values)
     } catch (err) {
       if (hasApiErrorCode(err, "EMAIL_NOT_VERIFIED")) {
         setError("メールアドレスが未認証です。確認メールをご確認ください。")
@@ -50,15 +57,13 @@ export default function LoginPage() {
           ),
         )
       }
-    } finally {
-      setIsLoading(false)
     }
   }
 
   const handleResendVerification = async () => {
     setResendStatus("sending")
     try {
-      await apiClient.resendVerification({ email })
+      await apiClient.resendVerification({ email: getValues("email") })
       setResendStatus("sent")
     } catch {
       setResendStatus("idle")
@@ -84,35 +89,31 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <Label htmlFor="email">メールアドレス</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
+            <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+              <TextField
+                id="email"
+                label="メールアドレス"
+                type="email"
+                autoComplete="email"
+                disabled={isLoading}
+                error={errors.email}
+                {...register("email")}
+              />
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">パスワード</Label>
+              <TextField
+                id="password"
+                label="パスワード"
+                type="password"
+                autoComplete="current-password"
+                disabled={isLoading}
+                error={errors.password}
+                labelAction={
                   <Link to="/password-reset" className="text-xs text-primary hover:underline">
                     パスワードを忘れた方
                   </Link>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
+                }
+                {...register("password")}
+              />
 
               {error && (
                 <div
@@ -142,7 +143,7 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <Button type="submit" className="w-full" disabled={isLoading || !email || !password}>
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
