@@ -20,11 +20,6 @@ export default tseslint.config([
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      // 意図的に使わない引数・変数は _ 始まりで明示する。
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
     },
     languageOptions: {
       ecmaVersion: 2020,
