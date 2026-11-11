@@ -7,7 +7,9 @@ export type TicketListPage = {
   tickets: TicketSummary[]
   hasMore: boolean
   loading: boolean
+  failed: boolean
   loadMore: () => void
+  retry: () => void
 }
 
 /**
@@ -15,16 +17,18 @@ export type TicketListPage = {
  * 条件ごとに別のキャッシュになるため、条件を変えた後に古い条件の応答が届いても表示は混ざらない。
  */
 export function useTicketList(formId: string, filter: TicketListFilter): TicketListPage {
-  const { data, hasNextPage, isFetching, isError, fetchNextPage, isFetchingNextPage } =
+  const { data, hasNextPage, isPending, isError, fetchNextPage, isFetchingNextPage, refetch } =
     useInfiniteQuery(ticketQueries.list(formId, filter))
 
   return {
     tickets: data?.pages.flatMap((page) => page.tickets) ?? [],
-    // 読み込みに失敗した場合は自動で続きを読み込み続けないよう、続きが無いものとして扱う。
-    hasMore: hasNextPage && !isError,
-    loading: isFetching,
+    hasMore: hasNextPage,
+    // 画面に戻ったときなどの裏での取り直しでは、末尾の表示も続きの読み込みも止めない。
+    loading: isPending || isFetchingNextPage,
+    failed: isError,
     loadMore: () => {
       if (!isFetchingNextPage) void fetchNextPage()
     },
+    retry: () => void (data ? fetchNextPage() : refetch()),
   }
 }

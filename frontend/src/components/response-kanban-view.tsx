@@ -338,7 +338,7 @@ type KanbanColumnProps = {
 
 /** 1 つのステータスの列。列ごとに独立して無限スクロールする。 */
 function KanbanColumn({ formId, query, status, count, ...cardProps }: KanbanColumnProps) {
-  const { tickets, hasMore, loading, loadMore } = useTicketList(formId, {
+  const { tickets, hasMore, loading, failed, loadMore, retry } = useTicketList(formId, {
     statusIds: [status.id],
     query,
   })
@@ -353,7 +353,13 @@ function KanbanColumn({ formId, query, status, count, ...cardProps }: KanbanColu
       {tickets.map((response) => (
         <DraggableCard key={response.id} response={response} {...cardProps} />
       ))}
-      <InfiniteScrollTrigger hasMore={hasMore} loading={loading} onLoadMore={loadMore} />
+      <InfiniteScrollTrigger
+        hasMore={hasMore}
+        loading={loading}
+        failed={failed}
+        onLoadMore={loadMore}
+        onRetry={retry}
+      />
     </DroppableColumn>
   )
 }

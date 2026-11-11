@@ -56,7 +56,14 @@ export function ResponseTableView({
   onOpenDetail,
 }: ResponseTableViewProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
-  const { tickets: responses, hasMore, loading, loadMore } = useTicketList(formId, filter)
+  const {
+    tickets: responses,
+    hasMore,
+    loading,
+    failed,
+    loadMore,
+    retry,
+  } = useTicketList(formId, filter)
 
   const sortedStatuses = sortStatuses(statuses)
   const statusMap = useMemo(() => statusById(statuses), [statuses])
@@ -238,7 +245,13 @@ export function ResponseTableView({
           </TableBody>
         </Table>
       </div>
-      <InfiniteScrollTrigger hasMore={hasMore} loading={loading} onLoadMore={loadMore} />
+      <InfiniteScrollTrigger
+        hasMore={hasMore}
+        loading={loading}
+        failed={failed}
+        onLoadMore={loadMore}
+        onRetry={retry}
+      />
     </div>
   )
 }

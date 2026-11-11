@@ -70,6 +70,45 @@ describe("useTicketList", () => {
     expect(result.current.hasMore).toBe(false)
   })
 
+  it("続きの読み込みに失敗しても、再試行で読み込みを再開できる", async () => {
+    const first = [ticketSummary()]
+    const second = [ticketSummary()]
+    vi.spyOn(apiClient, "getTickets")
+      .mockResolvedValueOnce(page(first, "cursor-2"))
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce(page(second))
+
+    const { result } = renderHook(
+      () => useTicketList(FORM, { statusIds: [], query: "" }),
+      createQueryWrapper(),
+    )
+    await waitFor(() => expect(result.current.tickets).toEqual(first))
+
+    act(() => result.current.loadMore())
+    await waitFor(() => expect(result.current.failed).toBe(true))
+    expect(result.current.hasMore).toBe(true)
+
+    act(() => result.current.retry())
+    await waitFor(() => expect(result.current.tickets).toHaveLength(2))
+    expect(result.current.failed).toBe(false)
+  })
+
+  it("裏での取り直しの間は読み込み中として扱わない", async () => {
+    vi.spyOn(apiClient, "getTickets")
+      .mockResolvedValueOnce(page([ticketSummary()], "cursor-2"))
+      .mockImplementationOnce(() => new Promise(() => undefined))
+    const { client, wrapper } = createQueryWrapper()
+
+    const { result } = renderHook(() => useTicketList(FORM, { statusIds: [], query: "" }), {
+      wrapper,
+    })
+    await waitFor(() => expect(result.current.tickets).toHaveLength(1))
+
+    void client.invalidateQueries()
+    await waitFor(() => expect(client.isFetching()).toBe(1))
+    expect(result.current.loading).toBe(false)
+  })
+
   it("検索条件が変わる前の応答は、後から届いても反映しない", async () => {
     let resolveStale: (value: ListTicketsResponse) => void = () => undefined
     const stale = ticketSummary({ respondent_email: "old@example.com" })
