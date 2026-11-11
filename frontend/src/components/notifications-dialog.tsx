@@ -208,7 +208,11 @@ export function NotificationsDialog({
 
             {canEdit ? (
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isWorking}>
+                <Button
+                  variant="outline"
+                  onClick={() => handleOpenChange(false)}
+                  disabled={isWorking}
+                >
                   キャンセル
                 </Button>
                 <Button onClick={handleSave} disabled={isWorking}>
