@@ -76,6 +76,15 @@ class ApiClient {
     this.sessionExpiredHandler = handler
   }
 
+  // プロキシなどが JSON 以外の本文で応答した場合も、HTTP ステータスは保ったまま扱う。
+  private async parseErrorResponse(response: Response): Promise<ErrorResponse> {
+    try {
+      return (await response.json()) as ErrorResponse
+    } catch {
+      return { code: "INTERNAL", message: `HTTP ${response.status}` }
+    }
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
 
@@ -97,7 +106,7 @@ class ApiClient {
       const response = await fetch(url, config)
 
       if (!response.ok) {
-        const errorData = (await response.json()) as ErrorResponse
+        const errorData = await this.parseErrorResponse(response)
         // ログインの失敗は INVALID_CREDENTIALS なので、セッション失効とは区別できる
         if (errorData.code === "INVALID_SESSION") {
           this.sessionExpiredHandler?.()
