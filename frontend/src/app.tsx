@@ -7,6 +7,7 @@ import { useRequireAuth } from "@/hooks/use-auth"
 import RouteErrorPage from "@/pages/route-error-page"
 
 // ページは表示するときに読み込む。初回に読み込む JavaScript を減らし、ログイン画面を速く表示する。
+const WelcomePage = lazy(() => import("@/pages/welcome-page"))
 const LoginPage = lazy(() => import("@/pages/login-page"))
 const SignupPage = lazy(() => import("@/pages/signup-page"))
 const VerifyEmailPage = lazy(() => import("@/pages/verify-email-page"))
@@ -25,7 +26,10 @@ function RootLayout() {
   )
 }
 
-/** ログインが必要な画面。未ログインならログイン画面へ送り、ログイン後に元の画面へ戻す。 */
+/**
+ * ログインが必要な画面。未ログインならログイン画面へ送り、ログイン後に元の画面へ戻す。
+ * トップを開いた未ログインの人には、ログイン画面ではなくサービスの紹介を見せる。
+ */
 function RequireAuth() {
   const { isLoading, shouldRedirect } = useRequireAuth()
   const location = useLocation()
@@ -35,6 +39,9 @@ function RequireAuth() {
   }
 
   if (shouldRedirect) {
+    if (location.pathname === "/") {
+      return <Navigate to="/welcome" replace />
+    }
     return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />
   }
 
@@ -52,6 +59,7 @@ const router = createBrowserRouter([
     element: <RootLayout />,
     errorElement: <RouteErrorPage />,
     children: [
+      { path: "/welcome", element: <WelcomePage /> },
       { path: "/login", element: <LoginPage /> },
       { path: "/signup", element: <SignupPage /> },
       { path: "/verify-email", element: <VerifyEmailPage /> },

@@ -1,9 +1,10 @@
-import { useState } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ticketQueries } from "@/queries/tickets"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -11,10 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { History, Mail } from "lucide-react"
+import { History, Mail, Send } from "lucide-react"
 import { formatDistanceToNow, format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { useTicketHistories } from "@/hooks/use-ticket-histories"
+import { cn } from "@/lib/utils"
 import {
   fallbackStatusColor,
   hexToRgba,
@@ -44,6 +46,25 @@ type ResponseDetailProps = {
   onAssignChange: (id: string, userId: string | null) => void
   onPriorityChange: (id: string, priority: TicketPriority) => void
   onSendNotification?: (responseId: string, notificationType: NotificationType) => Promise<boolean>
+  /** 回答者とのやりとり。渡すと対応履歴と時系列に混ぜて表示し、送信欄を出す。 */
+  chat?: ResponseChat
+  /** 元の回答の下に表示する、チーム内のメモ欄。 */
+  memo?: ReactNode
+}
+
+export type ResponseChatMessage = {
+  id: string
+  from: "staff" | "respondent"
+  authorName: string
+  text: string
+  sentAt: string
+}
+
+export type ResponseChat = {
+  messages: ResponseChatMessage[]
+  onSend: (text: string) => void
+  /** 送信欄の下に添える補足。 */
+  footnote?: ReactNode
 }
 
 export function ResponseDetail({
@@ -56,6 +77,8 @@ export function ResponseDetail({
   onAssignChange,
   onPriorityChange,
   onSendNotification,
+  chat,
+  memo,
 }: ResponseDetailProps) {
   // 回答本文と通知履歴は一覧に含まれないため、開いた時点で取得する。
   // 変更や SSE による更新もこのキャッシュに反映されるため、表示は常に最新になる。
@@ -282,51 +305,157 @@ export function ResponseDetail({
                 )}
               </div>
             </div>
+            {memo && <div className="flex h-1/3 flex-col border-t p-4">{memo}</div>}
           </div>
 
-          <div className="flex w-1/2 flex-col overflow-y-auto p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Badge variant="outline">対応履歴</Badge>
-            </div>
-            {isHistoriesLoading ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">読み込み中...</p>
-            ) : historiesError ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                変更履歴を読み込めませんでした
-              </p>
-            ) : histories.length === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center text-center">
-                <History className="mb-3 h-12 w-12 text-muted-foreground" />
-                <p className="text-muted-foreground">まだ変更履歴がありません</p>
-                <p className="text-sm text-muted-foreground">
-                  ステータス・担当者・優先度を変更すると、ここに記録されます
-                </p>
+          {chat ? (
+            <ChatTimeline chat={chat} histories={histories} describe={formatHistoryChange} />
+          ) : (
+            <div className="flex w-1/2 flex-col overflow-y-auto p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Badge variant="outline">対応履歴</Badge>
               </div>
-            ) : (
-              <ol className="space-y-3">
-                {histories.map((history) => (
-                  <li
-                    key={history.id}
-                    className="rounded-lg border border-muted bg-muted/30 px-4 py-2"
-                  >
-                    <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-medium">{history.changed_by_name}</span>
-                      <span>
-                        {formatDistanceToNow(new Date(history.created_at), {
-                          addSuffix: true,
-                          locale: ja,
-                        })}
-                      </span>
-                      <span>({format(new Date(history.created_at), "yyyy/MM/dd HH:mm")})</span>
-                    </div>
-                    <p className="text-sm">{formatHistoryChange(history)}</p>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
+              {isHistoriesLoading ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">読み込み中...</p>
+              ) : historiesError ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  変更履歴を読み込めませんでした
+                </p>
+              ) : histories.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center text-center">
+                  <History className="mb-3 h-12 w-12 text-muted-foreground" />
+                  <p className="text-muted-foreground">まだ変更履歴がありません</p>
+                  <p className="text-sm text-muted-foreground">
+                    ステータス・担当者・優先度を変更すると、ここに記録されます
+                  </p>
+                </div>
+              ) : (
+                <ol className="space-y-3">
+                  {histories.map((history) => (
+                    <li
+                      key={history.id}
+                      className="rounded-lg border border-muted bg-muted/30 px-4 py-2"
+                    >
+                      <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-medium">{history.changed_by_name}</span>
+                        <span>
+                          {formatDistanceToNow(new Date(history.created_at), {
+                            addSuffix: true,
+                            locale: ja,
+                          })}
+                        </span>
+                        <span>({format(new Date(history.created_at), "yyyy/MM/dd HH:mm")})</span>
+                      </div>
+                      <p className="text-sm">{formatHistoryChange(history)}</p>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+type ChatTimelineProps = {
+  chat: ResponseChat
+  histories: TicketHistory[]
+  describe: (history: TicketHistory) => string
+}
+
+type TimelineItem =
+  | { kind: "message"; at: number; message: ResponseChatMessage }
+  | { kind: "history"; at: number; history: TicketHistory }
+
+/** 回答者とのやりとりと対応履歴を、古い順に一続きで表示する。 */
+function ChatTimeline({ chat, histories, describe }: ChatTimelineProps) {
+  const [draft, setDraft] = useState("")
+  const endRef = useRef<HTMLDivElement>(null)
+  const items = useMemo(
+    () =>
+      [
+        ...chat.messages.map((message): TimelineItem => ({
+          kind: "message",
+          at: new Date(message.sentAt).getTime(),
+          message,
+        })),
+        ...histories.map((history): TimelineItem => ({
+          kind: "history",
+          at: new Date(history.created_at).getTime(),
+          history,
+        })),
+      ].sort((a, b) => a.at - b.at),
+    [chat.messages, histories],
+  )
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" })
+  }, [items.length])
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    const text = draft.trim()
+    if (!text) return
+    chat.onSend(text)
+    setDraft("")
+  }
+
+  return (
+    <div className="flex w-1/2 flex-col">
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {items.map((item) =>
+          item.kind === "message" ? (
+            <div
+              key={`message-${item.message.id}`}
+              className={cn(
+                "flex flex-col gap-1",
+                item.message.from === "staff" ? "items-end" : "items-start",
+              )}
+            >
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-medium">{item.message.authorName}</span>
+                <span>{formatDistanceToNow(item.at, { addSuffix: true, locale: ja })}</span>
+              </div>
+              <p
+                className={cn(
+                  "max-w-[80%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap",
+                  item.message.from === "staff" ? "bg-primary text-primary-foreground" : "bg-muted",
+                )}
+              >
+                {item.message.text}
+              </p>
+            </div>
+          ) : (
+            <div key={`history-${item.history.id}`} className="flex justify-center">
+              <p className="rounded-full bg-muted/60 px-3 py-1 text-xs text-muted-foreground">
+                {item.history.changed_by_name}が{describe(item.history)}
+                <span className="ml-2">
+                  {formatDistanceToNow(item.at, { addSuffix: true, locale: ja })}
+                </span>
+              </p>
+            </div>
+          ),
+        )}
+        <div ref={endRef} />
+      </div>
+      <form onSubmit={handleSubmit} className="border-t p-4">
+        <div className="flex gap-2">
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="メッセージを入力..."
+            aria-label="メッセージ"
+            className="flex-1"
+          />
+          <Button type="submit" disabled={!draft.trim()} className="gap-2">
+            <Send className="h-4 w-4" />
+            送信
+          </Button>
+        </div>
+        {chat.footnote && <div className="mt-2 text-xs text-muted-foreground">{chat.footnote}</div>}
+      </form>
+    </div>
   )
 }

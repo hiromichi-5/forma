@@ -88,7 +88,7 @@ export default function SignupPage() {
         <CardContent className="p-6">
           <div className="space-y-6">
             <div className="text-center">
-              <CardTitle className="text-2xl font-bold">Forma</CardTitle>
+              <CardTitle className="text-2xl font-bold">forma</CardTitle>
               <p className="mt-2 text-sm text-muted-foreground">
                 新しいアカウントを作成して
                 <br />
