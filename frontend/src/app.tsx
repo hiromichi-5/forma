@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react"
-import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router"
+import { createBrowserRouter, Navigate, Outlet, useLocation, useParams } from "react-router"
 import { RouterProvider } from "react-router/dom"
 import { AppLayout } from "@/components/app-layout"
 import { PageLoading } from "@/components/page-loading"
@@ -41,6 +41,12 @@ function RequireAuth() {
   return <Outlet />
 }
 
+// 別のフォームへ移ったときに、絞り込みや表示形式などを前のフォームから持ち越さない。
+function FormManagementRoute() {
+  const { id } = useParams()
+  return <FormManagementPage key={id} />
+}
+
 const router = createBrowserRouter([
   {
     element: <RootLayout />,
@@ -59,7 +65,7 @@ const router = createBrowserRouter([
             element: <AppLayout />,
             children: [
               { path: "/", element: <FormsListPage /> },
-              { path: "/forms/:id", element: <FormManagementPage /> },
+              { path: "/forms/:id", element: <FormManagementRoute /> },
               { path: "/settings", element: <SettingsPage /> },
             ],
           },
