@@ -180,19 +180,21 @@ export function useFormResponses(
     }
   }, [])
 
-  const refetch = useCallback(() => {
+  const refetch = useCallback(async () => {
     generationRef.current += 1
     inFlightRef.current = new Set()
     setList(EMPTY_LIST)
     setCounts({})
     setDetails({})
     const { segments, withCounts } = contextRef.current
-    segments.forEach((segment) => void loadPage(segment, null))
-    if (withCounts) void loadCounts()
+    await Promise.all([
+      ...segments.map((segment) => loadPage(segment, null)),
+      withCounts ? loadCounts() : undefined,
+    ])
   }, [loadPage, loadCounts])
 
   useEffect(() => {
-    refetch()
+    void refetch()
   }, [formId, segmentsKey, query, withCounts, refetch])
 
   const loadMore = useCallback(

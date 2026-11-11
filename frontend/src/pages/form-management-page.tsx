@@ -130,7 +130,7 @@ export default function FormManagementPage() {
     try {
       await apiClient.updateForm(formId, { title_question_id: questionId })
       setForm((prev) => (prev ? { ...prev, title_question_id: questionId } : null))
-      refetch()
+      await refetch()
     } catch (error) {
       console.error("Failed to update title question:", error)
       toast.error(
@@ -154,7 +154,7 @@ export default function FormManagementPage() {
     setIsSyncing(true)
     try {
       const result = await apiClient.syncForm(formId)
-      refetch()
+      await refetch()
       toast.success(
         result.new_tickets > 0
           ? `${result.new_tickets}件の新しい回答を同期しました`
