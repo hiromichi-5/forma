@@ -81,7 +81,7 @@ export default function LoginPage() {
                   <img src="/favicon.svg" alt="Logo" className="h-20 w-20" />
                 </div>
               </div>
-              <CardTitle className="text-2xl font-bold">Forma</CardTitle>
+              <CardTitle className="text-2xl font-bold">forma</CardTitle>
               <p className="mt-2 text-sm text-muted-foreground">
                 チームでGoogleフォームを取り込んで、
                 <br />

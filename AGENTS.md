@@ -1,4 +1,4 @@
-# Forma Backend API
+# forma Backend API
 
 Google Forms の回答を管理する Web アプリケーションです。
 

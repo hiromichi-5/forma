@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: Forma API
-  description: API documentation for the Forma API
+  title: forma API
+  description: API documentation for the forma API
   version: 0.1.0
 servers:
   - url: http://localhost:8080
