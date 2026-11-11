@@ -1,5 +1,6 @@
 import type React from "react"
 import { useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,17 +14,23 @@ import {
 import { Plus } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { queryKeys } from "@/queries/keys"
 
 type RegisterFormDialogProps = {
-  onRegistered: () => Promise<void>
   trigger?: React.ReactNode
 }
 
-export function RegisterFormDialog({ onRegistered, trigger }: RegisterFormDialogProps) {
+export function RegisterFormDialog({ trigger }: RegisterFormDialogProps) {
+  const queryClient = useQueryClient()
   const [formUrl, setFormUrl] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [isOpen, setIsOpen] = useState(false)
+  const registerForm = useMutation({
+    mutationFn: (url: string) => apiClient.registerForm({ url }),
+    // サイドバーと一覧ページは同じキャッシュを読むため、ここで無効化すれば両方が更新される。
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.forms(), exact: true }),
+  })
+  const isLoading = registerForm.isPending
 
   const handleClose = () => {
     if (isLoading) return
@@ -34,13 +41,12 @@ export function RegisterFormDialog({ onRegistered, trigger }: RegisterFormDialog
 
   const handleRegister = async () => {
     if (!formUrl.trim()) return
-    setIsLoading(true)
     setErrorMessage("")
 
     try {
-      await apiClient.registerForm({ url: formUrl.trim() })
-      await onRegistered()
-      handleClose()
+      await registerForm.mutateAsync(formUrl.trim())
+      setFormUrl("")
+      setIsOpen(false)
     } catch (error) {
       setErrorMessage(
         getApiErrorMessage(
@@ -55,8 +61,6 @@ export function RegisterFormDialog({ onRegistered, trigger }: RegisterFormDialog
           "フォーム連携に失敗しました",
         ),
       )
-    } finally {
-      setIsLoading(false)
     }
   }
 

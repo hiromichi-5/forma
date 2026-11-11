@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import type {
   NotificationResult,
@@ -13,6 +14,7 @@ import { apiClient } from "@/lib/api"
 import { toastApiError } from "@/lib/api-error"
 import { useTicketStream } from "@/hooks/use-ticket-stream"
 import { useNotificationSettings } from "@/hooks/use-notification-settings"
+import { queryKeys } from "@/queries/keys"
 
 /** confirm モードで、変更の実行前に操作者へ通知の可否を確認する対象。 */
 export type PendingNotification = {
@@ -105,6 +107,7 @@ export function useFormResponses(
   const [details, setDetails] = useState<Record<string, TicketDetail>>({})
   const [pendingNotification, setPendingNotification] = useState<PendingNotification | null>(null)
   const { modeOf } = useNotificationSettings(formId)
+  const queryClient = useQueryClient()
 
   const segmentsKey = segments.map((s) => `${s.key}:${s.statusIds.join(",")}`).join("|")
   const contextRef = useRef({ formId, segments, query, withCounts })
@@ -249,8 +252,10 @@ export function useFormResponses(
     (detail: TicketDetail) => {
       applyTicket(detail)
       setDetails((prev) => ({ ...prev, [detail.id]: detail }))
+      // 更新のたびに変更履歴が増えるため、詳細画面の履歴も取り直す。
+      void queryClient.invalidateQueries({ queryKey: queryKeys.ticketHistories(detail.id) })
     },
-    [applyTicket],
+    [applyTicket, queryClient],
   )
 
   useTicketStream(formId, cacheDetail)

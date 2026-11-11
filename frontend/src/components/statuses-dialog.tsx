@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +19,9 @@ import { ArrowDown, ArrowUp, Check, Flag, Pencil, Plus, Trash2, X } from "lucide
 import type { FormStatus } from "@/types"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { sortStatuses } from "@/lib/ticket-display"
+import { formQueries } from "@/queries/forms"
+import { queryKeys } from "@/queries/keys"
 
 const colorSwitchTooltip = "ONにするとステータスに色を設定できます"
 const defaultStatusDescription = "新しい回答はこのステータスになります"
@@ -27,9 +31,9 @@ type StatusesDialogProps = {
   formId: string
   open: boolean
   onOpenChange: (open: boolean) => void
-  statuses: FormStatus[]
-  onStatusesChange: (statuses: FormStatus[]) => void
 }
+
+const EMPTY_STATUSES: FormStatus[] = []
 
 type ColorInputState = {
   enabled: boolean
@@ -119,13 +123,13 @@ const defaultStatusErrorMessages = {
   STATUS_CONFLICT: "ステータス名または表示順が重複しています",
 } as const
 
-export function StatusesDialog({
-  formId,
-  open,
-  onOpenChange,
-  statuses,
-  onStatusesChange,
-}: StatusesDialogProps) {
+export function StatusesDialog({ formId, open, onOpenChange }: StatusesDialogProps) {
+  const queryClient = useQueryClient()
+  const { data: statuses = EMPTY_STATUSES } = useQuery(formQueries.statuses(formId))
+  // 変更後の値は API の応答で確定しているため、取り直さずにキャッシュへ直接書き込む。
+  // 一覧やカンバンも同じキャッシュを読むので、ダイアログを閉じる前から反映される。
+  const onStatusesChange = (next: FormStatus[]) =>
+    queryClient.setQueryData(queryKeys.formStatuses(formId), { statuses: next })
   const [newName, setNewName] = useState("")
   const [newColor, setNewColor] = useState<ColorInputState>({
     enabled: false,
@@ -143,10 +147,7 @@ export function StatusesDialog({
   const [isWorking, setIsWorking] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
 
-  const sortedStatuses = useMemo(
-    () => [...statuses].sort((a, b) => a.display_order - b.display_order),
-    [statuses],
-  )
+  const sortedStatuses = useMemo(() => sortStatuses(statuses), [statuses])
 
   const resetNewFields = () => {
     setNewName("")
