@@ -90,16 +90,6 @@ export default function FormManagementPage() {
     [members, user?.id],
   )
 
-  const memberUsers = useMemo(
-    () =>
-      members.map((member) => ({
-        id: member.id,
-        name: member.display_name,
-        email: member.email,
-      })),
-    [members],
-  )
-
   const listPage = pages[LIST_SEGMENT_KEY]
 
   // 更新後の値をダイアログに反映するため、開いた時点のスナップショットではなく最新の一覧から引く。
@@ -271,7 +261,7 @@ export default function FormManagementPage() {
             <ResponseTableView
               responses={listPage?.tickets ?? []}
               details={details}
-              users={memberUsers}
+              members={members}
               statuses={formStatuses}
               onExpandRow={loadDetail}
               onStatusChange={updateResponseStatus}
@@ -292,7 +282,7 @@ export default function FormManagementPage() {
             pages={pages}
             counts={counts}
             onLoadMore={loadMore}
-            users={memberUsers}
+            members={members}
             statuses={formStatuses}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
@@ -308,9 +298,7 @@ export default function FormManagementPage() {
           detail={details[selectedResponse.id]}
           open={isDetailOpen}
           onOpenChange={setIsDetailOpen}
-          currentUserId="1"
-          currentUserName="田中 太郎"
-          users={memberUsers}
+          members={members}
           statuses={formStatuses}
           onStatusChange={updateResponseStatus}
           onAssignChange={assignResponse}
