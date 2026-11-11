@@ -79,7 +79,11 @@ export function ResponseDetail({
 
   const formatLastSentAt = (sentAt: string | null): string =>
     sentAt ? `最終送信: ${format(new Date(sentAt), "MM/dd HH:mm")}` : "未送信"
-  const { histories } = useTicketHistories(response.id)
+  const {
+    histories,
+    isLoading: isHistoriesLoading,
+    error: historiesError,
+  } = useTicketHistories(response.id)
   // 新しい変更ほど上に表示する。
   const sortedHistories = [...histories].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -295,7 +299,13 @@ export function ResponseDetail({
             <div className="mb-3 flex items-center gap-2">
               <Badge variant="outline">対応履歴</Badge>
             </div>
-            {sortedHistories.length === 0 ? (
+            {isHistoriesLoading ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">読み込み中...</p>
+            ) : historiesError ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                変更履歴を読み込めませんでした
+              </p>
+            ) : sortedHistories.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center text-center">
                 <History className="mb-3 h-12 w-12 text-muted-foreground" />
                 <p className="text-muted-foreground">まだ変更履歴がありません</p>
