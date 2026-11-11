@@ -410,11 +410,12 @@ export function StatusesDialog({
                         <div className="flex items-center gap-2 p-2">
                           <button
                             type="button"
-                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left select-none"
+                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left select-none disabled:cursor-default"
+                            disabled={isWorking}
                             onClick={() => startEdit(status)}
                           >
-                            <div
-                              className="h-3 w-3 flex-shrink-0 rounded-full"
+                            <span
+                              className="inline-block h-3 w-3 flex-shrink-0 rounded-full"
                               style={{
                                 backgroundColor: status.color ?? "#9CA3AF",
                               }}
