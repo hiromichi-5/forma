@@ -1,32 +1,14 @@
-import { useState, useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
 import type { TicketHistory } from "@/types"
-import { apiClient } from "@/lib/api"
+import { ticketQueries } from "@/queries/tickets"
+
+const EMPTY_HISTORIES: TicketHistory[] = []
 
 export function useTicketHistories(ticketId: string) {
-  const [histories, setHistories] = useState<TicketHistory[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  useEffect(() => {
-    const fetchHistories = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-        const response = await apiClient.getTicketHistories(ticketId)
-        setHistories(response.histories)
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error("チケットヒストリーの取得に失敗しました"))
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    void fetchHistories()
-  }, [ticketId])
-
-  return {
-    histories,
-    isLoading,
+  const {
+    data: histories = EMPTY_HISTORIES,
+    isPending,
     error,
-  }
+  } = useQuery(ticketQueries.histories(ticketId))
+  return { histories, isLoading: isPending, error }
 }

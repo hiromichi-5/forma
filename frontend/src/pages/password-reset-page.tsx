@@ -1,26 +1,33 @@
 import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import type { z } from "zod"
 import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { TextField } from "@/components/text-field"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { passwordResetRequestSchema } from "@/lib/form-schemas"
 import { Loader2, MailCheck } from "lucide-react"
 
 export default function PasswordResetPage() {
-  const [email, setEmail] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting: isLoading },
+  } = useForm<z.infer<typeof passwordResetRequestSchema>>({
+    resolver: zodResolver(passwordResetRequestSchema),
+    defaultValues: { email: "" },
+  })
   const [error, setError] = useState("")
   const [isSent, setIsSent] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (values: z.infer<typeof passwordResetRequestSchema>) => {
     setError("")
-    setIsLoading(true)
 
     try {
-      await apiClient.passwordReset({ email })
+      await apiClient.passwordReset(values)
       setIsSent(true)
     } catch (err) {
       setError(
@@ -28,13 +35,10 @@ export default function PasswordResetPage() {
           err,
           {
             VALIDATION_ERROR: "有効なメールアドレスを入力してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "リセットメールの送信に失敗しました",
         ),
       )
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -83,18 +87,16 @@ export default function PasswordResetPage() {
               </p>
             </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <Label htmlFor="email">メールアドレス</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
+            <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+              <TextField
+                id="email"
+                label="メールアドレス"
+                type="email"
+                autoComplete="email"
+                disabled={isLoading}
+                error={errors.email}
+                {...register("email")}
+              />
 
               {error && (
                 <div
@@ -105,7 +107,7 @@ export default function PasswordResetPage() {
                 </div>
               )}
 
-              <Button type="submit" className="w-full" disabled={isLoading || !email}>
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint . --max-warnings 5",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "gen:types": "openapi-typescript ../openapi/openapi.yaml -o src/types/api.ts --root-types --root-types-no-schema-prefix",
@@ -27,10 +29,12 @@
     "@radix-ui/react-slot": "1.3.3",
     "@radix-ui/react-switch": "1.3.7",
     "@radix-ui/react-tooltip": "1.2.16",
+    "@tanstack/react-query": "^5.105.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "4.4.0",
     "lucide-react": "^1.27.0",
+    "openapi-fetch": "^0.17.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.83.0",
@@ -42,6 +46,10 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.3.3",
+    "@tanstack/eslint-plugin-query": "^5.105.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/node": "^26.1.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
@@ -52,6 +60,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.8.0",
+    "jsdom": "^30.1.3",
     "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.25",
     "prettier": "^3.9.10",
@@ -60,6 +69,7 @@
     "tw-animate-css": "1.4.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.65.0",
-    "vite": "^8.1.5"
+    "vite": "^8.1.5",
+    "vitest": "^5.0.5"
   }
 }

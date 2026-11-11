@@ -1,4 +1,6 @@
 import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { ticketQueries } from "@/queries/tickets"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
@@ -26,16 +28,14 @@ import type {
   FormStatus,
   Member,
   NotificationType,
-  TicketDetail,
   TicketHistory,
   TicketPriority,
   TicketSummary,
 } from "@/types"
 
 type ResponseDetailProps = {
+  /** 開いた時点の一覧の値。詳細の取得が終わるまでの表示に使う。 */
   response: TicketSummary
-  /** 回答本文と通知履歴。一覧には含まれないため、読み込みが終わるまで undefined。 */
-  detail: TicketDetail | undefined
   open: boolean
   onOpenChange: (open: boolean) => void
   members: Member[]
@@ -47,8 +47,7 @@ type ResponseDetailProps = {
 }
 
 export function ResponseDetail({
-  response,
-  detail,
+  response: initialResponse,
   open,
   onOpenChange,
   members,
@@ -58,6 +57,10 @@ export function ResponseDetail({
   onPriorityChange,
   onSendNotification,
 }: ResponseDetailProps) {
+  // 回答本文と通知履歴は一覧に含まれないため、開いた時点で取得する。
+  // 変更や SSE による更新もこのキャッシュに反映されるため、表示は常に最新になる。
+  const { data: detail } = useQuery(ticketQueries.detail(initialResponse.id))
+  const response = detail ?? initialResponse
   const sortedStatuses = sortStatuses(statuses)
   const email = respondentEmailLabel(response.respondent_email)
   const status = statusById(statuses).get(response.status.id) ?? response.status

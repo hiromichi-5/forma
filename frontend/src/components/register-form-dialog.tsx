@@ -1,8 +1,11 @@
 import type React from "react"
 import { useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import type { z } from "zod"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { TextField } from "@/components/text-field"
 import {
   Dialog,
   DialogContent,
@@ -13,34 +16,47 @@ import {
 import { Plus } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { queryKeys } from "@/queries/keys"
+import { registerFormSchema } from "@/lib/form-schemas"
 
 type RegisterFormDialogProps = {
-  onRegistered: () => Promise<void>
   trigger?: React.ReactNode
 }
 
-export function RegisterFormDialog({ onRegistered, trigger }: RegisterFormDialogProps) {
-  const [formUrl, setFormUrl] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+export function RegisterFormDialog({ trigger }: RegisterFormDialogProps) {
+  const queryClient = useQueryClient()
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<z.infer<typeof registerFormSchema>>({
+    resolver: zodResolver(registerFormSchema),
+    defaultValues: { url: "" },
+  })
   const [errorMessage, setErrorMessage] = useState("")
   const [isOpen, setIsOpen] = useState(false)
+  const registerForm = useMutation({
+    mutationFn: (url: string) => apiClient.registerForm({ url }),
+    // サイドバーと一覧ページは同じキャッシュを読むため、ここで無効化すれば両方が更新される。
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.forms(), exact: true }),
+  })
+  const isLoading = registerForm.isPending
 
   const handleClose = () => {
     if (isLoading) return
-    setFormUrl("")
+    reset()
     setErrorMessage("")
     setIsOpen(false)
   }
 
-  const handleRegister = async () => {
-    if (!formUrl.trim()) return
-    setIsLoading(true)
+  const onSubmit = async ({ url }: z.infer<typeof registerFormSchema>) => {
     setErrorMessage("")
 
     try {
-      await apiClient.registerForm({ url: formUrl.trim() })
-      await onRegistered()
-      handleClose()
+      await registerForm.mutateAsync(url)
+      reset()
+      setIsOpen(false)
     } catch (error) {
       setErrorMessage(
         getApiErrorMessage(
@@ -51,14 +67,10 @@ export function RegisterFormDialog({ onRegistered, trigger }: RegisterFormDialog
             FORM_NOT_SHARED:
               "フォームがサービスアカウントに共有されていません。共有設定を確認してください",
             FORM_ALREADY_REGISTERED: "このフォームは既に登録されています",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "フォーム連携に失敗しました",
         ),
       )
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -76,15 +88,15 @@ export function RegisterFormDialog({ onRegistered, trigger }: RegisterFormDialog
         <DialogHeader>
           <DialogTitle>フォーム連携</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <form className="space-y-4 py-2" noValidate onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-2">
-            <Label htmlFor="formUrl">フォームURL</Label>
-            <Input
+            <TextField
               id="formUrl"
+              label="フォームURL"
               placeholder="https://docs.google.com/forms/d/..."
-              value={formUrl}
-              onChange={(e) => setFormUrl(e.target.value)}
               disabled={isLoading}
+              error={errors.url}
+              {...register("url")}
             />
             <div className="space-y-1.5 text-xs text-muted-foreground">
               <p>連携する前に、以下の操作が必要です</p>
@@ -106,14 +118,10 @@ export function RegisterFormDialog({ onRegistered, trigger }: RegisterFormDialog
               {errorMessage}
             </div>
           )}
-          <Button
-            onClick={handleRegister}
-            disabled={!formUrl.trim() || isLoading}
-            className="w-full"
-          >
+          <Button type="submit" disabled={isLoading} className="w-full">
             {isLoading ? "連携中..." : "連携する"}
           </Button>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   )

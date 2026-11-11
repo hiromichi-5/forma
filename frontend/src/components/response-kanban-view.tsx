@@ -18,7 +18,6 @@ import {
   hexToRgba,
   priorityConfig,
   respondentEmailLabel,
-  sortStatuses,
   toPriorityValue,
 } from "@/lib/ticket-display"
 import {
@@ -33,15 +32,17 @@ import {
 } from "@dnd-kit/core"
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core"
 import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { InfiniteScrollTrigger } from "@/components/infinite-scroll-trigger"
-import type { SegmentPage } from "@/hooks/use-form-responses"
+import { useTicketList } from "@/hooks/use-ticket-list"
+import { ticketQueries } from "@/queries/tickets"
 
 type ResponseKanbanViewProps = {
-  pages: Record<string, SegmentPage>
-  counts: Record<string, number>
-  onLoadMore: (statusId: string) => void
+  formId: string
+  query: string
+  /** 表示する列。ステータスの絞り込みを適用済みのもの。 */
+  columns: FormStatus[]
   members: Member[]
-  statuses: FormStatus[]
   onStatusChange: (id: string, statusId: string) => void
   onAssignChange: (id: string, userId: string | null) => void
   onPriorityChange: (id: string, priority: TicketPriority) => void
@@ -234,20 +235,17 @@ function DroppableColumn({
 }
 
 export function ResponseKanbanView({
-  pages,
-  counts,
-  onLoadMore,
+  formId,
+  query,
+  columns,
   members,
-  statuses,
   onStatusChange,
   onAssignChange,
   onPriorityChange,
   onOpenDetail,
 }: ResponseKanbanViewProps) {
-  const [activeId, setActiveId] = useState<string | null>(null)
-
-  const sortedStatuses = sortStatuses(statuses)
-  const responses = Object.values(pages).flatMap((page) => page.tickets)
+  const [activeResponse, setActiveResponse] = useState<TicketSummary | null>(null)
+  const { data: counts } = useQuery(ticketQueries.counts(formId, query))
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -257,30 +255,22 @@ export function ResponseKanbanView({
     }),
   )
 
+  // ドラッグ中のカードは列ごとに別々の一覧にあるため、ドラッグ元のカードが持つデータを使う。
+  const draggedResponse = (event: DragStartEvent | DragEndEvent) =>
+    (event.active.data.current as { response?: TicketSummary } | undefined)?.response ?? null
+
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string)
+    setActiveResponse(draggedResponse(event))
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-
-    if (!over) {
-      setActiveId(null)
-      return
+    const response = draggedResponse(event)
+    const newStatusId = event.over?.id
+    if (response && typeof newStatusId === "string" && response.status.id !== newStatusId) {
+      onStatusChange(response.id, newStatusId)
     }
-
-    const responseId = active.id as string
-    const newStatusId = over.id as string
-
-    const response = responses.find((r) => r.id === responseId)
-    if (response && response.status.id !== newStatusId) {
-      onStatusChange(responseId, newStatusId)
-    }
-
-    setActiveId(null)
+    setActiveResponse(null)
   }
-
-  const activeResponse = activeId ? responses.find((r) => r.id === activeId) : null
 
   return (
     <DndContext
@@ -290,36 +280,19 @@ export function ResponseKanbanView({
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {sortedStatuses.map((status) => {
-          const page = pages[status.id]
-          return (
-            <DroppableColumn
-              key={status.id}
-              statusId={status.id}
-              statusName={status.name}
-              statusColor={status.color}
-              count={page ? (counts[status.id] ?? 0) : 0}
-            >
-              {page?.tickets.map((response) => (
-                <DraggableCard
-                  key={response.id}
-                  response={response}
-                  members={members}
-                  onAssignChange={onAssignChange}
-                  onPriorityChange={onPriorityChange}
-                  onOpenDetail={onOpenDetail}
-                />
-              ))}
-              {page && (
-                <InfiniteScrollTrigger
-                  hasMore={page.hasMore}
-                  loading={page.loading}
-                  onLoadMore={() => onLoadMore(status.id)}
-                />
-              )}
-            </DroppableColumn>
-          )
-        })}
+        {columns.map((status) => (
+          <KanbanColumn
+            key={status.id}
+            formId={formId}
+            query={query}
+            status={status}
+            count={counts?.[status.id] ?? 0}
+            members={members}
+            onAssignChange={onAssignChange}
+            onPriorityChange={onPriorityChange}
+            onOpenDetail={onOpenDetail}
+          />
+        ))}
       </div>
 
       <DragOverlay>
@@ -349,5 +322,44 @@ export function ResponseKanbanView({
         ) : null}
       </DragOverlay>
     </DndContext>
+  )
+}
+
+type KanbanColumnProps = {
+  formId: string
+  query: string
+  status: FormStatus
+  count: number
+  members: Member[]
+  onAssignChange: (id: string, userId: string | null) => void
+  onPriorityChange: (id: string, priority: TicketPriority) => void
+  onOpenDetail: (response: TicketSummary) => void
+}
+
+/** 1 つのステータスの列。列ごとに独立して無限スクロールする。 */
+function KanbanColumn({ formId, query, status, count, ...cardProps }: KanbanColumnProps) {
+  const { tickets, hasMore, loading, failed, loadMore, retry } = useTicketList(formId, {
+    statusIds: [status.id],
+    query,
+  })
+
+  return (
+    <DroppableColumn
+      statusId={status.id}
+      statusName={status.name}
+      statusColor={status.color}
+      count={count}
+    >
+      {tickets.map((response) => (
+        <DraggableCard key={response.id} response={response} {...cardProps} />
+      ))}
+      <InfiniteScrollTrigger
+        hasMore={hasMore}
+        loading={loading}
+        failed={failed}
+        onLoadMore={loadMore}
+        onRetry={retry}
+      />
+    </DroppableColumn>
   )
 }

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,10 @@ import { renderNotificationEmailPreview } from "@/lib/notification-email-preview
 import type { NotificationEmailSample } from "@/lib/notification-email-preview"
 import { isEmailCollectionDisabled } from "@/hooks/use-notification-settings"
 import type { NotificationMode, NotificationSetting, NotificationType } from "@/types"
+import { formQueries } from "@/queries/forms"
+import { queryKeys } from "@/queries/keys"
+
+const EMPTY_SETTINGS: NotificationSetting[] = []
 
 type NotificationsDialogProps = {
   formId: string
@@ -25,7 +30,6 @@ type NotificationsDialogProps = {
   onOpenChange: (open: boolean) => void
   canEdit: boolean
   emailSample: NotificationEmailSample
-  onSettingsChange?: (settings: NotificationSetting[]) => void
 }
 
 const TYPE_LABELS: Record<NotificationType, string> = {
@@ -57,10 +61,7 @@ const MODE_OPTIONS: { value: NotificationMode; label: string; description: strin
 ]
 
 const errorMessages = {
-  FORBIDDEN: "この操作を行う権限がありません",
   RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-  INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-  NETWORK_ERROR: "ネットワークエラーが発生しました",
 } as const
 
 export function NotificationsDialog({
@@ -69,66 +70,60 @@ export function NotificationsDialog({
   onOpenChange,
   canEdit,
   emailSample,
-  onSettingsChange,
 }: NotificationsDialogProps) {
-  const [settings, setSettings] = useState<NotificationSetting[]>([])
-  const [emailCollectionType, setEmailCollectionType] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const {
+    data,
+    isPending: isLoading,
+    error: loadError,
+  } = useQuery({
+    ...formQueries.notificationSettings(formId),
+    enabled: open,
+  })
+  // 保存するまでの編集中の値。未編集なら取得した値をそのまま表示する。
+  const [draft, setDraft] = useState<NotificationSetting[] | null>(null)
+  const settings = draft ?? data?.settings ?? EMPTY_SETTINGS
+  const emailCollectionType = data?.email_collection_type ?? null
   const [isWorking, setIsWorking] = useState(false)
-  const [errorMessage, setErrorMessage] = useState("")
+  const [saveError, setSaveError] = useState("")
+  const errorMessage =
+    saveError ||
+    (loadError ? getApiErrorMessage(loadError, errorMessages, "通知設定の取得に失敗しました") : "")
 
-  useEffect(() => {
-    if (!open) return
-
-    let cancelled = false
-    const load = async () => {
-      setIsLoading(true)
-      setErrorMessage("")
-      try {
-        const res = await apiClient.getNotificationSettings(formId)
-        if (cancelled) return
-        setSettings(res.settings)
-        setEmailCollectionType(res.email_collection_type ?? null)
-      } catch (error) {
-        if (cancelled) return
-        setErrorMessage(getApiErrorMessage(error, errorMessages, "通知設定の取得に失敗しました"))
-      } finally {
-        if (!cancelled) setIsLoading(false)
-      }
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setDraft(null)
+      setSaveError("")
     }
-    void load()
-
-    return () => {
-      cancelled = true
-    }
-  }, [formId, open])
+    onOpenChange(nextOpen)
+  }
 
   const updateSetting = (
     notificationType: NotificationType,
     patch: Partial<NotificationSetting>,
   ) => {
-    setSettings((prev) =>
-      prev.map((s) => (s.notification_type === notificationType ? { ...s, ...patch } : s)),
+    setDraft(
+      settings.map((s) => (s.notification_type === notificationType ? { ...s, ...patch } : s)),
     )
   }
 
   const handleSave = async () => {
     setIsWorking(true)
-    setErrorMessage("")
+    setSaveError("")
     try {
       const res = await apiClient.updateNotificationSettings(formId, { settings })
-      setSettings(res.settings)
-      onSettingsChange?.(res.settings)
-      onOpenChange(false)
+      // 回答一覧の確認ダイアログも同じキャッシュを読むため、保存した時点で反映される。
+      queryClient.setQueryData(queryKeys.notificationSettings(formId), res)
+      handleOpenChange(false)
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, errorMessages, "通知設定の保存に失敗しました"))
+      setSaveError(getApiErrorMessage(error, errorMessages, "通知設定の保存に失敗しました"))
     } finally {
       setIsWorking(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>通知設定</DialogTitle>
@@ -213,7 +208,11 @@ export function NotificationsDialog({
 
             {canEdit ? (
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isWorking}>
+                <Button
+                  variant="outline"
+                  onClick={() => handleOpenChange(false)}
+                  disabled={isWorking}
+                >
                   キャンセル
                 </Button>
                 <Button onClick={handleSave} disabled={isWorking}>

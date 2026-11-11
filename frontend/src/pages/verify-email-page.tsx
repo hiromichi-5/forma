@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
+import { useMutation } from "@tanstack/react-query"
 import { Link, useSearchParams } from "react-router"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { apiClient } from "@/lib/api"
@@ -8,49 +9,36 @@ import { CheckCircle, Loader2, XCircle } from "lucide-react"
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get("token")
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
-  const [errorMessage, setErrorMessage] = useState("")
-  const verifiedRef = useRef(false)
+  const verify = useMutation({
+    mutationFn: (token: string) => apiClient.verifyEmail({ token }),
+  })
+  // トークンは一度使うと無効になる。開発時の StrictMode で effect が 2 回走っても、送信は 1 回にする。
+  const requestedTokenRef = useRef<string | null>(null)
+  const { mutate } = verify
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error")
-      setErrorMessage("認証トークンが見つかりません")
-      return
-    }
+    if (!token || requestedTokenRef.current === token) return
+    requestedTokenRef.current = token
+    mutate(token)
+  }, [token, mutate])
 
-    if (verifiedRef.current) {
-      setStatus("success")
-      return
-    }
-
-    const verify = async () => {
-      try {
-        await apiClient.verifyEmail({ token })
-        verifiedRef.current = true
-        setStatus("success")
-      } catch (err) {
-        if (verifiedRef.current) {
-          setStatus("success")
-          return
-        }
-        setStatus("error")
-        setErrorMessage(
-          getApiErrorMessage(
-            err,
-            {
-              TOKEN_NOT_FOUND: "トークンが無効または期限切れです",
-              VALIDATION_ERROR: "認証トークンが不正です",
-              NETWORK_ERROR: "ネットワークエラーが発生しました",
-            },
-            "認証に失敗しました",
-          ),
-        )
-      }
-    }
-
-    void verify()
-  }, [token])
+  const status: "loading" | "success" | "error" = !token
+    ? "error"
+    : verify.isSuccess
+      ? "success"
+      : verify.isError
+        ? "error"
+        : "loading"
+  const errorMessage = !token
+    ? "認証トークンが見つかりません"
+    : getApiErrorMessage(
+        verify.error,
+        {
+          TOKEN_NOT_FOUND: "トークンが無効または期限切れです",
+          VALIDATION_ERROR: "認証トークンが不正です",
+        },
+        "認証に失敗しました",
+      )
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">

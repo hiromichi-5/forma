@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
 import type { ReactNode } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api"
 import type {
@@ -20,13 +21,11 @@ type AuthContextType = {
   user: SessionUser | null
   profile: UserProfile | null
   isLoading: boolean
-  isProfileLoading: boolean
   isAuthenticated: boolean
   login: (credentials: LoginRequest) => Promise<void>
   signup: (credentials: SignupRequest) => Promise<void>
   logout: () => Promise<void>
   updateProfile: (request: UpdateUserProfileRequest) => Promise<UserProfile>
-  refreshProfile: () => Promise<void>
   changePassword: (request: ChangePasswordRequest) => Promise<void>
   deleteAccount: () => Promise<void>
 }
@@ -37,8 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isProfileLoading, setIsProfileLoading] = useState(false)
 
+  const queryClient = useQueryClient()
   const isAuthenticated = !!user
   const isAuthenticatedRef = useRef(false)
 
@@ -64,20 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const refreshProfile = async () => {
-    if (!user) return
-    setIsProfileLoading(true)
-    try {
-      const profileData = await apiClient.getProfile()
-      setProfile(profileData)
-      setUser((prev) => (prev ? { ...prev, email: profileData.email } : null))
-    } catch (error) {
-      console.error("Failed to fetch profile:", error)
-    } finally {
-      setIsProfileLoading(false)
-    }
-  }
-
   useEffect(() => {
     const initializeAuth = async () => {
       await hydrateUser()
@@ -95,11 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticatedRef.current = false
       setUser(null)
       setProfile(null)
+      // 別のユーザーでログインし直したときに、前のユーザーのデータを表示しないよう破棄する。
+      queryClient.clear()
       toast.error("セッションの有効期限が切れました。再度ログインしてください")
     })
 
     return () => apiClient.setSessionExpiredHandler(null)
-  }, [])
+  }, [queryClient])
 
   const login = async (credentials: LoginRequest) => {
     await apiClient.login(credentials)
@@ -126,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null)
       setProfile(null)
+      queryClient.clear()
     }
   }
 
@@ -144,13 +132,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         isLoading,
-        isProfileLoading,
         isAuthenticated,
         login,
         signup,
         logout,
         updateProfile,
-        refreshProfile,
         changePassword,
         deleteAccount,
       }}

@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Navigate, useNavigate, useParams } from "react-router"
-import { AppLayout } from "@/components/app-layout"
 import { FormManagementHeader } from "@/components/form-management-header"
 import { ResponseTableView } from "@/components/response-table-view"
 import { ResponseKanbanView } from "@/components/response-kanban-view"
 import { ResponseDetail } from "@/components/response-detail"
-import { InfiniteScrollTrigger } from "@/components/infinite-scroll-trigger"
-import { MembersDialog } from "@/components/members-dialog"
+import { MembersDialog } from "@/components/members/members-dialog"
 import { NotificationsDialog } from "@/components/notifications-dialog"
-import { StatusesDialog } from "@/components/statuses-dialog"
+import { StatusesDialog } from "@/components/statuses/statuses-dialog"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -19,63 +18,65 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { notificationLabel, useFormResponses, type TicketSegment } from "@/hooks/use-form-responses"
+import { notificationLabel, useTicketActions } from "@/hooks/use-ticket-actions"
+import { useTicketStream } from "@/hooks/use-ticket-stream"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useAuth } from "@/hooks/use-auth"
 import { apiClient } from "@/lib/api"
-import { getApiErrorMessage } from "@/lib/api-error"
+import { getApiErrorMessage, toastApiError } from "@/lib/api-error"
 import { FALLBACK_ASSIGNEE_NAME, FALLBACK_STATUS_NAME } from "@/lib/notification-email-preview"
 import { sortStatuses } from "@/lib/ticket-display"
-import type { Member, FormStatus, Form, FormQuestion, TicketSummary } from "@/types"
+import type { FormStatus, TicketSummary } from "@/types"
+import { formQueries } from "@/queries/forms"
+import { queryKeys } from "@/queries/keys"
 import { toast } from "sonner"
 
-const LIST_SEGMENT_KEY = "list"
+const EMPTY_STATUSES: FormStatus[] = []
 
 export default function FormManagementPage() {
   const params = useParams()
   const navigate = useNavigate()
   const formId = params.id
-  const [formStatuses, setFormStatuses] = useState<FormStatus[]>([])
+  const queryClient = useQueryClient()
+  const enabled = Boolean(formId)
+  const { data: form = null } = useQuery({ ...formQueries.detail(formId ?? ""), enabled })
+  const { data: questions = [] } = useQuery({ ...formQueries.questions(formId ?? ""), enabled })
+  const { data: members = [] } = useQuery({ ...formQueries.members(formId ?? ""), enabled })
+  const { data: formStatuses = EMPTY_STATUSES } = useQuery({
+    ...formQueries.statuses(formId ?? ""),
+    enabled,
+  })
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
   const [searchQuery, setSearchQuery] = useState("")
   const debouncedQuery = useDebouncedValue(searchQuery.trim(), 300)
   // 空配列は絞り込みなし（全てのステータス）を表す。
   const [statusFilters, setStatusFilters] = useState<string[]>([])
 
-  const segments = useMemo<TicketSegment[]>(() => {
-    if (viewMode === "list") {
-      return [{ key: LIST_SEGMENT_KEY, statusIds: statusFilters }]
-    }
-    return sortStatuses(formStatuses)
-      .filter((status) => statusFilters.length === 0 || statusFilters.includes(status.id))
-      .map((status) => ({ key: status.id, statusIds: [status.id] }))
-  }, [viewMode, statusFilters, formStatuses])
+  const ticketFilter = useMemo(
+    () => ({ statusIds: statusFilters, query: debouncedQuery }),
+    [statusFilters, debouncedQuery],
+  )
+  // カンバンは絞り込みで選んだステータスの列だけを表示する。
+  const kanbanStatuses = useMemo(
+    () =>
+      sortStatuses(formStatuses).filter(
+        (status) => statusFilters.length === 0 || statusFilters.includes(status.id),
+      ),
+    [formStatuses, statusFilters],
+  )
 
+  useTicketStream(formId ?? null)
   const {
-    pages,
-    ticketsById,
-    counts,
-    loadMore,
-    details,
-    loadDetail,
     updateResponseStatus,
     assignResponse,
     updatePriority,
-    refetch,
     pendingNotification,
     resolvePendingNotification,
     cancelPendingNotification,
     sendNotification,
-  } = useFormResponses(formId ?? null, {
-    segments,
-    query: debouncedQuery,
-    withCounts: viewMode === "kanban",
-  })
+  } = useTicketActions(formId ?? "")
   const { user } = useAuth()
-  const [form, setForm] = useState<Form | null>(null)
-  const [questions, setQuestions] = useState<FormQuestion[]>([])
-  const [members, setMembers] = useState<Member[]>([])
-  const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null)
+  const [selectedResponse, setSelectedResponse] = useState<TicketSummary | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isMembersOpen, setIsMembersOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
@@ -89,11 +90,6 @@ export default function FormManagementPage() {
     () => members.some((member) => member.id === user?.id && member.role === "admin"),
     [members, user?.id],
   )
-
-  const listPage = pages[LIST_SEGMENT_KEY]
-
-  // 更新後の値をダイアログに反映するため、開いた時点のスナップショットではなく最新の一覧から引く。
-  const selectedResponse = selectedResponseId ? (ticketsById[selectedResponseId] ?? null) : null
 
   const formTitle = form?.title || "フォーム管理"
 
@@ -110,31 +106,29 @@ export default function FormManagementPage() {
   )
 
   const handleOpenDetail = (response: TicketSummary) => {
-    setSelectedResponseId(response.id)
+    setSelectedResponse(response)
     setIsDetailOpen(true)
-    void loadDetail(response.id)
   }
 
   const handleTitleQuestionChange = async (questionId: string | null) => {
     if (!formId) return
     try {
       await apiClient.updateForm(formId, { title_question_id: questionId })
-      setForm((prev) => (prev ? { ...prev, title_question_id: questionId } : null))
-      await refetch()
+      queryClient.setQueryData(queryKeys.form(formId), (prev) =>
+        prev ? { ...prev, title_question_id: questionId } : prev,
+      )
+      // チケットのタイトルは選んだ質問の回答から作られるため、一覧を取り直す。
+      await queryClient.invalidateQueries({ queryKey: queryKeys.formTickets(formId) })
     } catch (error) {
       console.error("Failed to update title question:", error)
-      toast.error(
-        getApiErrorMessage(
-          error,
-          {
-            VALIDATION_ERROR: "タイトルに設定する質問を確認してください",
-            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-            FORM_NOT_FOUND: "フォームが見つかりません",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
-          },
-          "タイトル質問の更新に失敗しました",
-        ),
+      toastApiError(
+        error,
+        {
+          VALIDATION_ERROR: "タイトルに設定する質問を確認してください",
+          RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+          FORM_NOT_FOUND: "フォームが見つかりません",
+        },
+        "タイトル質問の更新に失敗しました",
       )
     }
   }
@@ -144,7 +138,9 @@ export default function FormManagementPage() {
     setIsSyncing(true)
     try {
       const result = await apiClient.syncForm(formId)
-      await refetch()
+      await queryClient.invalidateQueries({ queryKey: queryKeys.formTickets(formId) })
+      // フォーム一覧の回答数も変わる。
+      void queryClient.invalidateQueries({ queryKey: queryKeys.forms(), exact: true })
       toast.success(
         result.new_tickets > 0
           ? `${result.new_tickets}件の新しい回答を同期しました`
@@ -152,19 +148,15 @@ export default function FormManagementPage() {
       )
     } catch (error) {
       console.error("Failed to sync form:", error)
-      toast.error(
-        getApiErrorMessage(
-          error,
-          {
-            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-            FORM_NOT_FOUND: "フォームが見つかりません",
-            FORM_NOT_SHARED:
-              "フォームがサービスアカウントに共有されていません。共有設定を確認してください",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
-          },
-          "フォームの同期に失敗しました",
-        ),
+      toastApiError(
+        error,
+        {
+          RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+          FORM_NOT_FOUND: "フォームが見つかりません",
+          FORM_NOT_SHARED:
+            "フォームがサービスアカウントに共有されていません。共有設定を確認してください",
+        },
+        "フォームの同期に失敗しました",
       )
     } finally {
       setIsSyncing(false)
@@ -177,6 +169,8 @@ export default function FormManagementPage() {
     setUnregisterError("")
     try {
       await apiClient.deleteForm(formId)
+      // 一覧とサイドバーに削除したフォームが残らないよう、遷移前に取り直す。
+      await queryClient.invalidateQueries({ queryKey: queryKeys.forms(), exact: true })
       void navigate("/")
     } catch (error) {
       console.error("Failed to delete form:", error)
@@ -186,8 +180,6 @@ export default function FormManagementPage() {
           {
             FORBIDDEN: "この操作を行う権限がありません（管理者のみ）",
             RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "フォームの登録解除に失敗しました",
         ),
@@ -197,43 +189,12 @@ export default function FormManagementPage() {
     }
   }
 
-  useEffect(() => {
-    if (!formId) return
-    let isActive = true
-
-    const loadData = async () => {
-      try {
-        const [formResponse, questionsResponse, membersResponse, statusesResponse] =
-          await Promise.all([
-            apiClient.getForm(formId),
-            apiClient.getFormQuestions(formId),
-            apiClient.getMembers(formId),
-            apiClient.getFormStatuses(formId),
-          ])
-        if (!isActive) return
-        setForm(formResponse)
-        setQuestions(questionsResponse.questions)
-        setMembers(membersResponse.members)
-        setFormStatuses(statusesResponse.statuses)
-      } catch (error) {
-        if (!isActive) return
-        console.error("Failed to load data:", error)
-      }
-    }
-
-    void loadData()
-
-    return () => {
-      isActive = false
-    }
-  }, [formId])
-
   if (!formId) {
     return <Navigate to="/" replace />
   }
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-6 pt-4">
         <FormManagementHeader
           googleFormId={form?.form_id ?? null}
@@ -257,33 +218,22 @@ export default function FormManagementPage() {
         />
 
         {viewMode === "list" ? (
-          <div>
-            <ResponseTableView
-              responses={listPage?.tickets ?? []}
-              details={details}
-              members={members}
-              statuses={formStatuses}
-              onExpandRow={loadDetail}
-              onStatusChange={updateResponseStatus}
-              onAssignChange={assignResponse}
-              onPriorityChange={updatePriority}
-              onOpenDetail={handleOpenDetail}
-            />
-            {listPage && (
-              <InfiniteScrollTrigger
-                hasMore={listPage.hasMore}
-                loading={listPage.loading}
-                onLoadMore={() => loadMore(LIST_SEGMENT_KEY)}
-              />
-            )}
-          </div>
-        ) : (
-          <ResponseKanbanView
-            pages={pages}
-            counts={counts}
-            onLoadMore={loadMore}
+          <ResponseTableView
+            formId={formId}
+            filter={ticketFilter}
             members={members}
             statuses={formStatuses}
+            onStatusChange={updateResponseStatus}
+            onAssignChange={assignResponse}
+            onPriorityChange={updatePriority}
+            onOpenDetail={handleOpenDetail}
+          />
+        ) : (
+          <ResponseKanbanView
+            formId={formId}
+            query={debouncedQuery}
+            columns={kanbanStatuses}
+            members={members}
             onStatusChange={updateResponseStatus}
             onAssignChange={assignResponse}
             onPriorityChange={updatePriority}
@@ -295,7 +245,6 @@ export default function FormManagementPage() {
       {selectedResponse && (
         <ResponseDetail
           response={selectedResponse}
-          detail={details[selectedResponse.id]}
           open={isDetailOpen}
           onOpenChange={setIsDetailOpen}
           members={members}
@@ -308,13 +257,7 @@ export default function FormManagementPage() {
       )}
 
       {formId && (
-        <StatusesDialog
-          formId={formId}
-          open={isStatusesOpen}
-          onOpenChange={setIsStatusesOpen}
-          statuses={formStatuses}
-          onStatusesChange={setFormStatuses}
-        />
+        <StatusesDialog formId={formId} open={isStatusesOpen} onOpenChange={setIsStatusesOpen} />
       )}
 
       <MembersDialog formId={formId} open={isMembersOpen} onOpenChange={setIsMembersOpen} />
@@ -382,6 +325,6 @@ export default function FormManagementPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AppLayout>
+    </>
   )
 }

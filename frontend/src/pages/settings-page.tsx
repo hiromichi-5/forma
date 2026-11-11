@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import type { z } from "zod"
 import { useNavigate } from "react-router"
-import { AppLayout } from "@/components/app-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+import { TextField } from "@/components/text-field"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,169 +17,40 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { apiClient } from "@/lib/api"
-import { getApiErrorMessage } from "@/lib/api-error"
+import { useAuth } from "@/hooks/use-auth"
+import { changePasswordSchema, PASSWORD_MIN_LENGTH, profileSchema } from "@/lib/form-schemas"
+import { toastApiError } from "@/lib/api-error"
 import { toast } from "sonner"
-import type { UserProfile } from "@/types"
 import { Loader2 } from "lucide-react"
-
-const sessionExpiredMessage = "セッションの有効期限が切れました。ログインし直してください"
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSavingProfile, setIsSavingProfile] = useState(false)
-  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const { profile, deleteAccount } = useAuth()
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
-
-  const [displayName, setDisplayName] = useState("")
-
-  const [currentPassword, setCurrentPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        setIsLoading(true)
-        const data = await apiClient.getProfile()
-        setProfile(data)
-        setDisplayName(data.display_name)
-      } catch (error) {
-        console.error("Failed to load profile:", error)
-        toast.error(
-          getApiErrorMessage(
-            error,
-            {
-              INVALID_SESSION: sessionExpiredMessage,
-              USER_NOT_FOUND: "アカウントが見つかりません",
-              NETWORK_ERROR: "ネットワークエラーが発生しました",
-            },
-            "プロフィールの読み込みに失敗しました",
-          ),
-        )
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    void loadProfile()
-  }, [])
-
-  const handleUpdateProfile = async () => {
-    if (!displayName.trim()) {
-      toast.error("表示名を入力してください")
-      return
-    }
-
-    try {
-      setIsSavingProfile(true)
-      const updatedProfile = await apiClient.updateProfile({
-        display_name: displayName,
-      })
-      setProfile(updatedProfile)
-      toast.success("プロフィールを更新しました")
-    } catch (error) {
-      console.error("Failed to update profile:", error)
-      toast.error(
-        getApiErrorMessage(
-          error,
-          {
-            INVALID_SESSION: sessionExpiredMessage,
-            VALIDATION_ERROR: "表示名を入力してください",
-            USER_NOT_FOUND: "アカウントが見つかりません",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
-          },
-          "プロフィールの更新に失敗しました",
-        ),
-      )
-    } finally {
-      setIsSavingProfile(false)
-    }
-  }
-
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error("すべての項目を入力してください")
-      return
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast.error("新しいパスワードが一致しません")
-      return
-    }
-
-    if (newPassword.length < 8) {
-      toast.error("パスワードは8文字以上で設定してください")
-      return
-    }
-
-    try {
-      setIsChangingPassword(true)
-      await apiClient.changePassword({
-        current_password: currentPassword,
-        new_password: newPassword,
-      })
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
-      toast.success("パスワードを変更しました")
-    } catch (error) {
-      console.error("Failed to change password:", error)
-      toast.error(
-        getApiErrorMessage(
-          error,
-          {
-            INVALID_SESSION: sessionExpiredMessage,
-            VALIDATION_ERROR: "入力内容を確認してください",
-            INCORRECT_PASSWORD: "現在のパスワードが正しくありません",
-            USER_NOT_FOUND: "アカウントが見つかりません",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
-          },
-          "パスワードの変更に失敗しました",
-        ),
-      )
-    } finally {
-      setIsChangingPassword(false)
-    }
-  }
 
   const handleDeleteAccount = async () => {
     try {
       setIsDeletingAccount(true)
-      await apiClient.deleteProfile()
+      // ログアウトまで行い、認証状態とキャッシュを破棄してからログイン画面へ戻す。
+      await deleteAccount()
       toast.success("アカウントを削除しました")
       void navigate("/login")
     } catch (error) {
       console.error("Failed to delete account:", error)
-      toast.error(
-        getApiErrorMessage(
-          error,
-          {
-            INVALID_SESSION: sessionExpiredMessage,
-            USER_NOT_FOUND: "アカウントが見つかりません",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
-          },
-          "アカウントの削除に失敗しました",
-        ),
+      toastApiError(
+        error,
+        {
+          USER_NOT_FOUND: "アカウントが見つかりません",
+        },
+        "アカウントの削除に失敗しました",
       )
     } finally {
       setIsDeletingAccount(false)
     }
   }
 
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="flex min-h-[400px] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </AppLayout>
-    )
-  }
-
   return (
-    <AppLayout>
+    <>
       <div className="max-w-3xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">設定</h1>
@@ -191,42 +63,16 @@ export default function SettingsPage() {
             <CardDescription>アカウントの基本情報を変更できます</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">メールアドレス</Label>
-              <Input
-                id="email"
-                type="email"
-                value={profile?.email || ""}
-                disabled
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">メールアドレスは変更できません</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="displayName">表示名</Label>
-              <Input
-                id="displayName"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="表示名を入力"
-              />
-            </div>
-
-            <Button
-              onClick={handleUpdateProfile}
-              disabled={isSavingProfile || displayName === profile?.display_name}
-            >
-              {isSavingProfile ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  保存中...
-                </>
-              ) : (
-                "保存"
-              )}
-            </Button>
+            <TextField
+              id="email"
+              label="メールアドレス"
+              type="email"
+              value={profile?.email ?? ""}
+              disabled
+              className="bg-muted"
+              description="メールアドレスは変更できません"
+            />
+            {profile && <ProfileForm key={profile.id} displayName={profile.display_name} />}
           </CardContent>
         </Card>
 
@@ -235,50 +81,8 @@ export default function SettingsPage() {
             <CardTitle>パスワード変更</CardTitle>
             <CardDescription>アカウントのパスワードを変更できます</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">現在のパスワード</Label>
-              <Input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="現在のパスワードを入力"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">新しいパスワード</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="新しいパスワードを入力（8文字以上）"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">新しいパスワード（確認）</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="新しいパスワードを再入力"
-              />
-            </div>
-
-            <Button onClick={handleChangePassword} disabled={isChangingPassword}>
-              {isChangingPassword ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  変更中...
-                </>
-              ) : (
-                "パスワードを変更"
-              )}
-            </Button>
+          <CardContent>
+            <PasswordForm />
           </CardContent>
         </Card>
 
@@ -322,6 +126,138 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
-    </AppLayout>
+    </>
+  )
+}
+
+function ProfileForm({ displayName }: { displayName: string }) {
+  const { updateProfile } = useAuth()
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting, isDirty },
+  } = useForm<z.infer<typeof profileSchema>>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: { display_name: displayName },
+  })
+
+  const onSubmit = async (values: z.infer<typeof profileSchema>) => {
+    try {
+      // AuthProvider 経由で更新し、画面全体で使うプロフィールも最新にする。
+      const updated = await updateProfile(values)
+      reset({ display_name: updated.display_name })
+      toast.success("プロフィールを更新しました")
+    } catch (error) {
+      console.error("Failed to update profile:", error)
+      toastApiError(
+        error,
+        {
+          VALIDATION_ERROR: "表示名を入力してください",
+          USER_NOT_FOUND: "アカウントが見つかりません",
+        },
+        "プロフィールの更新に失敗しました",
+      )
+    }
+  }
+
+  return (
+    <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+      <TextField
+        id="displayName"
+        label="表示名"
+        autoComplete="name"
+        placeholder="表示名を入力"
+        error={errors.display_name}
+        {...register("display_name")}
+      />
+      <Button type="submit" disabled={isSubmitting || !isDirty}>
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            保存中...
+          </>
+        ) : (
+          "保存"
+        )}
+      </Button>
+    </form>
+  )
+}
+
+function PasswordForm() {
+  const { changePassword } = useAuth()
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<z.infer<typeof changePasswordSchema>>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: { current_password: "", new_password: "", confirm_password: "" },
+  })
+
+  const onSubmit = async ({
+    current_password,
+    new_password,
+  }: z.infer<typeof changePasswordSchema>) => {
+    try {
+      await changePassword({ current_password, new_password })
+      reset()
+      toast.success("パスワードを変更しました")
+    } catch (error) {
+      console.error("Failed to change password:", error)
+      toastApiError(
+        error,
+        {
+          VALIDATION_ERROR: "入力内容を確認してください",
+          INCORRECT_PASSWORD: "現在のパスワードが正しくありません",
+          USER_NOT_FOUND: "アカウントが見つかりません",
+        },
+        "パスワードの変更に失敗しました",
+      )
+    }
+  }
+
+  return (
+    <form className="space-y-4" noValidate onSubmit={handleSubmit(onSubmit)}>
+      <TextField
+        id="currentPassword"
+        label="現在のパスワード"
+        type="password"
+        autoComplete="current-password"
+        placeholder="現在のパスワードを入力"
+        error={errors.current_password}
+        {...register("current_password")}
+      />
+      <TextField
+        id="newPassword"
+        label="新しいパスワード"
+        type="password"
+        autoComplete="new-password"
+        placeholder={`新しいパスワードを入力（${PASSWORD_MIN_LENGTH}文字以上）`}
+        error={errors.new_password}
+        {...register("new_password", { deps: "confirm_password" })}
+      />
+      <TextField
+        id="confirmPassword"
+        label="新しいパスワード（確認）"
+        type="password"
+        autoComplete="new-password"
+        placeholder="新しいパスワードを再入力"
+        error={errors.confirm_password}
+        {...register("confirm_password")}
+      />
+      <Button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            変更中...
+          </>
+        ) : (
+          "パスワードを変更"
+        )}
+      </Button>
+    </form>
   )
 }

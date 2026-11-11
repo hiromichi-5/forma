@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Plus, Search } from "lucide-react"
-import { AppLayout } from "@/components/app-layout"
-import { apiClient } from "@/lib/api"
+import { formQueries } from "@/queries/forms"
 import type { FormSummary } from "@/types"
 import { RegisterFormDialog } from "@/components/register-form-dialog"
 type FormListItem = {
@@ -16,51 +16,15 @@ type FormListItem = {
 
 export default function FormsListPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [forms, setForms] = useState<FormListItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [errorMessage, setErrorMessage] = useState("")
-
-  const loadForms = async () => {
-    setIsLoading(true)
-    setErrorMessage("")
-    try {
-      const formsResponse = await apiClient.getForms()
-      setForms(formsResponse.forms.map(toFormListItem))
-    } catch (error) {
-      console.error("Failed to load forms:", error)
-      setErrorMessage("フォーム一覧の取得に失敗しました")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    let isActive = true
-
-    const load = async () => {
-      setIsLoading(true)
-      setErrorMessage("")
-      try {
-        const formsResponse = await apiClient.getForms()
-        if (!isActive) return
-        setForms(formsResponse.forms.map(toFormListItem))
-      } catch (error) {
-        if (!isActive) return
-        console.error("Failed to load forms:", error)
-        setErrorMessage("フォーム一覧の取得に失敗しました")
-      } finally {
-        if (isActive) {
-          setIsLoading(false)
-        }
-      }
-    }
-
-    void load()
-
-    return () => {
-      isActive = false
-    }
-  }, [])
+  const {
+    data: forms = [],
+    isPending: isLoading,
+    isError,
+  } = useQuery({
+    ...formQueries.list(),
+    select: (res) => res.forms.map(toFormListItem),
+  })
+  const errorMessage = isError ? "フォーム一覧の取得に失敗しました" : ""
 
   const filteredForms = useMemo(
     () => forms.filter((form) => form.title.toLowerCase().includes(searchQuery.toLowerCase())),
@@ -68,7 +32,7 @@ export default function FormsListPage() {
   )
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">フォーム一覧</h1>
@@ -131,7 +95,6 @@ export default function FormsListPage() {
               </Card>
             ))}
             <RegisterFormDialog
-              onRegistered={loadForms}
               trigger={
                 <button
                   type="button"
@@ -145,7 +108,7 @@ export default function FormsListPage() {
           </div>
         )}
       </div>
-    </AppLayout>
+    </>
   )
 }
 

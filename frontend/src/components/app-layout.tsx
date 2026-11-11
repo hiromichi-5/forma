@@ -1,7 +1,7 @@
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { useNavigate, useLocation, Link } from "react-router"
+import { Suspense, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { useNavigate, useLocation, Link, Outlet } from "react-router"
+import { PageLoading } from "@/components/page-loading"
 import { Button } from "@/components/ui/button"
 import {
   LogOut,
@@ -17,42 +17,20 @@ import {
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { apiClient } from "@/lib/api"
-import type { FormSummary } from "@/types"
+import { formQueries } from "@/queries/forms"
 import { RegisterFormDialog } from "@/components/register-form-dialog"
 
-type AppLayoutProps = {
-  children: React.ReactNode
-}
-
-export function AppLayout({ children }: AppLayoutProps) {
+/** ログイン後の画面の共通レイアウト。ページを移動してもサイドバーの状態は保たれる。 */
+export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isFormsOpen, setIsFormsOpen] = useState(true)
-  const [forms, setForms] = useState<FormSummary[]>([])
-  const [loadingForms, setLoadingForms] = useState(false)
+  const { data: forms = [], isPending: loadingForms } = useQuery(formQueries.list())
   const { logout } = useAuth()
 
   const isFormsListPage = location.pathname === "/"
   const isSettingsPage = location.pathname === "/settings"
-
-  // フォーム一覧を取得
-  const loadForms = async () => {
-    try {
-      setLoadingForms(true)
-      const response = await apiClient.getForms()
-      setForms(response.forms)
-    } catch (error) {
-      console.error("Failed to load forms:", error)
-    } finally {
-      setLoadingForms(false)
-    }
-  }
-
-  useEffect(() => {
-    void loadForms()
-  }, [])
 
   const handleLogout = async () => {
     await logout()
@@ -150,7 +128,6 @@ export function AppLayout({ children }: AppLayoutProps) {
                 )}
                 <div className="mt-4 pl-6">
                   <RegisterFormDialog
-                    onRegistered={loadForms}
                     trigger={
                       <Button
                         variant="ghost"
@@ -193,7 +170,11 @@ export function AppLayout({ children }: AppLayoutProps) {
       </aside>
 
       <main className="flex-1 overflow-auto bg-white">
-        <div className="container mx-auto p-6">{children}</div>
+        <div className="container mx-auto p-6">
+          <Suspense fallback={<PageLoading />}>
+            <Outlet />
+          </Suspense>
+        </div>
       </main>
     </div>
   )
