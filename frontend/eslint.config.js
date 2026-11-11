@@ -28,8 +28,6 @@ export default tseslint.config([
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
-      // useEffect 内でのデータ取得に伴う setState を検出する。取得処理を TanStack Query へ移すまでは警告にとどめ、件数を lint の --max-warnings で抑える。
-      "react-hooks/set-state-in-effect": "warn",
     },
     languageOptions: {
       ecmaVersion: 2022,

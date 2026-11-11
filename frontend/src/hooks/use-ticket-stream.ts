@@ -1,15 +1,12 @@
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { API_BASE_URL } from "@/lib/api"
-import type { TicketDetail, TicketUpdatedEvent } from "@/types"
+import { applyTicketUpdate } from "@/lib/ticket-cache"
+import type { TicketUpdatedEvent } from "@/types"
 
-export function useTicketStream(
-  formId: string | null,
-  onTicketUpdated: (ticket: TicketDetail) => void,
-) {
-  const callbackRef = useRef(onTicketUpdated)
-  useEffect(() => {
-    callbackRef.current = onTicketUpdated
-  })
+/** 他のメンバーによるチケットの更新を SSE で受け取り、表示中の一覧と詳細に反映する。 */
+export function useTicketStream(formId: string | null) {
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     if (!formId) return
@@ -26,9 +23,9 @@ export function useTicketStream(
         console.error("Failed to parse ticket_updated event:", error)
         return
       }
-      callbackRef.current(event.ticket)
+      applyTicketUpdate(queryClient, event.ticket)
     })
 
     return () => es.close()
-  }, [formId])
+  }, [formId, queryClient])
 }

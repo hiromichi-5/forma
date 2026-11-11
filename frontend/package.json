@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint . --max-warnings 5",
+    "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "gen:types": "openapi-typescript ../openapi/openapi.yaml -o src/types/api.ts --root-types --root-types-no-schema-prefix",
