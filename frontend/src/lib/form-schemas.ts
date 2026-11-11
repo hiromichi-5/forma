@@ -6,6 +6,8 @@ import { z } from "zod"
  */
 
 const email = z.email("有効なメールアドレスを入力してください")
+// 登録済みのアドレスを入力する画面では形式で弾かない。z.email はサーバーより厳しく、ログインできなくなるため。
+const registeredEmail = z.string().min(1, "メールアドレスを入力してください")
 
 export const PASSWORD_MIN_LENGTH = 8
 const newPassword = z
@@ -15,7 +17,7 @@ const newPassword = z
 const displayName = z.string().trim().min(1, "表示名を入力してください")
 
 export const loginSchema = z.object({
-  email,
+  email: registeredEmail,
   password: z.string().min(1, "パスワードを入力してください"),
 })
 
@@ -25,7 +27,7 @@ export const signupSchema = z.object({
   password: newPassword,
 })
 
-export const passwordResetRequestSchema = z.object({ email })
+export const passwordResetRequestSchema = z.object({ email: registeredEmail })
 
 /** 新しいパスワードと確認用の入力が一致することを確かめる。エラーは確認欄に表示する。 */
 const passwordsMatch = {

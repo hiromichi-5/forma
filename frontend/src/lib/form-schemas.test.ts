@@ -10,9 +10,16 @@ const firstError = (result: { success: boolean; error?: { issues: { message: str
   result.error?.issues[0]?.message
 
 describe("form schemas", () => {
-  it("メールアドレスの形式を検証する", () => {
-    expect(firstError(loginSchema.safeParse({ email: "foo", password: "x" }))).toBe(
-      "有効なメールアドレスを入力してください",
+  it("新しく登録するメールアドレスは形式を検証する", () => {
+    expect(
+      firstError(signupSchema.safeParse({ display_name: "a", email: "foo", password: "abcdefgh" })),
+    ).toBe("有効なメールアドレスを入力してください")
+  })
+
+  it("ログインでは登録済みのアドレスを形式で弾かず、未入力だけを検出する", () => {
+    expect(loginSchema.safeParse({ email: "admin@localhost", password: "x" }).success).toBe(true)
+    expect(firstError(loginSchema.safeParse({ email: "", password: "x" }))).toBe(
+      "メールアドレスを入力してください",
     )
   })
 
