@@ -8,17 +8,14 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { AlertTriangle } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { getApiErrorMessage } from "@/lib/api-error"
-import { renderNotificationEmailPreview } from "@/lib/notification-email-preview"
 import type { NotificationEmailSample } from "@/lib/notification-email-preview"
 import { isEmailCollectionDisabled } from "@/hooks/use-notification-settings"
-import type { NotificationMode, NotificationSetting, NotificationType } from "@/types"
+import { NotificationSettingsFields } from "@/components/notification-settings-fields"
+import type { NotificationSetting, NotificationType } from "@/types"
 import { formQueries } from "@/queries/forms"
 import { queryKeys } from "@/queries/keys"
 
@@ -31,34 +28,6 @@ type NotificationsDialogProps = {
   canEdit: boolean
   emailSample: NotificationEmailSample
 }
-
-const TYPE_LABELS: Record<NotificationType, string> = {
-  status_change: "対応状況が変わったとき",
-  assignee_assigned: "担当者が割り当てられたとき",
-}
-
-const DETAIL_LABELS: Record<NotificationType, string> = {
-  status_change: "変更後の対応状況の名前をメールに含める",
-  assignee_assigned: "担当者の名前をメールに含める",
-}
-
-const MODE_OPTIONS: { value: NotificationMode; label: string; description: string }[] = [
-  {
-    value: "always",
-    label: "常時通知",
-    description: "変更のたびに自動でメールを送信します",
-  },
-  {
-    value: "confirm",
-    label: "毎回確認",
-    description: "変更のたびに送信するかどうかを確認します",
-  },
-  {
-    value: "off",
-    label: "通知しない",
-    description: "自動送信も手動送信も行いません",
-  },
-]
 
 const errorMessages = {
   RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
@@ -152,59 +121,12 @@ export function NotificationsDialog({
           <p className="py-8 text-center text-sm text-muted-foreground">読み込み中...</p>
         ) : (
           <div className="space-y-6">
-            {settings.map((setting) => (
-              <div key={setting.notification_type} className="space-y-3 rounded-lg border p-4">
-                <h3 className="font-medium">{TYPE_LABELS[setting.notification_type]}</h3>
-
-                <RadioGroup
-                  value={setting.mode}
-                  onValueChange={(value) =>
-                    updateSetting(setting.notification_type, { mode: value as NotificationMode })
-                  }
-                  disabled={!canEdit || isWorking}
-                  className="space-y-2"
-                >
-                  {MODE_OPTIONS.map((option) => {
-                    const id = `${setting.notification_type}-${option.value}`
-                    return (
-                      <div key={option.value} className="flex items-start gap-3">
-                        <RadioGroupItem value={option.value} id={id} className="mt-1" />
-                        <Label htmlFor={id} className="cursor-pointer font-normal">
-                          <span className="block">{option.label}</span>
-                          <span className="block text-xs text-muted-foreground">
-                            {option.description}
-                          </span>
-                        </Label>
-                      </div>
-                    )
-                  })}
-                </RadioGroup>
-
-                <div className="flex items-center justify-between border-t pt-3">
-                  <Label
-                    htmlFor={`${setting.notification_type}-detail`}
-                    className="cursor-pointer font-normal"
-                  >
-                    {DETAIL_LABELS[setting.notification_type]}
-                  </Label>
-                  <Switch
-                    id={`${setting.notification_type}-detail`}
-                    checked={setting.include_detail}
-                    onCheckedChange={(checked) =>
-                      updateSetting(setting.notification_type, { include_detail: checked })
-                    }
-                    disabled={!canEdit || isWorking || setting.mode === "off"}
-                  />
-                </div>
-
-                <EmailPreview
-                  notificationType={setting.notification_type}
-                  includeDetail={setting.include_detail}
-                  sample={emailSample}
-                  disabled={setting.mode === "off"}
-                />
-              </div>
-            ))}
+            <NotificationSettingsFields
+              settings={settings}
+              onChange={updateSetting}
+              disabled={!canEdit || isWorking}
+              emailSample={emailSample}
+            />
 
             {canEdit ? (
               <div className="flex justify-end gap-2">
@@ -228,41 +150,5 @@ export function NotificationsDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
-}
-
-type EmailPreviewProps = {
-  notificationType: NotificationType
-  includeDetail: boolean
-  sample: NotificationEmailSample
-  disabled: boolean
-}
-
-function EmailPreview({ notificationType, includeDetail, sample, disabled }: EmailPreviewProps) {
-  const preview = renderNotificationEmailPreview(notificationType, includeDetail, sample)
-
-  return (
-    <div className="space-y-2 rounded-md border border-dashed bg-muted/30 p-3">
-      <p className="text-xs font-medium">
-        {disabled ? "通知を有効にすると送信されるメール" : "送信されるメール"}
-      </p>
-      <p className="text-xs break-all">
-        <span className="text-muted-foreground">件名: </span>
-        {preview.subject}
-      </p>
-
-      <div className="h-48 overflow-hidden rounded-sm bg-white">
-        <iframe
-          title="メール本文のプレビュー"
-          srcDoc={preview.html}
-          sandbox=""
-          className="h-[133.33%] w-[133.33%] origin-top-left scale-75"
-        />
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        実際のメールは回答者のメールアドレスに送信されます。
-      </p>
-    </div>
   )
 }
