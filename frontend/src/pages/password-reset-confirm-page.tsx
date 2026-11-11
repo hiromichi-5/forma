@@ -115,7 +115,7 @@ export default function PasswordResetConfirmPage() {
                 description={`${PASSWORD_MIN_LENGTH}文字以上`}
                 disabled={isLoading}
                 error={errors.new_password}
-                {...register("new_password")}
+                {...register("new_password", { deps: "confirm_password" })}
               />
 
               <TextField

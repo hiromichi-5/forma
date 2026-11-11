@@ -238,7 +238,7 @@ function PasswordForm() {
         autoComplete="new-password"
         placeholder={`新しいパスワードを入力（${PASSWORD_MIN_LENGTH}文字以上）`}
         error={errors.new_password}
-        {...register("new_password")}
+        {...register("new_password", { deps: "confirm_password" })}
       />
       <TextField
         id="confirmPassword"
