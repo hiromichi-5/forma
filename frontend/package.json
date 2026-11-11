@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 5",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "gen:types": "openapi-typescript ../openapi/openapi.yaml -o src/types/api.ts --root-types --root-types-no-schema-prefix",
