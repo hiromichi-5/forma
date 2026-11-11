@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react"
+import { API_BASE_URL } from "@/lib/api"
 import type { TicketDetail, TicketUpdatedEvent } from "@/types"
 
 export function useTicketStream(
@@ -13,8 +14,9 @@ export function useTicketStream(
   useEffect(() => {
     if (!formId) return
 
-    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8080"
-    const es = new EventSource(`${baseUrl}/v1/forms/${formId}/stream`, { withCredentials: true })
+    const es = new EventSource(`${API_BASE_URL}/v1/forms/${formId}/stream`, {
+      withCredentials: true,
+    })
 
     es.addEventListener("ticket_updated", (e: MessageEvent<string>) => {
       let event: TicketUpdatedEvent

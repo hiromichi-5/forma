@@ -37,7 +37,6 @@ export default function SignupPage() {
           {
             CONFLICT: "このメールアドレスは既に登録されています",
             VALIDATION_ERROR: "入力内容を確認してください（パスワードは8文字以上）",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "サインアップに失敗しました",
         ),

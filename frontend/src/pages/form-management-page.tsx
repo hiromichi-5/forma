@@ -23,7 +23,7 @@ import { notificationLabel, useFormResponses, type TicketSegment } from "@/hooks
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useAuth } from "@/hooks/use-auth"
 import { apiClient } from "@/lib/api"
-import { getApiErrorMessage } from "@/lib/api-error"
+import { getApiErrorMessage, toastApiError } from "@/lib/api-error"
 import { FALLBACK_ASSIGNEE_NAME, FALLBACK_STATUS_NAME } from "@/lib/notification-email-preview"
 import { sortStatuses } from "@/lib/ticket-display"
 import type { Member, FormStatus, Form, FormQuestion, TicketSummary } from "@/types"
@@ -123,18 +123,14 @@ export default function FormManagementPage() {
       await refetch()
     } catch (error) {
       console.error("Failed to update title question:", error)
-      toast.error(
-        getApiErrorMessage(
-          error,
-          {
-            VALIDATION_ERROR: "タイトルに設定する質問を確認してください",
-            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-            FORM_NOT_FOUND: "フォームが見つかりません",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
-          },
-          "タイトル質問の更新に失敗しました",
-        ),
+      toastApiError(
+        error,
+        {
+          VALIDATION_ERROR: "タイトルに設定する質問を確認してください",
+          RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+          FORM_NOT_FOUND: "フォームが見つかりません",
+        },
+        "タイトル質問の更新に失敗しました",
       )
     }
   }
@@ -152,19 +148,15 @@ export default function FormManagementPage() {
       )
     } catch (error) {
       console.error("Failed to sync form:", error)
-      toast.error(
-        getApiErrorMessage(
-          error,
-          {
-            RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-            FORM_NOT_FOUND: "フォームが見つかりません",
-            FORM_NOT_SHARED:
-              "フォームがサービスアカウントに共有されていません。共有設定を確認してください",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
-          },
-          "フォームの同期に失敗しました",
-        ),
+      toastApiError(
+        error,
+        {
+          RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
+          FORM_NOT_FOUND: "フォームが見つかりません",
+          FORM_NOT_SHARED:
+            "フォームがサービスアカウントに共有されていません。共有設定を確認してください",
+        },
+        "フォームの同期に失敗しました",
       )
     } finally {
       setIsSyncing(false)
@@ -186,8 +178,6 @@ export default function FormManagementPage() {
           {
             FORBIDDEN: "この操作を行う権限がありません（管理者のみ）",
             RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "フォームの登録解除に失敗しました",
         ),

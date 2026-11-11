@@ -117,8 +117,6 @@ function ColorSwatchPicker({ value, disabled, onChange, className }: ColorSwatch
 const defaultStatusErrorMessages = {
   RESOURCE_HIDDEN: "フォームまたはステータスが見つかりません",
   STATUS_CONFLICT: "ステータス名または表示順が重複しています",
-  INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-  NETWORK_ERROR: "ネットワークエラーが発生しました",
 } as const
 
 export function StatusesDialog({

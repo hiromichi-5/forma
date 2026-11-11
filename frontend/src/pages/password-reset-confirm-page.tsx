@@ -60,7 +60,6 @@ export default function PasswordResetConfirmPage() {
             TOKEN_NOT_FOUND:
               "トークンが無効または期限切れです。再度リセットをリクエストしてください。",
             VALIDATION_ERROR: "パスワードは8文字以上で入力してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "パスワードリセットに失敗しました",
         ),

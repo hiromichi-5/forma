@@ -41,7 +41,6 @@ export default function VerifyEmailPage() {
             {
               TOKEN_NOT_FOUND: "トークンが無効または期限切れです",
               VALIDATION_ERROR: "認証トークンが不正です",
-              NETWORK_ERROR: "ネットワークエラーが発生しました",
             },
             "認証に失敗しました",
           ),

@@ -48,10 +48,7 @@ type MembersDialogProps = {
 const inviteErrorMessages = {
   ALREADY_MEMBER: "このメールアドレスは既にメンバーです",
   ACTIVE_INVITE_ALREADY_EXISTS: "このメールアドレスには既に有効な招待があります",
-  FORBIDDEN: "この操作を行う権限がありません",
   RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-  INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-  NETWORK_ERROR: "ネットワークエラーが発生しました",
 } as const
 
 export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps) {
@@ -93,10 +90,7 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
         getApiErrorMessage(
           error,
           {
-            FORBIDDEN: "この操作を行う権限がありません",
             RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "データの取得に失敗しました",
         ),
@@ -151,11 +145,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
         getApiErrorMessage(
           error,
           {
-            FORBIDDEN: "この操作を行う権限がありません",
             RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
             INVITE_NOT_FOUND: "招待は既に存在しないか、別フォームのものです",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "招待の取消に失敗しました",
         ),
@@ -179,11 +170,8 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
         getApiErrorMessage(
           error,
           {
-            FORBIDDEN: "この操作を行う権限がありません",
             RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
             LAST_ADMIN: "最後の管理者は削除できません",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "メンバーの削除に失敗しました",
         ),
@@ -204,12 +192,9 @@ export function MembersDialog({ formId, open, onOpenChange }: MembersDialogProps
         getApiErrorMessage(
           error,
           {
-            FORBIDDEN: "この操作を行う権限がありません",
             RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
             LAST_ADMIN: "最後の管理者を編集者に変更することはできません",
             VALIDATION_ERROR: "変更する権限を確認してください",
-            INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-            NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
           "権限変更に失敗しました",
         ),

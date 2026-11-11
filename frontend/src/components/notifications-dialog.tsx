@@ -57,10 +57,7 @@ const MODE_OPTIONS: { value: NotificationMode; label: string; description: strin
 ]
 
 const errorMessages = {
-  FORBIDDEN: "この操作を行う権限がありません",
   RESOURCE_HIDDEN: "フォームが見つからないか、アクセス権がありません",
-  INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-  NETWORK_ERROR: "ネットワークエラーが発生しました",
 } as const
 
 export function NotificationsDialog({

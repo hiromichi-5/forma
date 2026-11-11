@@ -10,7 +10,7 @@ import type {
   UpdateTicketRequest,
 } from "@/types"
 import { apiClient } from "@/lib/api"
-import { getApiErrorMessage } from "@/lib/api-error"
+import { toastApiError } from "@/lib/api-error"
 import { useTicketStream } from "@/hooks/use-ticket-stream"
 import { useNotificationSettings } from "@/hooks/use-notification-settings"
 
@@ -308,7 +308,7 @@ export function useFormResponses(
       return true
     } catch (error) {
       console.error(failureMessage, error)
-      toast.error(getApiErrorMessage(error, {}, failureMessage))
+      toastApiError(error, {}, failureMessage)
       return false
     }
   }
@@ -358,17 +358,15 @@ export function useFormResponses(
       return true
     } catch (error) {
       console.error("Failed to send notification:", error)
-      toast.error(
-        getApiErrorMessage(
-          error,
-          {
-            NOTIFICATION_RATE_LIMITED:
-              "直前に通知を送信しています。しばらくしてから再度お試しください",
-            NOTIFICATION_DISABLED: "この通知は無効に設定されています",
-            RESPONDENT_EMAIL_MISSING: "回答者のメールアドレスが登録されていません",
-          },
-          "通知メールの送信に失敗しました",
-        ),
+      toastApiError(
+        error,
+        {
+          NOTIFICATION_RATE_LIMITED:
+            "直前に通知を送信しています。しばらくしてから再度お試しください",
+          NOTIFICATION_DISABLED: "この通知は無効に設定されています",
+          RESPONDENT_EMAIL_MISSING: "回答者のメールアドレスが登録されていません",
+        },
+        "通知メールの送信に失敗しました",
       )
       return false
     }

@@ -42,8 +42,6 @@ export default function AcceptInvitePage() {
               RESOURCE_HIDDEN: "この招待はあなたのメールアドレス宛ではありません",
               USER_NOT_FOUND: "アカウントが見つかりません。ログインし直してください",
               ALREADY_MEMBER: "既にこのフォームのメンバーです",
-              INVALID_SESSION: "セッションの有効期限が切れました。ログインし直してください",
-              NETWORK_ERROR: "ネットワークエラーが発生しました",
             },
             "招待の受諾に失敗しました",
           ),
