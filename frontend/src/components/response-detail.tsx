@@ -84,10 +84,6 @@ export function ResponseDetail({
     isLoading: isHistoriesLoading,
     error: historiesError,
   } = useTicketHistories(response.id)
-  // 新しい変更ほど上に表示する。
-  const sortedHistories = [...histories].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  )
 
   const getFieldLabel = (fieldName: string): string => {
     switch (fieldName) {
@@ -102,18 +98,8 @@ export function ResponseDetail({
     }
   }
 
-  const getPriorityLabel = (priority: string): string => {
-    switch (priority) {
-      case "high":
-        return "高"
-      case "medium":
-        return "中"
-      case "low":
-        return "低"
-      default:
-        return priority
-    }
-  }
+  const getPriorityLabel = (priority: string): string =>
+    priorityConfig[priority as keyof typeof priorityConfig]?.label ?? priority
 
   const formatHistoryChange = (history: TicketHistory): string => {
     const fieldLabel = getFieldLabel(history.field_name)
@@ -305,7 +291,7 @@ export function ResponseDetail({
               <p className="py-8 text-center text-sm text-muted-foreground">
                 変更履歴を読み込めませんでした
               </p>
-            ) : sortedHistories.length === 0 ? (
+            ) : histories.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center text-center">
                 <History className="mb-3 h-12 w-12 text-muted-foreground" />
                 <p className="text-muted-foreground">まだ変更履歴がありません</p>
@@ -315,7 +301,7 @@ export function ResponseDetail({
               </div>
             ) : (
               <ol className="space-y-3">
-                {sortedHistories.map((history) => (
+                {histories.map((history) => (
                   <li
                     key={history.id}
                     className="rounded-lg border border-muted bg-muted/30 px-4 py-2"
