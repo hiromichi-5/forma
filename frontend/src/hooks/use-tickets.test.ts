@@ -134,6 +134,43 @@ describe("useTicketList", () => {
 })
 
 describe("useTicketStream", () => {
+  it("取り直しの途中で届いた更新は、更新前の応答で上書きされない", async () => {
+    const ticket = ticketSummary({ status: OPEN })
+    let resolveStale: (value: ListTicketsResponse) => void = () => undefined
+    vi.spyOn(apiClient, "getTickets")
+      .mockResolvedValueOnce(page([ticket]))
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveStale = resolve)))
+      .mockResolvedValue(page([]))
+    const { client, wrapper } = createQueryWrapper()
+
+    const { result } = renderHook(
+      () => {
+        useTicketStream(FORM)
+        return useTicketList(FORM, { statusIds: [OPEN.id], query: "" })
+      },
+      { wrapper },
+    )
+    await waitFor(() => expect(result.current.tickets).toEqual([ticket]))
+
+    void client.invalidateQueries({
+      queryKey: ticketQueries.list(FORM, { statusIds: [OPEN.id], query: "" }).queryKey,
+    })
+    await waitFor(() => expect(client.isFetching()).toBe(1))
+
+    act(() =>
+      FakeEventSource.instances[0].emit("ticket_updated", {
+        ticket: ticketDetail({ ...ticket, status: DONE }),
+      }),
+    )
+    await act(() => {
+      resolveStale(page([ticket]))
+      return Promise.resolve()
+    })
+
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    expect(result.current.tickets).toEqual([])
+  })
+
   it("SSE で届いた更新に合わせて、カンバンの列と件数を移す", async () => {
     const ticket = ticketSummary({ status: OPEN })
     vi.spyOn(apiClient, "getTickets").mockImplementation((_formId, options) =>

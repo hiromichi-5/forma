@@ -1,4 +1,4 @@
-import type { InfiniteData, QueryClient } from "@tanstack/react-query"
+import type { InfiniteData, QueryClient, QueryKey } from "@tanstack/react-query"
 import { queryKeys, type TicketListFilter } from "@/queries/keys"
 import type {
   ListTicketCountsResponse,
@@ -96,6 +96,7 @@ export function applyTicketUpdate(queryClient: QueryClient, ticket: TicketDetail
     if (!data) continue
     const filter = key[key.length - 1] as TicketListFilter
     queryClient.setQueryData<TicketPages>(key, placeTicket(data, ticket, filter))
+    refetchIfInFlight(queryClient, key)
   }
 
   for (const [key, data] of queryClient.getQueriesData<ListTicketCountsResponse>({
@@ -112,11 +113,19 @@ export function applyTicketUpdate(queryClient: QueryClient, ticket: TicketDetail
     queryClient.setQueryData<ListTicketCountsResponse>(key, {
       counts: adjustCounts(data.counts, previous.status.id, ticket.status.id),
     })
+    refetchIfInFlight(queryClient, key)
   }
 
   queryClient.setQueryData(queryKeys.ticket(ticket.id), ticket)
   // 更新のたびに変更履歴が増えるため、詳細画面の履歴も取り直す。
   void queryClient.invalidateQueries({ queryKey: queryKeys.ticketHistories(ticket.id) })
+}
+
+// 反映前に始まった取り直しは更新前の状態を返しうるため、取り直しをやり直して上書きを防ぐ。
+function refetchIfInFlight(queryClient: QueryClient, queryKey: QueryKey) {
+  if (queryClient.isFetching({ queryKey, exact: true }) > 0) {
+    void queryClient.invalidateQueries({ queryKey, exact: true })
+  }
 }
 
 function adjustCounts(
