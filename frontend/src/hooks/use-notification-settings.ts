@@ -7,7 +7,7 @@ const NOTIFICATION_TYPES: NotificationType[] = ["status_change", "assignee_assig
 const defaultSettings = (): NotificationSetting[] =>
   NOTIFICATION_TYPES.map((notification_type) => ({
     notification_type,
-    mode: "off" as NotificationMode,
+    mode: "off",
     include_detail: false,
   }))
 
@@ -33,13 +33,13 @@ export function useNotificationSettings(formId: string | null) {
   }, [formId])
 
   useEffect(() => {
-    refetch()
+    void refetch()
   }, [refetch])
 
   const modeOf = useCallback(
     (notificationType: NotificationType): NotificationMode =>
       settings.find((s) => s.notification_type === notificationType)?.mode ?? "off",
-    [settings]
+    [settings],
   )
 
   return {

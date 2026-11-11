@@ -6,7 +6,11 @@ type InfiniteScrollTriggerProps = {
   onLoadMore: () => void
 }
 
-export function InfiniteScrollTrigger({ hasMore, loading, onLoadMore }: InfiniteScrollTriggerProps) {
+export function InfiniteScrollTrigger({
+  hasMore,
+  loading,
+  onLoadMore,
+}: InfiniteScrollTriggerProps) {
   const ref = useRef<HTMLDivElement>(null)
   const onLoadMoreRef = useRef(onLoadMore)
   useEffect(() => {
@@ -21,7 +25,7 @@ export function InfiniteScrollTrigger({ hasMore, loading, onLoadMore }: Infinite
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) onLoadMoreRef.current()
       },
-      { rootMargin: "200px" }
+      { rootMargin: "200px" },
     )
     observer.observe(element)
     return () => observer.disconnect()

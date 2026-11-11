@@ -26,8 +26,7 @@ const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   assignee_assigned: "担当者の割り当て",
 }
 
-export const notificationLabel = (type: NotificationType): string =>
-  NOTIFICATION_LABELS[type]
+export const notificationLabel = (type: NotificationType): string => NOTIFICATION_LABELS[type]
 
 const PAGE_SIZE = 50
 
@@ -73,7 +72,7 @@ function placeTicket(
   state: SegmentState,
   ticket: TicketSummary,
   byId: Record<string, TicketSummary>,
-  matches: boolean
+  matches: boolean,
 ): SegmentState {
   const included = state.ids.includes(ticket.id)
   if (!matches) {
@@ -99,7 +98,7 @@ type UseFormResponsesOptions = {
 
 export function useFormResponses(
   formId: string | null,
-  { segments, query, withCounts }: UseFormResponsesOptions
+  { segments, query, withCounts }: UseFormResponsesOptions,
 ) {
   const [list, setList] = useState<ListState>(EMPTY_LIST)
   const [counts, setCounts] = useState<Record<string, number>>({})
@@ -181,19 +180,21 @@ export function useFormResponses(
     }
   }, [])
 
-  const refetch = useCallback(() => {
+  const refetch = useCallback(async () => {
     generationRef.current += 1
     inFlightRef.current = new Set()
     setList(EMPTY_LIST)
     setCounts({})
     setDetails({})
     const { segments, withCounts } = contextRef.current
-    segments.forEach((segment) => loadPage(segment, null))
-    if (withCounts) loadCounts()
+    await Promise.all([
+      ...segments.map((segment) => loadPage(segment, null)),
+      withCounts ? loadCounts() : undefined,
+    ])
   }, [loadPage, loadCounts])
 
   useEffect(() => {
-    refetch()
+    void refetch()
   }, [formId, segmentsKey, query, withCounts, refetch])
 
   const loadMore = useCallback(
@@ -201,9 +202,9 @@ export function useFormResponses(
       const segment = contextRef.current.segments.find((s) => s.key === key)
       const state = listRef.current.segments[key]
       if (!segment || !state || state.nextCursor === null) return
-      loadPage(segment, state.nextCursor)
+      void loadPage(segment, state.nextCursor)
     },
-    [loadPage]
+    [loadPage],
   )
 
   const applyTicket = useCallback(
@@ -217,14 +218,19 @@ export function useFormResponses(
         segments.forEach((segment) => {
           const state = prev.segments[segment.key]
           if (!state) return
-          next[segment.key] = placeTicket(state, ticket, byId, matchesSegment(ticket, segment, query))
+          next[segment.key] = placeTicket(
+            state,
+            ticket,
+            byId,
+            matchesSegment(ticket, segment, query),
+          )
         })
         return { byId, segments: next }
       })
 
       if (!withCounts) return
       if (!previous) {
-        loadCounts()
+        void loadCounts()
         return
       }
       if (previous.status.id !== ticket.status.id && matchesQuery(ticket, query)) {
@@ -235,7 +241,7 @@ export function useFormResponses(
         }))
       }
     },
-    [loadCounts]
+    [loadCounts],
   )
 
   // 詳細は一覧の要約も含むため、両方に反映して表示のずれを防ぐ。
@@ -244,7 +250,7 @@ export function useFormResponses(
       applyTicket(detail)
       setDetails((prev) => ({ ...prev, [detail.id]: detail }))
     },
-    [applyTicket]
+    [applyTicket],
   )
 
   useTicketStream(formId, cacheDetail)
@@ -273,7 +279,7 @@ export function useFormResponses(
         console.error("Failed to load ticket detail:", error)
       }
     },
-    [cacheDetail]
+    [cacheDetail],
   )
 
   // 自動送信（always）の失敗はチケット更新自体を妨げないため、警告として伝えるにとどめる。
@@ -295,7 +301,7 @@ export function useFormResponses(
   const updateTicket = async (
     id: string,
     request: UpdateTicketRequest,
-    failureMessage: string
+    failureMessage: string,
   ): Promise<boolean> => {
     try {
       applyUpdate(await apiClient.updateTicket(id, request))
@@ -361,8 +367,8 @@ export function useFormResponses(
             NOTIFICATION_DISABLED: "この通知は無効に設定されています",
             RESPONDENT_EMAIL_MISSING: "回答者のメールアドレスが登録されていません",
           },
-          "通知メールの送信に失敗しました"
-        )
+          "通知メールの送信に失敗しました",
+        ),
       )
       return false
     }
@@ -373,11 +379,7 @@ export function useFormResponses(
     setPendingNotification(null)
     if (!pending) return
 
-    const updated = await updateTicket(
-      pending.responseId,
-      pending.request,
-      "変更に失敗しました"
-    )
+    const updated = await updateTicket(pending.responseId, pending.request, "変更に失敗しました")
     if (!updated || !notify) return
 
     await sendNotification(pending.responseId, pending.notificationType)

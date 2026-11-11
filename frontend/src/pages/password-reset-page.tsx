@@ -1,27 +1,27 @@
-import { useState } from "react";
-import { Link } from "react-router";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Card, CardContent, CardTitle } from "../components/ui/card";
-import { apiClient } from "../lib/api";
-import { getApiErrorMessage } from "../lib/api-error";
-import { Loader2, MailCheck } from "lucide-react";
+import { useState } from "react"
+import { Link } from "react-router"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
+import { apiClient } from "@/lib/api"
+import { getApiErrorMessage } from "@/lib/api-error"
+import { Loader2, MailCheck } from "lucide-react"
 
 export default function PasswordResetPage() {
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [isSent, setIsSent] = useState(false);
+  const [email, setEmail] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [isSent, setIsSent] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
 
     try {
-      await apiClient.passwordReset({ email });
-      setIsSent(true);
+      await apiClient.passwordReset({ email })
+      setIsSent(true)
     } catch (err) {
       setError(
         getApiErrorMessage(
@@ -30,17 +30,17 @@ export default function PasswordResetPage() {
             VALIDATION_ERROR: "有効なメールアドレスを入力してください",
             NETWORK_ERROR: "ネットワークエラーが発生しました",
           },
-          "リセットメールの送信に失敗しました"
-        )
-      );
+          "リセットメールの送信に失敗しました",
+        ),
+      )
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   if (isSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
         <Card className="w-full max-w-md shadow-lg">
           <CardContent className="p-6">
             <div className="space-y-6 text-center">
@@ -58,7 +58,7 @@ export default function PasswordResetPage() {
               </div>
               <Link
                 to="/login"
-                className="inline-block font-medium text-primary hover:underline text-sm"
+                className="inline-block text-sm font-medium text-primary hover:underline"
               >
                 ログインページへ戻る
               </Link>
@@ -66,11 +66,11 @@ export default function PasswordResetPage() {
           </CardContent>
         </Card>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardContent className="p-6">
           <div className="space-y-6">
@@ -105,14 +105,10 @@ export default function PasswordResetPage() {
                 </div>
               )}
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading || !email}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading || !email}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     送信中...
                   </>
                 ) : (
@@ -122,10 +118,7 @@ export default function PasswordResetPage() {
             </form>
 
             <div className="text-center">
-              <Link
-                to="/login"
-                className="text-sm text-muted-foreground hover:underline"
-              >
+              <Link to="/login" className="text-sm text-muted-foreground hover:underline">
                 ログインページへ戻る
               </Link>
             </div>
@@ -133,5 +126,5 @@ export default function PasswordResetPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

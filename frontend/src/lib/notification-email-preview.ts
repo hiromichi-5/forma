@@ -125,7 +125,7 @@ function templateName(notificationType: NotificationType, includeDetail: boolean
 function replaceVars(template: string, vars: Record<string, string>): string {
   return Object.entries(vars).reduce(
     (acc, [key, value]) => acc.replaceAll(`{{${key}}}`, value),
-    template
+    template,
   )
 }
 
@@ -137,11 +137,10 @@ function escapeHtml(value: string): string {
     .replaceAll('"', "&quot;")
 }
 
-
 export function renderNotificationEmailPreview(
   notificationType: NotificationType,
   includeDetail: boolean,
-  sample: NotificationEmailSample
+  sample: NotificationEmailSample,
 ): NotificationEmailPreview {
   const template = TEMPLATES[templateName(notificationType, includeDetail)]
   const vars = {
@@ -150,7 +149,7 @@ export function renderNotificationEmailPreview(
     assignee_name: sample.assigneeName,
   }
   const htmlVars = Object.fromEntries(
-    Object.entries(vars).map(([key, value]) => [key, escapeHtml(value)])
+    Object.entries(vars).map(([key, value]) => [key, escapeHtml(value)]),
   )
 
   return {
